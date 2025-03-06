@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -9,6 +9,11 @@ const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const location = useLocation();
+  
+  // Close mobile sidebar when route changes
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [location.pathname]);
   
   const navigation = [
     { name: 'Dashboard', to: '/', icon: Home },
@@ -40,6 +45,7 @@ const Sidebar: React.FC = () => {
       <motion.aside 
         className="hidden md:flex flex-col h-screen fixed left-0 top-0 z-40 bg-sidebar backdrop-blur-md border-r border-border shadow-sm transition-all duration-300"
         animate={{ width: isCollapsed ? '80px' : '250px' }}
+        initial={{ width: '80px' }}
       >
         <div className="flex items-center p-4 border-b border-border h-16">
           {!isCollapsed && (

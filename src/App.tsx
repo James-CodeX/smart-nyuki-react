@@ -21,17 +21,19 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <div className="min-h-screen bg-background">
+        <div className="flex min-h-screen bg-background">
           <Sidebar />
-          <AnimatePresence mode="wait">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/apiaries/:id" element={<ApiaryDetails />} />
-              <Route path="/apiaries/:apiaryId/hives/:hiveId" element={<HiveDetails />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AnimatePresence>
+          <div className="flex-1 pl-0 md:pl-[80px] transition-all duration-300 relative">
+            <AnimatePresence mode="wait">
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/apiaries/:id" element={<ApiaryDetails />} />
+                <Route path="/apiaries/:apiaryId/hives/:hiveId" element={<HiveDetails />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AnimatePresence>
+          </div>
         </div>
       </BrowserRouter>
     </TooltipProvider>
