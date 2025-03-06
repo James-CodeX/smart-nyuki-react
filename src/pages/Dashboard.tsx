@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import PageTransition from '@/components/layout/PageTransition';
 import { motion } from 'framer-motion';
-import { Plus, Map } from 'lucide-react';
+import { Plus, Map, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ApiaryCard from '@/components/dashboard/ApiaryCard';
 import HiveMetricsCard from '@/components/dashboard/HiveMetricsCard';
