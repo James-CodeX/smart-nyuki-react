@@ -11,7 +11,7 @@ import ApiaryDetails from "./pages/ApiaryDetails";
 import HiveDetails from "./pages/HiveDetails";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import Navbar from "./components/layout/Navbar";
+import Sidebar from "./components/layout/Navbar";
 
 const queryClient = new QueryClient();
 
@@ -21,16 +21,18 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Navbar />
-        <AnimatePresence mode="wait">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/apiaries/:id" element={<ApiaryDetails />} />
-            <Route path="/apiaries/:apiaryId/hives/:hiveId" element={<HiveDetails />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AnimatePresence>
+        <div className="min-h-screen bg-background">
+          <Sidebar />
+          <AnimatePresence mode="wait">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/apiaries/:id" element={<ApiaryDetails />} />
+              <Route path="/apiaries/:apiaryId/hives/:hiveId" element={<HiveDetails />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AnimatePresence>
+        </div>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

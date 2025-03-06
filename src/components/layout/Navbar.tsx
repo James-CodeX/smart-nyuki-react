@@ -3,10 +3,11 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { Menu, X, Home, Grid, Map, Settings } from 'lucide-react';
+import { Menu, X, Home, Grid, Map, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 
-const Navbar: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
+const Sidebar: React.FC = () => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const location = useLocation();
   
   const navigation = [
@@ -16,80 +17,53 @@ const Navbar: React.FC = () => {
     { name: 'Settings', to: '/settings', icon: Settings },
   ];
   
-  const toggleMenu = () => {
-    setIsOpen(!isOpen);
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed);
+  };
+
+  const toggleMobileMenu = () => {
+    setIsMobileOpen(!isMobileOpen);
   };
 
   return (
-    <header className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-border">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4 md:justify-start md:space-x-10">
-          <div className="flex justify-start lg:w-0 lg:flex-1">
+    <>
+      {/* Mobile menu trigger */}
+      <button
+        type="button"
+        className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-md bg-white/80 backdrop-blur-md shadow-sm"
+        onClick={toggleMobileMenu}
+      >
+        {isMobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+      </button>
+      
+      {/* Desktop sidebar */}
+      <motion.aside 
+        className="hidden md:flex flex-col h-screen fixed left-0 top-0 z-40 bg-sidebar backdrop-blur-md border-r border-border shadow-sm transition-all duration-300"
+        animate={{ width: isCollapsed ? '80px' : '250px' }}
+      >
+        <div className="flex items-center p-4 border-b border-border h-16">
+          {!isCollapsed && (
             <Link to="/" className="flex items-center">
               <span className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                <motion.div
-                  whileHover={{ rotate: 10 }}
-                  className="text-primary font-bold text-2xl"
-                >
+                <motion.div whileHover={{ rotate: 10 }} className="text-primary font-bold text-xl">
                   🐝
                 </motion.div>
               </span>
               <span className="ml-3 text-xl font-medium text-foreground">Smart-Nyuki</span>
             </Link>
-          </div>
-          
-          <div className="-mr-2 -my-2 md:hidden">
-            <button
-              type="button"
-              className="rounded-md p-2 inline-flex items-center justify-center text-gray-700 hover:text-gray-900 hover:bg-secondary focus:outline-none"
-              onClick={toggleMenu}
-            >
-              <span className="sr-only">Open menu</span>
-              {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
-          </div>
-          
-          <nav className="hidden md:flex space-x-10 items-center">
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.to;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.to}
-                  className={cn(
-                    "inline-flex items-center text-sm font-medium transition-colors px-3 py-2 rounded-lg",
-                    isActive 
-                      ? "text-primary bg-primary/10" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                  )}
-                >
-                  <item.icon className="h-4 w-4 mr-2" />
-                  {item.name}
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeIndicator"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
+          )}
+          {isCollapsed && (
+            <Link to="/" className="flex items-center justify-center w-full">
+              <span className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                <motion.div whileHover={{ rotate: 10 }} className="text-primary font-bold text-xl">
+                  🐝
+                </motion.div>
+              </span>
+            </Link>
+          )}
         </div>
-      </div>
-      
-      {/* Mobile menu */}
-      <motion.div
-        initial={{ opacity: 0, height: 0 }}
-        animate={{
-          opacity: isOpen ? 1 : 0,
-          height: isOpen ? 'auto' : 0,
-        }}
-        transition={{ duration: 0.3 }}
-        className="md:hidden overflow-hidden"
-      >
-        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+        
+        <nav className="flex-1 py-6 px-3 space-y-2 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = location.pathname === item.to;
             return (
@@ -97,22 +71,84 @@ const Navbar: React.FC = () => {
                 key={item.name}
                 to={item.to}
                 className={cn(
-                  "block px-3 py-2 rounded-md text-base font-medium flex items-center",
+                  "flex items-center px-3 py-3 rounded-lg transition-colors relative",
+                  isCollapsed ? "justify-center" : "justify-start",
                   isActive 
                     ? "text-primary bg-primary/10" 
                     : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                 )}
-                onClick={() => setIsOpen(false)}
               >
-                <item.icon className="h-5 w-5 mr-3" />
-                {item.name}
+                <item.icon className={cn("h-5 w-5", isCollapsed ? "" : "mr-3")} />
+                {!isCollapsed && <span>{item.name}</span>}
+                {isActive && (
+                  <motion.div
+                    layoutId="activeIndicator"
+                    className={`absolute ${isCollapsed ? 'left-0 top-0 bottom-0 w-1' : 'bottom-0 left-0 right-0 h-0.5'} bg-primary`}
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
               </Link>
             );
           })}
-        </div>
+        </nav>
+        
+        <button 
+          onClick={toggleSidebar}
+          className="p-3 border-t border-border flex items-center justify-center hover:bg-accent/50 transition-colors"
+        >
+          {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+          {!isCollapsed && <span className="ml-2">Collapse</span>}
+        </button>
+      </motion.aside>
+      
+      {/* Mobile sidebar */}
+      <motion.div
+        className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        animate={{ opacity: isMobileOpen ? 1 : 0 }}
+        initial={{ opacity: 0 }}
+        style={{ pointerEvents: isMobileOpen ? 'auto' : 'none' }}
+      >
+        <motion.div
+          className="fixed inset-y-0 left-0 z-50 w-64 bg-sidebar shadow-lg overflow-y-auto"
+          animate={{ x: isMobileOpen ? 0 : -320 }}
+          transition={{ ease: "easeOut", duration: 0.3 }}
+        >
+          <div className="flex items-center p-4 border-b border-border h-16">
+            <Link to="/" className="flex items-center" onClick={() => setIsMobileOpen(false)}>
+              <span className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                <motion.div whileHover={{ rotate: 10 }} className="text-primary font-bold text-xl">
+                  🐝
+                </motion.div>
+              </span>
+              <span className="ml-3 text-xl font-medium text-foreground">Smart-Nyuki</span>
+            </Link>
+          </div>
+          
+          <nav className="flex flex-col py-6 px-3 space-y-2">
+            {navigation.map((item) => {
+              const isActive = location.pathname === item.to;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.to}
+                  className={cn(
+                    "flex items-center px-3 py-3 rounded-lg transition-colors",
+                    isActive 
+                      ? "text-primary bg-primary/10" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  )}
+                  onClick={() => setIsMobileOpen(false)}
+                >
+                  <item.icon className="h-5 w-5 mr-3" />
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </motion.div>
       </motion.div>
-    </header>
+    </>
   );
 };
 
-export default Navbar;
+export default Sidebar;
