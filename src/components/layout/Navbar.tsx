@@ -5,8 +5,12 @@ import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { Menu, X, Home, Grid, Map, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 
-const Sidebar: React.FC = () => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+interface SidebarProps {
+  onCollapsedChange?: (collapsed: boolean) => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const location = useLocation();
   
@@ -14,6 +18,13 @@ const Sidebar: React.FC = () => {
   useEffect(() => {
     setIsMobileOpen(false);
   }, [location.pathname]);
+  
+  // Notify parent component when sidebar state changes
+  useEffect(() => {
+    if (onCollapsedChange) {
+      onCollapsedChange(isCollapsed);
+    }
+  }, [isCollapsed, onCollapsedChange]);
   
   const navigation = [
     { name: 'Dashboard', to: '/', icon: Home },

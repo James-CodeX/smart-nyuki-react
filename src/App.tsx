@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 
 import Dashboard from "./pages/Dashboard";
 import ApiaryDetails from "./pages/ApiaryDetails";
@@ -15,29 +16,42 @@ import Sidebar from "./components/layout/Navbar";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <div className="flex min-h-screen bg-background">
-          <Sidebar />
-          <div className="flex-1 pl-0 md:pl-[80px] transition-all duration-300 relative">
-            <AnimatePresence mode="wait">
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/apiaries/:id" element={<ApiaryDetails />} />
-                <Route path="/apiaries/:apiaryId/hives/:hiveId" element={<HiveDetails />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </AnimatePresence>
+const App = () => {
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  
+  // Handle sidebar state changes
+  const handleSidebarStateChange = (collapsed: boolean) => {
+    setIsCollapsed(collapsed);
+  };
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <div className="flex min-h-screen bg-background">
+            <Sidebar onCollapsedChange={handleSidebarStateChange} />
+            <div 
+              className={`flex-1 transition-all duration-300 relative ${
+                isCollapsed ? 'pl-[80px]' : 'pl-[250px]'
+              }`}
+            >
+              <AnimatePresence mode="wait">
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/apiaries/:id" element={<ApiaryDetails />} />
+                  <Route path="/apiaries/:apiaryId/hives/:hiveId" element={<HiveDetails />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </AnimatePresence>
+            </div>
           </div>
-        </div>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
