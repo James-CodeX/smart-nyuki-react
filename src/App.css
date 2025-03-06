@@ -1,3 +1,4 @@
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -39,4 +40,20 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* Dynamic sidebar spacing */
+[data-sidebar-collapsed="true"] ~ * .content-area {
+  padding-left: 80px;
+}
+
+[data-sidebar-collapsed="false"] ~ * .content-area {
+  padding-left: 250px;
+}
+
+@media (max-width: 768px) {
+  [data-sidebar-collapsed="true"] ~ * .content-area,
+  [data-sidebar-collapsed="false"] ~ * .content-area {
+    padding-left: 0;
+  }
 }

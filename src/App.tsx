@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
+import "./App.css";
 
 import Dashboard from "./pages/Dashboard";
 import ApiaryDetails from "./pages/ApiaryDetails";
@@ -23,7 +24,7 @@ const App = () => (
       <BrowserRouter>
         <div className="flex min-h-screen bg-background">
           <Sidebar />
-          <div className="flex-1 pl-0 md:pl-[80px] transition-all duration-300 relative">
+          <div className="flex-1 content-area transition-all duration-300 w-full">
             <AnimatePresence mode="wait">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
