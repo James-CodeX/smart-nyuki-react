@@ -14,11 +14,6 @@ const Sidebar: React.FC = () => {
   useEffect(() => {
     setIsMobileOpen(false);
   }, [location.pathname]);
-
-  // Update document root with sidebar state as data attribute
-  useEffect(() => {
-    document.documentElement.dataset.sidebarCollapsed = isCollapsed.toString();
-  }, [isCollapsed]);
   
   const navigation = [
     { name: 'Dashboard', to: '/', icon: Home },
