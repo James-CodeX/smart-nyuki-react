@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { Menu, X, Home, Grid, Menu as HiveIcon, Map, Settings, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
+import { Menu, X, Home, Grid, Menu as HiveIcon, Map, Settings, ChevronLeft, ChevronRight, BarChart3, ClipboardCheck } from 'lucide-react';
 
 interface SidebarProps {
   onCollapsedChange?: (collapsed: boolean) => void;
@@ -30,6 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
     { name: 'Apiaries', to: '/apiaries', icon: Grid },
     { name: 'Hives', to: '/hives', icon: HiveIcon },
     { name: 'Production', to: '/production', icon: BarChart3 },
+    { name: 'Inspections', to: '/inspections', icon: ClipboardCheck },
     { name: 'Map View', to: '/map', icon: Map },
     { name: 'Settings', to: '/settings', icon: Settings },
   ];

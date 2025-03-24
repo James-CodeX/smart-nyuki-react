@@ -288,3 +288,331 @@ const updateApiaryAverages = (apiaryId: string) => {
   apiary.avgSound = parseFloat((totalSound / hiveCount).toFixed(1));
   apiary.avgWeight = parseFloat((totalWeight / hiveCount).toFixed(1));
 };
+
+// Inspection data interfaces
+export interface InspectionFindings {
+  queenSighted: boolean;
+  broodPattern: number; // 1-5 scale
+  honeyStores: number; // 1-5 scale
+  populationStrength: number; // 1-5 scale
+  temperament: number; // 1-5 scale
+  diseasesSighted: boolean;
+  varroaCount?: number;
+  notes?: string;
+}
+
+export interface Inspection {
+  id: string;
+  apiaryId: string;
+  hiveId: string;
+  date: string;
+  type: 'regular' | 'health-check' | 'winter-prep' | 'varroa-check' | 'disease-treatment' | 'harvest-evaluation';
+  status: 'scheduled' | 'completed' | 'overdue' | 'cancelled';
+  findings?: InspectionFindings;
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+// Inspection mock data
+const mockInspections: Inspection[] = [
+  {
+    id: '1',
+    apiaryId: '1',
+    hiveId: '1',
+    date: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString(),
+    type: 'regular',
+    status: 'completed',
+    findings: {
+      queenSighted: true,
+      broodPattern: 4,
+      honeyStores: 3,
+      populationStrength: 4,
+      temperament: 5,
+      diseasesSighted: false
+    },
+    notes: 'Hive is doing well. Strong population and good brood pattern. The queen was spotted on frame 6.',
+    createdBy: 'John Doe',
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 15)).toISOString()
+  },
+  {
+    id: '2',
+    apiaryId: '1',
+    hiveId: '2',
+    date: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
+    type: 'health-check',
+    status: 'completed',
+    findings: {
+      queenSighted: false,
+      broodPattern: 3,
+      honeyStores: 2,
+      populationStrength: 3,
+      temperament: 4,
+      diseasesSighted: true,
+      varroaCount: 5
+    },
+    notes: 'Found signs of Varroa mites. Treatment might be necessary soon.',
+    createdBy: 'Jane Smith',
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 8)).toISOString()
+  },
+  {
+    id: '3',
+    apiaryId: '2',
+    hiveId: '3',
+    date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
+    type: 'winter-prep',
+    status: 'completed',
+    findings: {
+      queenSighted: true,
+      broodPattern: 4,
+      honeyStores: 5,
+      populationStrength: 4,
+      temperament: 3,
+      diseasesSighted: false
+    },
+    notes: 'Prepared for winter. Added insulation and reduced the entrance.',
+    createdBy: 'John Doe',
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
+  },
+  {
+    id: '4',
+    apiaryId: '2',
+    hiveId: '4',
+    date: new Date(new Date().setHours(new Date().getHours() + 24)).toISOString(),
+    type: 'regular',
+    status: 'scheduled',
+    createdBy: 'Jane Smith',
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
+  },
+  {
+    id: '5',
+    apiaryId: '1',
+    hiveId: '1',
+    date: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString(),
+    type: 'varroa-check',
+    status: 'completed',
+    findings: {
+      queenSighted: true,
+      broodPattern: 5,
+      honeyStores: 4,
+      populationStrength: 5,
+      temperament: 4,
+      diseasesSighted: true,
+      varroaCount: 2
+    },
+    notes: 'Minimal varroa presence detected. Hive is strong and healthy.',
+    createdBy: 'John Doe',
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 35)).toISOString()
+  },
+  {
+    id: '6',
+    apiaryId: '3',
+    hiveId: '5',
+    date: new Date(new Date().setDate(new Date().getDate() - 15)).toISOString(),
+    type: 'disease-treatment',
+    status: 'completed',
+    findings: {
+      queenSighted: false,
+      broodPattern: 3,
+      honeyStores: 3,
+      populationStrength: 3,
+      temperament: 2,
+      diseasesSighted: true,
+      varroaCount: 8
+    },
+    notes: 'Applied treatment for varroa mites. Will check effectiveness in 7 days.',
+    createdBy: 'Jane Smith',
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 20)).toISOString()
+  },
+  {
+    id: '7',
+    apiaryId: '3',
+    hiveId: '5',
+    date: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString(),
+    type: 'health-check',
+    status: 'completed',
+    findings: {
+      queenSighted: true,
+      broodPattern: 4,
+      honeyStores: 3,
+      populationStrength: 3,
+      temperament: 3,
+      diseasesSighted: true,
+      varroaCount: 3
+    },
+    notes: 'Treatment appears to be working. Varroa count decreased.',
+    createdBy: 'Jane Smith',
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString()
+  },
+  {
+    id: '8',
+    apiaryId: '1',
+    hiveId: '2',
+    date: new Date(new Date().setDate(new Date().getDate() - 45)).toISOString(),
+    type: 'harvest-evaluation',
+    status: 'completed',
+    findings: {
+      queenSighted: true,
+      broodPattern: 5,
+      honeyStores: 5,
+      populationStrength: 5,
+      temperament: 4,
+      diseasesSighted: false
+    },
+    notes: 'Ready for harvest. Estimated yield: 15kg.',
+    createdBy: 'John Doe',
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 50)).toISOString()
+  },
+  {
+    id: '9',
+    apiaryId: '2',
+    hiveId: '4',
+    date: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
+    type: 'health-check',
+    status: 'overdue',
+    createdBy: 'Jane Smith',
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString()
+  },
+  {
+    id: '10',
+    apiaryId: '3',
+    hiveId: '6',
+    date: new Date().toISOString(),
+    type: 'regular',
+    status: 'scheduled',
+    createdBy: 'John Doe',
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
+  },
+  // Add a few more scheduled inspections in the future
+  {
+    id: '11',
+    apiaryId: '1',
+    hiveId: '1',
+    date: new Date(new Date().setDate(new Date().getDate() + 3)).toISOString(),
+    type: 'health-check',
+    status: 'scheduled',
+    createdBy: 'John Doe',
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString()
+  },
+  {
+    id: '12',
+    apiaryId: '2',
+    hiveId: '3',
+    date: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(),
+    type: 'varroa-check',
+    status: 'scheduled',
+    createdBy: 'Jane Smith',
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString()
+  },
+  {
+    id: '13',
+    apiaryId: '3',
+    hiveId: '5',
+    date: new Date(new Date().setDate(new Date().getDate() + 14)).toISOString(),
+    type: 'harvest-evaluation',
+    status: 'scheduled',
+    createdBy: 'John Doe',
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
+  }
+];
+
+// Inspection functions
+export const getAllInspections = (): Inspection[] => {
+  return mockInspections;
+};
+
+export const getInspectionsByApiary = (apiaryId: string): Inspection[] => {
+  return mockInspections.filter(inspection => inspection.apiaryId === apiaryId);
+};
+
+export const getInspectionsByHive = (apiaryId: string, hiveId: string): Inspection[] => {
+  return mockInspections.filter(
+    inspection => inspection.apiaryId === apiaryId && inspection.hiveId === hiveId
+  );
+};
+
+export const getInspectionById = (id: string): Inspection | undefined => {
+  return mockInspections.find(inspection => inspection.id === id);
+};
+
+export const getCompletedInspections = (): Inspection[] => {
+  return mockInspections.filter(inspection => inspection.status === 'completed');
+};
+
+export const getScheduledInspections = (): Inspection[] => {
+  return mockInspections.filter(inspection => inspection.status === 'scheduled');
+};
+
+export const getOverdueInspections = (): Inspection[] => {
+  const now = new Date();
+  return mockInspections.filter(
+    inspection => 
+      inspection.status === 'overdue' || 
+      (inspection.status === 'scheduled' && new Date(inspection.date) < now)
+  );
+};
+
+export const getUpcomingInspections = (days: number = 7): Inspection[] => {
+  const now = new Date();
+  const future = new Date();
+  future.setDate(now.getDate() + days);
+  
+  return mockInspections.filter(
+    inspection => 
+      inspection.status === 'scheduled' && 
+      new Date(inspection.date) >= now &&
+      new Date(inspection.date) <= future
+  );
+};
+
+export const getInspectionsByDate = (date: Date): Inspection[] => {
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+  
+  return mockInspections.filter(
+    inspection => {
+      const inspectionDate = new Date(inspection.date);
+      return inspectionDate >= startOfDay && inspectionDate <= endOfDay;
+    }
+  );
+};
+
+export const getInspectionsForCalendar = (month: Date): Record<string, Inspection[]> => {
+  const startOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
+  const endOfMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+  
+  const filteredInspections = mockInspections.filter(
+    inspection => {
+      const inspectionDate = new Date(inspection.date);
+      return inspectionDate >= startOfMonth && inspectionDate <= endOfMonth;
+    }
+  );
+  
+  const groupedByDate: Record<string, Inspection[]> = {};
+  
+  filteredInspections.forEach(inspection => {
+    const dateStr = new Date(inspection.date).toISOString().split('T')[0];
+    if (!groupedByDate[dateStr]) {
+      groupedByDate[dateStr] = [];
+    }
+    groupedByDate[dateStr].push(inspection);
+  });
+  
+  return groupedByDate;
+};
+
+// Add inspection function
+export const addInspection = (inspectionData: Omit<Inspection, 'id' | 'createdAt'>) => {
+  const newId = `inspection-${Date.now()}`;
+  const newInspection: Inspection = {
+    ...inspectionData,
+    id: newId,
+    createdAt: new Date().toISOString(),
+  };
+  
+  mockInspections.push(newInspection);
+  return newInspection;
+};

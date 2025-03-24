@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300" fill="none">
+  <path d="M200 280C255.228 280 300 235.228 300 180C300 124.772 255.228 80 200 80C144.772 80 100 124.772 100 180C100 235.228 144.772 280 200 280Z" fill="#F5F5F5" />
+  <path d="M220 140H180C173.373 140 168 145.373 168 152V208C168 214.627 173.373 220 180 220H220C226.627 220 232 214.627 232 208V152C232 145.373 226.627 140 220 140Z" fill="#E2E8F0" stroke="#64748B" stroke-width="2" />
+  <path d="M190 132C190 128.686 192.686 126 196 126H204C207.314 126 210 128.686 210 132V140H190V132Z" fill="#CBD5E1" stroke="#64748B" stroke-width="2" />
+  <path d="M184 160H216" stroke="#64748B" stroke-width="2" stroke-linecap="round" />
+  <path d="M184 180H216" stroke="#64748B" stroke-width="2" stroke-linecap="round" />
+  <path d="M184 200H216" stroke="#64748B" stroke-width="2" stroke-linecap="round" />
+  <path d="M140 240H260" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round" />
+  <path d="M130 90C130 95.5228 134.477 100 140 100C145.523 100 150 95.5228 150 90C150 84.4772 145.523 80 140 80C134.477 80 130 84.4772 130 90Z" fill="#FBBF24" />
+  <path d="M260 90C260 95.5228 264.477 100 270 100C275.523 100 280 95.5228 280 90C280 84.4772 275.523 80 270 80C264.477 80 260 84.4772 260 90Z" fill="#FBBF24" />
+  <path d="M140 100V120" stroke="#FBBF24" stroke-width="2" />
+  <path d="M270 100V120" stroke="#FBBF24" stroke-width="2" />
+  <path d="M190 170C190 173.314 187.314 176 184 176C180.686 176 178 173.314 178 170C178 166.686 180.686 164 184 164C187.314 164 190 166.686 190 170Z" fill="#3B82F6" />
+</svg> 
