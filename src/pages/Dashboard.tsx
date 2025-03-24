@@ -140,41 +140,41 @@ const Dashboard = () => {
       </PageTransition>
     );
   }
-
+  
   return (
     <PageTransition>
       <div className="container max-w-7xl pt-16 md:pt-6 pb-16 px-4 sm:px-6 lg:px-8">
         <header className="mb-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <motion.h1 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="text-3xl font-bold tracking-tight"
-              >
-                Smart-Nyuki Dashboard
-              </motion.h1>
-              <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
+          <div>
+            <motion.h1 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-3xl font-bold tracking-tight"
+            >
+              Smart-Nyuki Dashboard
+            </motion.h1>
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
                 className="text-muted-foreground"
-              >
+            >
                 {format(new Date(), 'EEEE, MMMM d, yyyy')} • Overview of your beekeeping operation
-              </motion.p>
-            </div>
-            
+            </motion.p>
+          </div>
+          
             <div className="flex flex-wrap gap-3">
-              <Link to="/map">
+            <Link to="/map">
                 <Button variant="outline" size="sm" className="h-9">
                   <Map className="h-4 w-4 mr-2" />
-                  Map View
+                Map View
                 </Button>
-              </Link>
+            </Link>
               <Button className="h-9">
                 <Plus className="h-4 w-4 mr-2" />
-                Add Apiary
+              Add Apiary
               </Button>
             </div>
           </div>
@@ -265,8 +265,8 @@ const Dashboard = () => {
                 hives={hivesWithAlerts.length > 0 ? hivesWithAlerts : hives.slice(0, 5)}
                 onViewHive={handleViewHive}
               />
-            </div>
-
+        </div>
+        
             {/* Metrics Overview */}
             <Card>
               <CardHeader>
@@ -401,25 +401,25 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="hives" className="space-y-6 mt-0">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {hives.map((hive, i) => (
-                <motion.div
-                  key={hive.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: i * 0.1 }}
-                >
-                  <HiveMetricsCard
-                    id={hive.id}
-                    name={hive.name}
-                    apiaryId={hive.apiaryId}
-                    apiaryName={hive.apiaryName}
-                    metrics={hive.metrics}
-                    alerts={hive.alerts}
-                  />
-                </motion.div>
-              ))}
-            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {hives.map((hive, i) => (
+              <motion.div
+                key={hive.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: i * 0.1 }}
+              >
+                <HiveMetricsCard
+                  id={hive.id}
+                  name={hive.name}
+                  apiaryId={hive.apiaryId}
+                  apiaryName={hive.apiaryName}
+                  metrics={hive.metrics}
+                  alerts={hive.alerts}
+                />
+              </motion.div>
+            ))}
+          </div>
           </TabsContent>
 
           <TabsContent value="production" className="space-y-6 mt-0">
