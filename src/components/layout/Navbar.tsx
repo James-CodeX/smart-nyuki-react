@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { Menu, X, Home, Grid, Map, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Menu, X, Home, Grid, Menu as HiveIcon, Map, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface SidebarProps {
   onCollapsedChange?: (collapsed: boolean) => void;
@@ -29,6 +28,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
   const navigation = [
     { name: 'Dashboard', to: '/', icon: Home },
     { name: 'Apiaries', to: '/apiaries', icon: Grid },
+    { name: 'Hives', to: '/hives', icon: HiveIcon },
     { name: 'Map View', to: '/map', icon: Map },
     { name: 'Settings', to: '/settings', icon: Settings },
   ];

@@ -1,15 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Plus, MapPin, Edit, AlertCircle } from 'lucide-react';
+import { ChevronLeft, Plus, MapPin, Edit, AlertCircle, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import PageTransition from '@/components/layout/PageTransition';
 import HiveMetricsCard from '@/components/dashboard/HiveMetricsCard';
 import { getApiaryById } from '@/utils/mockData';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useToast } from '@/components/ui/use-toast';
+import AddHiveModal from '@/components/dashboard/AddHiveModal';
+import EditApiaryModal from '@/components/dashboard/EditApiaryModal';
 
 const ApiaryDetails = () => {
   const { id } = useParams<{ id: string }>();
   const [apiary, setApiary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [addHiveModalOpen, setAddHiveModalOpen] = useState(false);
+  const [editApiaryModalOpen, setEditApiaryModalOpen] = useState(false);
+  const { toast } = useToast();
   
   useEffect(() => {
     // Simulate API call
@@ -50,6 +63,84 @@ const ApiaryDetails = () => {
   // Count hives with alerts
   const alertCount = apiary.hives.filter((hive: any) => hive.alerts && hive.alerts.length > 0).length;
   
+  const handleAddHive = async (hiveData: any) => {
+    if (!id) return;
+
+    try {
+      // Simulating an API call
+      const newHive = {
+        id: `hive-${Date.now()}`,
+        ...hiveData,
+        temperature: 35.2,
+        humidity: 65,
+        sound: 40,
+        weight: 25.5,
+        alerts: []
+      };
+      
+      setApiary((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          hives: [...prev.hives, newHive],
+        };
+      });
+      
+      toast({
+        title: 'Success',
+        description: 'Hive added successfully',
+      });
+      
+      return newHive;
+    } catch (error) {
+      console.error('Error adding hive:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add hive',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
+  const handleEditApiary = async (data: { name: string; location: string }) => {
+    if (!id || !apiary) return;
+    
+    // In a real application, you would update the apiary with an API call here
+    // For now, we'll just update the local state
+    try {
+      // Simulating API call
+      // await updateApiary(id, data);
+      
+      // Update local state
+      setApiary({
+        ...apiary,
+        name: data.name,
+        location: data.location,
+      });
+      
+      toast({
+        title: 'Success',
+        description: 'Apiary updated successfully',
+      });
+    } catch (error) {
+      console.error('Error updating apiary:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update apiary',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteApiary = () => {
+    // This would be implemented with a confirmation dialog and API call
+    toast({
+      title: 'Not Implemented',
+      description: 'Delete functionality is not yet implemented',
+    });
+  };
+  
   return (
     <PageTransition>
       <div className="container max-w-7xl pt-16 md:pt-8 pb-16 px-4 sm:px-6 lg:px-8">
@@ -64,9 +155,29 @@ const ApiaryDetails = () => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="text-3xl font-bold tracking-tight"
+              className="text-3xl font-bold tracking-tight flex items-center gap-2"
             >
               {apiary.name}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setEditApiaryModalOpen(true)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit Apiary
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={handleDeleteApiary} 
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Apiary
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </motion.h1>
             <motion.p 
               initial={{ opacity: 0 }}
@@ -88,14 +199,7 @@ const ApiaryDetails = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-secondary text-secondary-foreground flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
-            >
-              <Edit className="h-4 w-4" />
-              Edit Apiary
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              onClick={() => setAddHiveModalOpen(true)}
               className="bg-primary text-primary-foreground flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium shadow-sm"
             >
               <Plus className="h-4 w-4" />
@@ -195,6 +299,23 @@ const ApiaryDetails = () => {
           </motion.div>
         </div>
       </div>
+
+      <AddHiveModal
+        isOpen={addHiveModalOpen}
+        onClose={() => setAddHiveModalOpen(false)}
+        onAdd={handleAddHive}
+      />
+
+      <EditApiaryModal
+        isOpen={editApiaryModalOpen}
+        onClose={() => setEditApiaryModalOpen(false)}
+        onEdit={handleEditApiary}
+        apiary={{
+          id: apiary.id,
+          name: apiary.name,
+          location: apiary.location,
+        }}
+      />
     </PageTransition>
   );
 };

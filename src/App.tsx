@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +7,8 @@ import { AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 
 import Dashboard from "./pages/Dashboard";
+import Apiaries from "./pages/Apiaries";
+import Hives from "./pages/Hives";
 import ApiaryDetails from "./pages/ApiaryDetails";
 import HiveDetails from "./pages/HiveDetails";
 import Settings from "./pages/Settings";
@@ -40,7 +41,9 @@ const App = () => {
               <AnimatePresence mode="wait">
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
+                  <Route path="/apiaries" element={<Apiaries />} />
                   <Route path="/apiaries/:id" element={<ApiaryDetails />} />
+                  <Route path="/hives" element={<Hives />} />
                   <Route path="/apiaries/:apiaryId/hives/:hiveId" element={<HiveDetails />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="*" element={<NotFound />} />

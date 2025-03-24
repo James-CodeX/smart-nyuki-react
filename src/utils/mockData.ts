@@ -1,4 +1,3 @@
-
 // Generate mock data for the app
 import { subHours, format } from 'date-fns';
 
@@ -187,12 +186,105 @@ export const getApiaryById = (id: string) => {
 };
 
 export const getHiveById = (apiaryId: string, hiveId: string) => {
-  const apiary = apiaries.find(a => a.id === apiaryId);
-  if (!apiary) return null;
-  
-  return apiary.hives.find(h => h.id === hiveId);
+  const apiary = getApiaryById(apiaryId);
+  return apiary?.hives.find(hive => hive.id === hiveId);
 };
 
 export const getAllHives = () => {
   return apiaries.flatMap(apiary => apiary.hives);
+};
+
+// Add new functions for creating apiaries and hives
+export const addApiary = (name: string, location: string) => {
+  const newId = `apiary-${Date.now()}`;
+  const newApiary = {
+    id: newId,
+    name,
+    location,
+    hives: [],
+    hiveCount: 0,
+    avgTemperature: 34 + (Math.random() - 0.5) * 2,
+    avgHumidity: 50 + (Math.random() - 0.5) * 10,
+    avgSound: 45 + (Math.random() - 0.5) * 15,
+    avgWeight: 50 + (Math.random() - 0.5) * 10,
+  };
+  
+  apiaries.push(newApiary);
+  return newApiary;
+};
+
+export const addHive = (
+  name: string, 
+  apiaryId: string, 
+  node_id: string,
+  hiveType: string,
+  queenAge?: string,
+  installationDate?: string,
+  notes?: string
+) => {
+  const apiary = getApiaryById(apiaryId);
+  if (!apiary) return null;
+  
+  const apiaryName = apiary.name;
+  const newId = `hive-${Date.now()}`;
+  
+  const temperatureData = generateTemperatureData();
+  const humidityData = generateHumidityData();
+  const soundData = generateSoundData();
+  const weightData = generateWeightData();
+  
+  const newHive = {
+    id: newId,
+    name,
+    apiaryId,
+    apiaryName,
+    node_id,
+    hiveType,
+    queenAge,
+    installationDate,
+    notes,
+    metrics: {
+      temperature: temperatureData,
+      humidity: humidityData,
+      sound: soundData,
+      weight: weightData
+    },
+    alerts: []
+  };
+  
+  apiary.hives.push(newHive);
+  
+  // Update apiary averages
+  updateApiaryAverages(apiaryId);
+  
+  return newHive;
+};
+
+// Helper function to update apiary averages after adding a hive
+const updateApiaryAverages = (apiaryId: string) => {
+  const apiary = getApiaryById(apiaryId);
+  if (!apiary || apiary.hives.length === 0) return;
+  
+  let totalTemp = 0;
+  let totalHumidity = 0;
+  let totalSound = 0;
+  let totalWeight = 0;
+  
+  apiary.hives.forEach(hive => {
+    const latestTemp = hive.metrics.temperature[hive.metrics.temperature.length - 1].value;
+    const latestHumidity = hive.metrics.humidity[hive.metrics.humidity.length - 1].value;
+    const latestSound = hive.metrics.sound[hive.metrics.sound.length - 1].value;
+    const latestWeight = hive.metrics.weight[hive.metrics.weight.length - 1].value;
+    
+    totalTemp += latestTemp;
+    totalHumidity += latestHumidity;
+    totalSound += latestSound;
+    totalWeight += latestWeight;
+  });
+  
+  const hiveCount = apiary.hives.length;
+  apiary.avgTemperature = parseFloat((totalTemp / hiveCount).toFixed(1));
+  apiary.avgHumidity = parseFloat((totalHumidity / hiveCount).toFixed(1));
+  apiary.avgSound = parseFloat((totalSound / hiveCount).toFixed(1));
+  apiary.avgWeight = parseFloat((totalWeight / hiveCount).toFixed(1));
 };
