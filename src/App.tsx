@@ -14,6 +14,7 @@ import HiveDetails from "./pages/HiveDetails";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Sidebar from "./components/layout/Navbar";
+import Production from "./pages/Production";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => {
                   <Route path="/apiaries" element={<Apiaries />} />
                   <Route path="/apiaries/:id" element={<ApiaryDetails />} />
                   <Route path="/hives" element={<Hives />} />
+                  <Route path="/production" element={<Production />} />
                   <Route path="/apiaries/:apiaryId/hives/:hiveId" element={<HiveDetails />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="*" element={<NotFound />} />
