@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# while making changes that involve backend, always check the databse schema to understand what youre suppossed to do
+
+- [DatabaseSetup.md](mdc:DatabaseSetup.md)

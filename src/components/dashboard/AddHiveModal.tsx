@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
@@ -10,16 +10,20 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getAllApiaries } from '@/utils/mockData';
+import { Checkbox } from '@/components/ui/checkbox';
+import { getAllApiaries } from '@/services/apiaryService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const formSchema = z.object({
   name: z.string().min(3, 'Name must be at least 3 characters'),
   apiaryId: z.string().min(1, 'Please select an apiary'),
-  node_id: z.string().min(1, 'Node ID is required'),
-  hiveType: z.string().min(1, 'Hive type is required'),
-  queenAge: z.string().optional(),
-  installationDate: z.string().optional(),
+  type: z.string().min(1, 'Hive type is required'),
+  status: z.string().min(1, 'Status is required'),
+  installation_date: z.string().optional(),
+  queen_type: z.string().optional(),
+  queen_introduced_date: z.string().optional(),
+  queen_marked: z.boolean().optional(),
+  queen_marking_color: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -41,31 +45,88 @@ const hiveTypes = [
   'Other'
 ];
 
+const hiveStatuses = [
+  'active',
+  'inactive',
+  'maintenance',
+  'monitoring',
+  'quarantine'
+];
+
+const queenTypes = [
+  'Italian',
+  'Carniolan',
+  'Buckfast',
+  'Russian',
+  'Caucasian',
+  'Minnesota Hygienic',
+  'Wild/Local',
+  'Other'
+];
+
+const markingColors = [
+  'white',
+  'yellow',
+  'red',
+  'green',
+  'blue'
+];
+
 const AddHiveModal: React.FC<AddHiveModalProps> = ({
   isOpen,
   onClose,
   onAdd,
 }) => {
-  const apiaries = getAllApiaries();
+  const [apiaries, setApiaries] = useState<{id: string, name: string}[]>([]);
   const { toast } = useToast();
   const {
     register,
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       apiaryId: '',
-      node_id: '',
-      hiveType: '',
-      queenAge: '',
-      installationDate: '',
+      type: '',
+      status: 'active',
+      installation_date: '',
+      queen_type: '',
+      queen_introduced_date: '',
+      queen_marked: false,
+      queen_marking_color: '',
       notes: '',
     },
   });
+
+  const queenMarked = watch('queen_marked');
+
+  // Load apiaries when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      const loadApiaries = async () => {
+        try {
+          const data = await getAllApiaries();
+          setApiaries(data.map(apiary => ({
+            id: apiary.id,
+            name: apiary.name
+          })));
+        } catch (error) {
+          console.error('Error loading apiaries:', error);
+          toast({
+            variant: "destructive",
+            title: "Error loading apiaries",
+            description: "Failed to load apiaries. Please try again.",
+          });
+        }
+      };
+      
+      loadApiaries();
+    }
+  }, [isOpen, toast]);
 
   const onSubmit = async (data: FormValues) => {
     try {
@@ -124,7 +185,7 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
                 <Tabs defaultValue="basic" className="w-full">
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                    <TabsTrigger value="details">Details</TabsTrigger>
+                    <TabsTrigger value="queen">Queen Details</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="basic" className="space-y-4 py-2">
@@ -137,18 +198,6 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
                       />
                       {errors.name && (
                         <p className="text-sm text-destructive">{errors.name.message}</p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="node_id">Node ID</Label>
-                      <Input
-                        id="node_id"
-                        placeholder="Enter IoT node identifier"
-                        {...register('node_id')}
-                      />
-                      {errors.node_id && (
-                        <p className="text-sm text-destructive">{errors.node_id.message}</p>
                       )}
                     </div>
                     
@@ -172,8 +221,8 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="hiveType">Hive Type</Label>
-                      <Select onValueChange={(value) => setValue('hiveType', value)}>
+                      <Label htmlFor="type">Hive Type</Label>
+                      <Select onValueChange={(value) => setValue('type', value)}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select hive type" />
                         </SelectTrigger>
@@ -185,31 +234,36 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
                           ))}
                         </SelectContent>
                       </Select>
-                      {errors.hiveType && (
-                        <p className="text-sm text-destructive">{errors.hiveType.message}</p>
+                      {errors.type && (
+                        <p className="text-sm text-destructive">{errors.type.message}</p>
                       )}
                     </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="details" className="space-y-4 py-2">
+
                     <div className="space-y-2">
-                      <Label htmlFor="queenAge">Queen Age (Year)</Label>
-                      <Input
-                        id="queenAge"
-                        type="number"
-                        min="0"
-                        max="5"
-                        placeholder="Queen age in years"
-                        {...register('queenAge')}
-                      />
+                      <Label htmlFor="status">Status</Label>
+                      <Select onValueChange={(value) => setValue('status', value)} defaultValue="active">
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {hiveStatuses.map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.status && (
+                        <p className="text-sm text-destructive">{errors.status.message}</p>
+                      )}
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="installationDate">Installation Date</Label>
+                      <Label htmlFor="installation_date">Installation Date</Label>
                       <Input
-                        id="installationDate"
+                        id="installation_date"
                         type="date"
-                        {...register('installationDate')}
+                        {...register('installation_date')}
                       />
                     </div>
                     
@@ -222,6 +276,67 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
                         {...register('notes')}
                       />
                     </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="queen" className="space-y-4 py-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="queen_type">Queen Type</Label>
+                      <Select onValueChange={(value) => setValue('queen_type', value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select queen type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {queenTypes.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="queen_introduced_date">Queen Introduction Date</Label>
+                      <Input
+                        id="queen_introduced_date"
+                        type="date"
+                        {...register('queen_introduced_date')}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 mt-4">
+                      <Checkbox 
+                        id="queen_marked" 
+                        onCheckedChange={(checked) => {
+                          setValue('queen_marked', checked === true);
+                        }}
+                      />
+                      <Label htmlFor="queen_marked" className="cursor-pointer">Queen is marked</Label>
+                    </div>
+                    
+                    {queenMarked && (
+                      <div className="space-y-2 mt-4">
+                        <Label htmlFor="queen_marking_color">Marking Color</Label>
+                        <Select onValueChange={(value) => setValue('queen_marking_color', value)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select marking color" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {markingColors.map((color) => (
+                              <SelectItem key={color} value={color}>
+                                <div className="flex items-center">
+                                  <div 
+                                    className="w-4 h-4 rounded-full mr-2" 
+                                    style={{ backgroundColor: color }}
+                                  ></div>
+                                  {color.charAt(0).toUpperCase() + color.slice(1)}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </TabsContent>
                 </Tabs>
                 

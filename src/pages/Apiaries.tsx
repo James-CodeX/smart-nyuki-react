@@ -1,27 +1,73 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PageTransition from '@/components/layout/PageTransition';
 import ApiaryCard from '@/components/dashboard/ApiaryCard';
-import { getAllApiaries, addApiary } from '@/utils/mockData';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import AddApiaryModal from '@/components/dashboard/AddApiaryModal';
+import { getAllApiaries, addApiary as addApiaryService, ApiaryWithStats } from '@/services/apiaryService';
+import { toast } from '@/components/ui/use-toast';
 
 const Apiaries = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [apiaries, setApiaries] = useState(getAllApiaries());
+  const [apiaries, setApiaries] = useState<ApiaryWithStats[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    // Load apiaries when component mounts
+    const loadApiaries = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getAllApiaries();
+        setApiaries(data);
+      } catch (error) {
+        console.error('Error loading apiaries:', error);
+        toast({
+          variant: "destructive",
+          title: "Error loading apiaries",
+          description: "There was a problem loading your apiaries. Please try again.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadApiaries();
+  }, []);
   
   const filteredApiaries = apiaries.filter(apiary => 
     apiary.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     apiary.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
-  const handleAddApiary = (data: { name: string; location: string }) => {
-    const newApiary = addApiary(data.name, data.location);
-    setApiaries(getAllApiaries()); // Refresh the apiaries list
+  const handleAddApiary = async (data: { name: string; location: string }) => {
+    try {
+      setIsLoading(true);
+      await addApiaryService(data);
+      
+      // Refresh the apiaries list
+      const updatedApiaries = await getAllApiaries();
+      setApiaries(updatedApiaries);
+      
+      toast({
+        title: "Apiary added",
+        description: "Your new apiary has been created successfully.",
+      });
+      
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error('Error adding apiary:', error);
+      toast({
+        variant: "destructive",
+        title: "Error adding apiary",
+        description: "There was a problem creating the apiary. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -63,16 +109,28 @@ const Apiaries = () => {
                 whileTap={{ scale: 0.95 }}
                 className="bg-primary text-primary-foreground flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
                 onClick={() => setIsAddModalOpen(true)}
+                disabled={isLoading}
               >
-                <Plus className="h-4 w-4" />
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
                 Add Apiary
               </motion.button>
             </div>
           </div>
           
-          {filteredApiaries.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2 text-lg">Loading apiaries...</span>
+            </div>
+          ) : filteredApiaries.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-lg text-muted-foreground">No apiaries found</p>
+              <p className="text-lg text-muted-foreground">
+                {searchTerm ? "No apiaries match your search" : "No apiaries found. Add your first apiary to get started!"}
+              </p>
               {searchTerm && (
                 <Button variant="link" onClick={() => setSearchTerm('')}>Clear search</Button>
               )}
@@ -85,7 +143,7 @@ const Apiaries = () => {
                   id={apiary.id}
                   name={apiary.name}
                   location={apiary.location}
-                  hiveCount={apiary.hives.length}
+                  hiveCount={apiary.hiveCount}
                   avgTemperature={apiary.avgTemperature}
                   avgHumidity={apiary.avgHumidity}
                   avgSound={apiary.avgSound}

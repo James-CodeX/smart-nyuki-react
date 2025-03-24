@@ -1,21 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, AlertTriangle } from 'lucide-react';
+import { Plus, Search, AlertTriangle, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PageTransition from '@/components/layout/PageTransition';
-import { getAllHives, addHive } from '@/utils/mockData';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import HiveMetricsCard from '@/components/dashboard/HiveMetricsCard';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import AddHiveModal from '@/components/dashboard/AddHiveModal';
+import { getAllHives, addHive as addHiveService, HiveWithDetails } from '@/services/hiveService';
+import { toast } from '@/components/ui/use-toast';
 
 const Hives = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterByAlerts, setFilterByAlerts] = useState<boolean>(false);
-  const [hives, setHives] = useState(getAllHives());
+  const [hives, setHives] = useState<HiveWithDetails[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    // Load hives when component mounts
+    const loadHives = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getAllHives();
+        setHives(data);
+      } catch (error) {
+        console.error('Error loading hives:', error);
+        toast({
+          variant: "destructive",
+          title: "Error loading hives",
+          description: "There was a problem loading your hives. Please try again.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadHives();
+  }, []);
   
   const filteredHives = hives.filter(hive => 
     (hive.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -23,25 +47,45 @@ const Hives = () => {
     (!filterByAlerts || (hive.alerts && hive.alerts.length > 0))
   );
   
-  const handleAddHive = (data: { 
+  const handleAddHive = async (data: { 
     name: string, 
     apiaryId: string,
-    node_id: string,
-    hiveType: string,
-    queenAge?: string,
-    installationDate?: string,
+    type: string,
+    status: string,
+    installation_date?: string,
+    queen_introduced_date?: string,
+    queen_type?: string,
+    queen_marked?: boolean,
+    queen_marking_color?: string,
     notes?: string
   }) => {
-    const newHive = addHive(
-      data.name, 
-      data.apiaryId, 
-      data.node_id, 
-      data.hiveType,
-      data.queenAge,
-      data.installationDate,
-      data.notes
-    );
-    setHives(getAllHives()); // Refresh the hives list
+    try {
+      setIsLoading(true);
+      await addHiveService({
+        ...data,
+        apiary_id: data.apiaryId
+      });
+      
+      // Refresh the hives list
+      const updatedHives = await getAllHives();
+      setHives(updatedHives);
+      
+      toast({
+        title: "Hive added",
+        description: "Your new hive has been created successfully.",
+      });
+      
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error('Error adding hive:', error);
+      toast({
+        variant: "destructive",
+        title: "Error adding hive",
+        description: "There was a problem creating the hive. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -104,16 +148,28 @@ const Hives = () => {
                 whileTap={{ scale: 0.95 }}
                 className="bg-primary text-primary-foreground flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
                 onClick={() => setIsAddModalOpen(true)}
+                disabled={isLoading}
               >
-                <Plus className="h-4 w-4" />
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
                 Add Hive
               </motion.button>
             </div>
           </div>
           
-          {filteredHives.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2 text-lg">Loading hives...</span>
+            </div>
+          ) : filteredHives.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-lg text-muted-foreground">No hives found</p>
+              <p className="text-lg text-muted-foreground">
+                {searchTerm || filterByAlerts ? "No hives match your search criteria" : "No hives found. Add your first hive to get started!"}
+              </p>
               {(searchTerm || filterByAlerts) && (
                 <Button variant="link" onClick={() => {
                   setSearchTerm('');
@@ -128,7 +184,7 @@ const Hives = () => {
                   key={hive.id}
                   id={hive.id}
                   name={hive.name}
-                  apiaryId={hive.apiaryId}
+                  apiaryId={hive.apiary_id}
                   apiaryName={hive.apiaryName}
                   metrics={hive.metrics}
                   alerts={hive.alerts}

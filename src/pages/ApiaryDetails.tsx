@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Plus, MapPin, Edit, AlertCircle, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { ChevronLeft, Plus, MapPin, MoreHorizontal, Pencil, Trash2, AlertCircle, Loader2 } from 'lucide-react';
 import PageTransition from '@/components/layout/PageTransition';
 import HiveMetricsCard from '@/components/dashboard/HiveMetricsCard';
-import { getApiaryById } from '@/utils/mockData';
+import { getApiaryById, updateApiary, deleteApiary } from '@/services/apiaryService';
+import { getHivesByApiary, addHive as addHiveService } from '@/services/hiveService';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -15,32 +16,65 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import AddHiveModal from '@/components/dashboard/AddHiveModal';
 import EditApiaryModal from '@/components/dashboard/EditApiaryModal';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const ApiaryDetails = () => {
   const { id } = useParams<{ id: string }>();
   const [apiary, setApiary] = useState<any>(null);
+  const [hives, setHives] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [addHiveModalOpen, setAddHiveModalOpen] = useState(false);
   const [editApiaryModalOpen, setEditApiaryModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   useEffect(() => {
-    // Simulate API call
-    const timer = setTimeout(() => {
-      if (id) {
-        const foundApiary = getApiaryById(id);
-        setApiary(foundApiary);
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        if (id) {
+          // Load apiary details
+          const apiaryData = await getApiaryById(id);
+          if (apiaryData) {
+            setApiary(apiaryData);
+            
+            // Load hives for this apiary
+            const hivesData = await getHivesByApiary(id);
+            setHives(hivesData);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading apiary details:', error);
+        toast({
+          variant: "destructive",
+          title: "Error loading data",
+          description: "There was a problem loading the apiary details. Please try again.",
+        });
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    }, 500);
+    };
     
-    return () => clearTimeout(timer);
-  }, [id]);
+    loadData();
+  }, [id, toast]);
   
   if (loading) {
     return (
       <div className="container max-w-7xl pt-16 md:pt-8 pb-16 px-4 sm:px-6 lg:px-8 flex items-center justify-center min-h-[60vh]">
-        <div className="h-16 w-16 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="text-lg text-muted-foreground">Loading apiary details...</p>
+        </div>
       </div>
     );
   }
@@ -51,47 +85,39 @@ const ApiaryDetails = () => {
         <h2 className="text-2xl font-bold mb-4">Apiary Not Found</h2>
         <p className="text-muted-foreground mb-6">The apiary you're looking for doesn't seem to exist.</p>
         <Link 
-          to="/" 
+          to="/apiaries" 
           className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium shadow-sm"
         >
-          Return to Dashboard
+          Return to Apiaries
         </Link>
       </div>
     );
   }
   
   // Count hives with alerts
-  const alertCount = apiary.hives.filter((hive: any) => hive.alerts && hive.alerts.length > 0).length;
+  const alertCount = hives.filter(hive => hive.alerts && hive.alerts.length > 0).length;
   
   const handleAddHive = async (hiveData: any) => {
     if (!id) return;
 
     try {
-      // Simulating an API call
-      const newHive = {
-        id: `hive-${Date.now()}`,
+      setLoading(true);
+      // Add the hive with the service
+      await addHiveService({
         ...hiveData,
-        temperature: 35.2,
-        humidity: 65,
-        sound: 40,
-        weight: 25.5,
-        alerts: []
-      };
-      
-      setApiary((prev: any) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          hives: [...prev.hives, newHive],
-        };
+        apiary_id: id
       });
+      
+      // Reload hives for this apiary
+      const updatedHives = await getHivesByApiary(id);
+      setHives(updatedHives);
       
       toast({
         title: 'Success',
         description: 'Hive added successfully',
       });
       
-      return newHive;
+      setAddHiveModalOpen(false);
     } catch (error) {
       console.error('Error adding hive:', error);
       toast({
@@ -99,18 +125,18 @@ const ApiaryDetails = () => {
         description: 'Failed to add hive',
         variant: 'destructive',
       });
-      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleEditApiary = async (data: { name: string; location: string }) => {
     if (!id || !apiary) return;
     
-    // In a real application, you would update the apiary with an API call here
-    // For now, we'll just update the local state
     try {
-      // Simulating API call
-      // await updateApiary(id, data);
+      setLoading(true);
+      // Update apiary using service
+      await updateApiary(id, data);
       
       // Update local state
       setApiary({
@@ -123,6 +149,8 @@ const ApiaryDetails = () => {
         title: 'Success',
         description: 'Apiary updated successfully',
       });
+      
+      setEditApiaryModalOpen(false);
     } catch (error) {
       console.error('Error updating apiary:', error);
       toast({
@@ -130,23 +158,43 @@ const ApiaryDetails = () => {
         description: 'Failed to update apiary',
         variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteApiary = () => {
-    // This would be implemented with a confirmation dialog and API call
-    toast({
-      title: 'Not Implemented',
-      description: 'Delete functionality is not yet implemented',
-    });
+  const handleDeleteApiary = async () => {
+    if (!id) return;
+    
+    try {
+      setLoading(true);
+      // Delete apiary using service
+      await deleteApiary(id);
+      
+      toast({
+        title: 'Success',
+        description: 'Apiary deleted successfully',
+      });
+      
+      // Navigate back to apiaries list
+      navigate('/apiaries');
+    } catch (error) {
+      console.error('Error deleting apiary:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete apiary',
+        variant: 'destructive',
+      });
+      setLoading(false);
+    }
   };
   
   return (
     <PageTransition>
       <div className="container max-w-7xl pt-16 md:pt-8 pb-16 px-4 sm:px-6 lg:px-8">
-        <Link to="/" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
+        <Link to="/apiaries" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
           <ChevronLeft className="h-4 w-4 mr-1" />
-          Back to Dashboard
+          Back to Apiaries
         </Link>
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -170,7 +218,7 @@ const ApiaryDetails = () => {
                     Edit Apiary
                   </DropdownMenuItem>
                   <DropdownMenuItem 
-                    onClick={handleDeleteApiary} 
+                    onClick={() => setDeleteDialogOpen(true)} 
                     className="text-destructive focus:text-destructive"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
@@ -201,8 +249,13 @@ const ApiaryDetails = () => {
               whileTap={{ scale: 0.95 }}
               onClick={() => setAddHiveModalOpen(true)}
               className="bg-primary text-primary-foreground flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium shadow-sm"
+              disabled={loading}
             >
-              <Plus className="h-4 w-4" />
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
               Add Hive
             </motion.button>
           </div>
@@ -256,66 +309,79 @@ const ApiaryDetails = () => {
             <div className="mt-2 h-1 w-full bg-gray-200 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-amber-500 rounded-full"
-                style={{ width: `${(apiary.avgWeight / 30) * 100}%` }}
+                style={{ width: `${(apiary.avgWeight / 60) * 100}%` }}
               />
             </div>
           </div>
         </div>
         
-        <h2 className="text-2xl font-semibold mb-6">Hives in this Apiary</h2>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {apiary.hives.map((hive: any, i: number) => (
-            <motion.div
-              key={hive.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: i * 0.1 }}
-            >
-              <HiveMetricsCard
-                id={hive.id}
-                name={hive.name}
-                apiaryId={hive.apiaryId}
-                apiaryName={hive.apiaryName}
-                metrics={hive.metrics}
-                alerts={hive.alerts}
-              />
-            </motion.div>
-          ))}
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: apiary.hives.length * 0.1 }}
-            className="flex items-center justify-center bg-secondary/50 border border-dashed border-secondary-foreground/20 rounded-2xl p-5 min-h-[400px] cursor-pointer hover:bg-secondary/80 transition-colors"
-          >
-            <div className="text-center">
-              <div className="bg-background w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Plus className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-lg font-medium">Add New Hive</h3>
-              <p className="text-muted-foreground text-sm mt-1">Expand your apiary with a new hive</p>
+        {hives.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="bg-muted/30 p-4 rounded-full mb-4">
+              <Plus className="h-8 w-8 text-muted-foreground" />
             </div>
-          </motion.div>
-        </div>
+            <h3 className="text-xl font-medium mb-2">No Hives Yet</h3>
+            <p className="text-muted-foreground max-w-md mb-6">
+              This apiary doesn't have any hives yet. Add your first hive to start monitoring.
+            </p>
+            <Button onClick={() => setAddHiveModalOpen(true)}>
+              Add Your First Hive
+            </Button>
+          </div>
+        ) : (
+          <div>
+            <h2 className="text-xl font-semibold mb-6">Hives in {apiary.name}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {hives.map((hive) => (
+                <HiveMetricsCard
+                  key={hive.id}
+                  id={hive.id}
+                  name={hive.name}
+                  apiaryId={hive.apiary_id}
+                  apiaryName={apiary.name}
+                  metrics={hive.metrics}
+                  alerts={hive.alerts}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-
-      <AddHiveModal
-        isOpen={addHiveModalOpen}
-        onClose={() => setAddHiveModalOpen(false)}
-        onAdd={handleAddHive}
+      
+      <AddHiveModal 
+        isOpen={addHiveModalOpen} 
+        onClose={() => setAddHiveModalOpen(false)} 
+        onAdd={handleAddHive} 
       />
-
+      
       <EditApiaryModal
         isOpen={editApiaryModalOpen}
         onClose={() => setEditApiaryModalOpen(false)}
         onEdit={handleEditApiary}
-        apiary={{
-          id: apiary.id,
-          name: apiary.name,
-          location: apiary.location,
-        }}
+        apiary={apiary}
       />
+      
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the apiary
+              "{apiary.name}" and all of its data, including all hives, inspections, 
+              and measurements associated with it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteApiary}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Apiary
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageTransition>
   );
 };

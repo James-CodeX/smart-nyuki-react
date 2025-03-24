@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { Menu, X, Home, Grid, Menu as HiveIcon, Map, Settings, ChevronLeft, ChevronRight, BarChart3, ClipboardCheck } from 'lucide-react';
+import { Menu, X, Home, Grid, Menu as HiveIcon, Map, Settings, ChevronLeft, ChevronRight, BarChart3, ClipboardCheck, LogOut } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 interface SidebarProps {
   onCollapsedChange?: (collapsed: boolean) => void;
@@ -12,6 +13,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
   
   // Close mobile sidebar when route changes
   useEffect(() => {
@@ -41,6 +44,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
 
   const toggleMobileMenu = () => {
     setIsMobileOpen(!isMobileOpen);
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/auth');
   };
 
   return (
@@ -82,7 +90,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
           )}
         </div>
         
-        <nav className="flex-1 py-6 px-3 space-y-2 overflow-y-auto">
+        <nav className="flex flex-col flex-1 py-6 px-3 space-y-2">
           {navigation.map((item) => {
             const isActive = location.pathname === item.to;
             return (
@@ -110,6 +118,18 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
             );
           })}
         </nav>
+        
+        {/* Logout Button */}
+        <button
+          onClick={handleLogout}
+          className={cn(
+            "flex items-center px-3 py-3 rounded-lg transition-colors text-muted-foreground hover:text-destructive hover:bg-destructive/10 mx-3 mb-3",
+            isCollapsed ? "justify-center" : "justify-start"
+          )}
+        >
+          <LogOut className={cn("h-5 w-5", isCollapsed ? "" : "mr-3")} />
+          {!isCollapsed && <span>Logout</span>}
+        </button>
         
         <button 
           onClick={toggleSidebar}
@@ -163,6 +183,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
                 </Link>
               );
             })}
+            
+            {/* Mobile Logout Button */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center px-3 py-3 rounded-lg transition-colors text-muted-foreground hover:text-destructive hover:bg-destructive/10 w-full text-left"
+            >
+              <LogOut className="h-5 w-5 mr-3" />
+              <span>Logout</span>
+            </button>
           </nav>
         </motion.div>
       </motion.div>
