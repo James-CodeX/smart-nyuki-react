@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
@@ -24,25 +24,66 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Load any persisted session from localStorage on initial load
+const getPersistedSession = (): { user: User | null, session: Session | null } => {
+  try {
+    const persistedSession = localStorage.getItem('supabase-session');
+    if (persistedSession) {
+      const { user, session } = JSON.parse(persistedSession);
+      // Check if session is still valid (not expired)
+      if (session && new Date(session.expires_at * 1000) > new Date()) {
+        return { user, session };
+      }
+    }
+  } catch (error) {
+    console.error('Error loading persisted session:', error);
+  }
+  return { user: null, session: null };
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Initialize with any persisted session data
+  const persistedData = getPersistedSession();
+  const [user, setUser] = useState<User | null>(persistedData.user);
+  const [session, setSession] = useState<Session | null>(persistedData.session);
+  const [isLoading, setIsLoading] = useState(!persistedData.user);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-    });
+    // Check active session only if we don't have a persisted session
+    if (!persistedData.user) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        // Persist session to localStorage
+        if (session) {
+          localStorage.setItem('supabase-session', JSON.stringify({
+            user: session.user,
+            session
+          }));
+        }
+        
+        setIsLoading(false);
+      });
+    }
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // Persist session to localStorage or remove if signed out
+        if (session) {
+          localStorage.setItem('supabase-session', JSON.stringify({
+            user: session.user,
+            session
+          }));
+        } else {
+          localStorage.removeItem('supabase-session');
+        }
+        
         setIsLoading(false);
       }
     );
@@ -50,7 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, userData?: { first_name?: string; last_name?: string }) => {
+  // Memoize functions to prevent unnecessary re-renders
+  const signUp = useCallback(async (email: string, password: string, userData?: { first_name?: string; last_name?: string }) => {
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -86,9 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       return { error: error as Error, success: false };
     }
-  };
+  }, [toast]);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -118,11 +160,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       return { error: error as Error, success: false };
     }
-  };
+  }, [toast]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       await supabase.auth.signOut();
+      // Clear persisted session
+      localStorage.removeItem('supabase-session');
       toast({
         title: "Signed out successfully",
       });
@@ -133,9 +177,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: (error as Error).message,
       });
     }
-  };
+  }, [toast]);
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = useCallback(async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
@@ -164,9 +208,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       return { error: error as Error, success: false };
     }
-  };
+  }, [toast]);
 
-  const value = {
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
     user,
     session,
     isLoading,
@@ -174,7 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signOut,
     resetPassword,
-  };
+  }), [user, session, isLoading, signUp, signIn, signOut, resetPassword]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

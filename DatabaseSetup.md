@@ -190,7 +190,7 @@ Stores honey production data for hives.
 
 ### 9. MetricsTimeSeriesData
 
-For efficient storage of time-series data, particularly useful for displaying charts and trends.
+For efficient storage of time-series data, particularly useful for displaying charts and trends. This table is populated by ESP32 sensor nodes that send measurements directly to the database.
 
 | Column     | Type         | Constraints                  | Description                              |
 |------------|--------------|------------------------------|------------------------------------------|
@@ -202,6 +202,7 @@ For efficient storage of time-series data, particularly useful for displaying ch
 | hum_value  | DECIMAL(5,2) | NULL                        | Humidity value at this time               |
 | sound_value| DECIMAL(5,2) | NULL                        | Sound level value at this time            |
 | weight_value| DECIMAL(5,2)| NULL                        | Weight value at this time                 |
+| created_at | TIMESTAMP    | NOT NULL DEFAULT NOW()      | When the record was created               |
 
 **Foreign Keys:**
 - `hive_id` references `Hives(id)`
@@ -209,6 +210,12 @@ For efficient storage of time-series data, particularly useful for displaying ch
 **Indexes:**
 - Index on `hive_id` for quick lookups
 - Index on `timestamp` for time-range queries
+
+**Integration with IoT Sensors:**
+- ESP32 nodes send data directly to this table using the hive_id they've been configured with
+- When a user adds a new hive to the system, they associate it with a specific ESP32 node ID
+- The ESP32 nodes authenticate using a service role and are authorized to insert data
+- No user_id is stored with the metrics as the data belongs to the hive itself, and access control is handled through the hive's relationship to apiaries and users
 
 ### 10. ProductionSummary
 
@@ -496,6 +503,7 @@ SELECT EXISTS (
    - Store JWTs in HTTP-only cookies to prevent client-side access
    - Include CSRF tokens in all state-changing requests
    - Use short expiration times with automatic token refresh
+   - Implement separate service role authentication for ESP32 nodes
 
 2. **Permission Verification Middleware:**
    - Create middleware that verifies user permissions before processing requests:
@@ -545,6 +553,36 @@ SELECT EXISTS (
    - Allow owners to revoke access at any time
    - Provide visibility into who has access to what resources
    - Ensure all child resources inherit parent permissions
+
+5. **IoT Device Authentication and Access Control:**
+   - ESP32 nodes use a dedicated service role for authentication
+   - Nodes are associated with hives during the hive setup process
+   - The row-level security policies for metrics data are based on hive ownership
+   - Users can view metrics data for hives they own or have been granted access to
+   - Implement a secure provisioning process for ESP32 nodes:
+
+   ```typescript
+   // Example of associating an ESP32 node with a hive
+   const associateNodeWithHive = async (req, res) => {
+     const { hiveId, nodeId } = req.body;
+     const userId = req.user.id;
+     
+     // Verify the user owns the hive
+     const hiveOwnership = await db.verifyHiveOwnership(hiveId, userId);
+     
+     if (!hiveOwnership) {
+       return res.status(403).json({ message: 'Not authorized to configure this hive' });
+     }
+     
+     // Register the node ID with the hive
+     await db.updateHive(hiveId, { node_id: nodeId });
+     
+     // Generate and store node-specific credentials if needed
+     // ...
+     
+     return res.status(200).json({ message: 'Node successfully associated with hive' });
+   };
+   ```
 
 ## Data Migration Considerations
 

@@ -1,25 +1,35 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { 
+  QueryClient, 
+  QueryClientProvider, 
+} from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 
-import Dashboard from "./pages/Dashboard";
-import Apiaries from "./pages/Apiaries";
-import Hives from "./pages/Hives";
-import ApiaryDetails from "./pages/ApiaryDetails";
-import HiveDetails from "./pages/HiveDetails";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
+// Use React.lazy for code splitting
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Apiaries = lazy(() => import("./pages/Apiaries"));
+const Hives = lazy(() => import("./pages/Hives"));
+const ApiaryDetails = lazy(() => import("./pages/ApiaryDetails"));
+const HiveDetails = lazy(() => import("./pages/HiveDetails"));
+const Settings = lazy(() => import("./pages/Settings"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Production = lazy(() => import("./pages/Production"));
+const Inspections = lazy(() => import("./pages/Inspections"));
+const Auth = lazy(() => import("./pages/Auth"));
+
 import Sidebar from "./components/layout/Navbar";
-import Production from "./pages/Production";
-import Inspections from "./pages/Inspections";
-import Auth from "./pages/Auth";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
-const queryClient = new QueryClient();
+// Loading component for suspense fallback
+const PageLoader = () => (
+  <div className="min-h-screen w-full flex items-center justify-center">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+  </div>
+);
 
 // Protected route component
 interface ProtectedRouteProps {
@@ -31,12 +41,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const location = useLocation();
 
   if (isLoading) {
-    // You could render a loading spinner here
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!user) {
@@ -54,24 +59,37 @@ const AppRoutes = () => {
     setIsCollapsed(collapsed);
   };
 
+  // Page wrapper component to avoid repeating the same layout structure
+  const PageWrapper = ({ children }: { children: React.ReactNode }) => (
+    <div className="flex min-h-screen bg-background">
+      <Sidebar onCollapsedChange={handleSidebarStateChange} />
+      <div 
+        className={`flex-1 transition-all duration-300 relative ${
+          isCollapsed ? 'pl-[80px]' : 'pl-[250px]'
+        }`}
+      >
+        <Suspense fallback={<PageLoader />}>
+          {children}
+        </Suspense>
+      </div>
+    </div>
+  );
+
   return (
     <AnimatePresence mode="wait">
       <Routes>
-        <Route path="/auth" element={<Auth />} />
+        <Route path="/auth" element={
+          <Suspense fallback={<PageLoader />}>
+            <Auth />
+          </Suspense>
+        } />
         <Route
           path="/"
           element={
             <ProtectedRoute>
-              <div className="flex min-h-screen bg-background">
-                <Sidebar onCollapsedChange={handleSidebarStateChange} />
-                <div 
-                  className={`flex-1 transition-all duration-300 relative ${
-                    isCollapsed ? 'pl-[80px]' : 'pl-[250px]'
-                  }`}
-                >
-                  <Dashboard />
-                </div>
-              </div>
+              <PageWrapper>
+                <Dashboard />
+              </PageWrapper>
             </ProtectedRoute>
           }
         />
@@ -79,16 +97,9 @@ const AppRoutes = () => {
           path="/apiaries"
           element={
             <ProtectedRoute>
-              <div className="flex min-h-screen bg-background">
-                <Sidebar onCollapsedChange={handleSidebarStateChange} />
-                <div 
-                  className={`flex-1 transition-all duration-300 relative ${
-                    isCollapsed ? 'pl-[80px]' : 'pl-[250px]'
-                  }`}
-                >
-                  <Apiaries />
-                </div>
-              </div>
+              <PageWrapper>
+                <Apiaries />
+              </PageWrapper>
             </ProtectedRoute>
           }
         />
@@ -96,16 +107,9 @@ const AppRoutes = () => {
           path="/apiaries/:id"
           element={
             <ProtectedRoute>
-              <div className="flex min-h-screen bg-background">
-                <Sidebar onCollapsedChange={handleSidebarStateChange} />
-                <div 
-                  className={`flex-1 transition-all duration-300 relative ${
-                    isCollapsed ? 'pl-[80px]' : 'pl-[250px]'
-                  }`}
-                >
-                  <ApiaryDetails />
-                </div>
-              </div>
+              <PageWrapper>
+                <ApiaryDetails />
+              </PageWrapper>
             </ProtectedRoute>
           }
         />
@@ -113,16 +117,9 @@ const AppRoutes = () => {
           path="/hives"
           element={
             <ProtectedRoute>
-              <div className="flex min-h-screen bg-background">
-                <Sidebar onCollapsedChange={handleSidebarStateChange} />
-                <div 
-                  className={`flex-1 transition-all duration-300 relative ${
-                    isCollapsed ? 'pl-[80px]' : 'pl-[250px]'
-                  }`}
-                >
-                  <Hives />
-                </div>
-              </div>
+              <PageWrapper>
+                <Hives />
+              </PageWrapper>
             </ProtectedRoute>
           }
         />
@@ -130,16 +127,9 @@ const AppRoutes = () => {
           path="/production"
           element={
             <ProtectedRoute>
-              <div className="flex min-h-screen bg-background">
-                <Sidebar onCollapsedChange={handleSidebarStateChange} />
-                <div 
-                  className={`flex-1 transition-all duration-300 relative ${
-                    isCollapsed ? 'pl-[80px]' : 'pl-[250px]'
-                  }`}
-                >
-                  <Production />
-                </div>
-              </div>
+              <PageWrapper>
+                <Production />
+              </PageWrapper>
             </ProtectedRoute>
           }
         />
@@ -147,16 +137,9 @@ const AppRoutes = () => {
           path="/inspections"
           element={
             <ProtectedRoute>
-              <div className="flex min-h-screen bg-background">
-                <Sidebar onCollapsedChange={handleSidebarStateChange} />
-                <div 
-                  className={`flex-1 transition-all duration-300 relative ${
-                    isCollapsed ? 'pl-[80px]' : 'pl-[250px]'
-                  }`}
-                >
-                  <Inspections />
-                </div>
-              </div>
+              <PageWrapper>
+                <Inspections />
+              </PageWrapper>
             </ProtectedRoute>
           }
         />
@@ -164,16 +147,9 @@ const AppRoutes = () => {
           path="/apiaries/:apiaryId/hives/:hiveId"
           element={
             <ProtectedRoute>
-              <div className="flex min-h-screen bg-background">
-                <Sidebar onCollapsedChange={handleSidebarStateChange} />
-                <div 
-                  className={`flex-1 transition-all duration-300 relative ${
-                    isCollapsed ? 'pl-[80px]' : 'pl-[250px]'
-                  }`}
-                >
-                  <HiveDetails />
-                </div>
-              </div>
+              <PageWrapper>
+                <HiveDetails />
+              </PageWrapper>
             </ProtectedRoute>
           }
         />
@@ -181,16 +157,9 @@ const AppRoutes = () => {
           path="/settings"
           element={
             <ProtectedRoute>
-              <div className="flex min-h-screen bg-background">
-                <Sidebar onCollapsedChange={handleSidebarStateChange} />
-                <div 
-                  className={`flex-1 transition-all duration-300 relative ${
-                    isCollapsed ? 'pl-[80px]' : 'pl-[250px]'
-                  }`}
-                >
-                  <Settings />
-                </div>
-              </div>
+              <PageWrapper>
+                <Settings />
+              </PageWrapper>
             </ProtectedRoute>
           }
         />
@@ -201,6 +170,22 @@ const AppRoutes = () => {
 };
 
 const App = () => {
+  // Create a memoized query client to prevent unnecessary re-renders
+  const queryClient = useMemo(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        // Cached data is fresh for 5 minutes
+        staleTime: 5 * 60 * 1000,
+        // Keep unused data in cache for 10 minutes
+        gcTime: 10 * 60 * 1000,
+        // Retry failed requests up to 2 times
+        retry: 2,
+        // Don't refetch on window focus for better performance
+        refetchOnWindowFocus: false,
+      },
+    },
+  }), []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

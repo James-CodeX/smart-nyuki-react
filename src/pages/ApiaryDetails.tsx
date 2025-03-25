@@ -97,16 +97,25 @@ const ApiaryDetails = () => {
   // Count hives with alerts
   const alertCount = hives.filter(hive => hive.alerts && hive.alerts.length > 0).length;
   
-  const handleAddHive = async (hiveData: any) => {
+  const handleAddHive = async (hiveData: {
+    name: string;
+    hive_id: string;
+    apiaryId: string;
+    type: string;
+    status: string;
+    installation_date?: string;
+    queen_type?: string;
+    queen_introduced_date?: string;
+    queen_marked?: boolean;
+    queen_marking_color?: string;
+    notes?: string;
+  }) => {
     if (!id) return;
 
     try {
       setLoading(true);
       // Add the hive with the service
-      await addHiveService({
-        ...hiveData,
-        apiary_id: id
-      });
+      await addHiveService(hiveData);
       
       // Reload hives for this apiary
       const updatedHives = await getHivesByApiary(id);
@@ -120,9 +129,12 @@ const ApiaryDetails = () => {
       setAddHiveModalOpen(false);
     } catch (error) {
       console.error('Error adding hive:', error);
+      // Get the error message if it exists
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add hive';
+      
       toast({
         title: 'Error',
-        description: 'Failed to add hive',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {

@@ -1,207 +1,373 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Plus, Search, AlertTriangle, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import PageTransition from '@/components/layout/PageTransition';
-import { Input } from '@/components/ui/input';
+import React, { useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Plus, 
+  SlidersHorizontal, 
+  Search, 
+  AlertCircle,
+  ArrowDownAZ, 
+  ArrowUpZA, 
+  ArrowDownUp
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import HiveMetricsCard from '@/components/dashboard/HiveMetricsCard';
-import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import AddHiveModal from '@/components/dashboard/AddHiveModal';
-import { getAllHives, addHive as addHiveService, HiveWithDetails } from '@/services/hiveService';
-import { toast } from '@/components/ui/use-toast';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import PageTransition from '@/components/layout/PageTransition';
+import { useToast } from '@/components/ui/use-toast';
+import HiveCard from '@/components/hives/HiveCard';
+import AddHiveModal from '@/components/hives/AddHiveModal';
+import { Skeleton } from '@/components/ui/skeleton';
+import { getAllApiaries } from '@/services/apiaryService';
+import { useHives } from '@/hooks/useHives';
+
+const SortOptions = {
+  NameAsc: 'name-asc',
+  NameDesc: 'name-desc',
+  DateAsc: 'date-asc',
+  DateDesc: 'date-desc',
+};
+
+const FilterOptions = {
+  All: 'all',
+  Healthy: 'healthy',
+  NeedsAttention: 'needs-attention',
+};
 
 const Hives = () => {
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [filterByAlerts, setFilterByAlerts] = useState<boolean>(false);
-  const [hives, setHives] = useState<HiveWithDetails[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [sortBy, setSortBy] = useState(SortOptions.NameAsc);
+  const [filterBy, setFilterBy] = useState(FilterOptions.All);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedApiaryId, setSelectedApiaryId] = useState('all');
+  const [apiaries, setApiaries] = useState([]);
+  const [isLoadingApiaries, setIsLoadingApiaries] = useState(true);
   
-  useEffect(() => {
-    // Load hives when component mounts
-    const loadHives = async () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { 
+    data: hives = [], 
+    isLoading, 
+    isError,
+    refetch,
+    addHive,
+    isAdding
+  } = useHives();
+  
+  // Load apiaries
+  React.useEffect(() => {
+    const loadApiaries = async () => {
       try {
-        setIsLoading(true);
-        const data = await getAllHives();
-        setHives(data);
+        setIsLoadingApiaries(true);
+        const apiariesData = await getAllApiaries();
+        setApiaries(apiariesData);
       } catch (error) {
-        console.error('Error loading hives:', error);
+        console.error('Error loading apiaries:', error);
         toast({
           variant: "destructive",
-          title: "Error loading hives",
-          description: "There was a problem loading your hives. Please try again.",
+          title: "Error loading apiaries",
+          description: "There was a problem loading your apiaries. Please try again.",
         });
       } finally {
-        setIsLoading(false);
+        setIsLoadingApiaries(false);
       }
     };
     
-    loadHives();
-  }, []);
+    loadApiaries();
+  }, [toast]);
   
-  const filteredHives = hives.filter(hive => 
-    (hive.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    hive.apiaryName.toLowerCase().includes(searchTerm.toLowerCase())) &&
-    (!filterByAlerts || (hive.alerts && hive.alerts.length > 0))
-  );
-  
-  const handleAddHive = async (data: { 
-    name: string, 
-    apiaryId: string,
-    type: string,
-    status: string,
-    installation_date?: string,
-    queen_introduced_date?: string,
-    queen_type?: string,
-    queen_marked?: boolean,
-    queen_marking_color?: string,
-    notes?: string
-  }) => {
-    try {
-      setIsLoading(true);
-      await addHiveService({
-        ...data,
-        apiary_id: data.apiaryId
-      });
-      
-      // Refresh the hives list
-      const updatedHives = await getAllHives();
-      setHives(updatedHives);
-      
-      toast({
-        title: "Hive added",
-        description: "Your new hive has been created successfully.",
-      });
-      
-      setIsAddModalOpen(false);
-    } catch (error) {
-      console.error('Error adding hive:', error);
+  // Handle error states
+  React.useEffect(() => {
+    if (isError) {
       toast({
         variant: "destructive",
-        title: "Error adding hive",
-        description: "There was a problem creating the hive. Please try again.",
+        title: "Error loading hives",
+        description: "There was a problem loading your hives. Please refresh the page or try again later.",
       });
-    } finally {
-      setIsLoading(false);
+      console.error("Error loading hives:", isError);
     }
-  };
+  }, [isError, toast]);
+  
+  // Filter and sort hives
+  const filteredAndSortedHives = useMemo(() => {
+    // First filter by search query
+    let result = hives?.filter(hive => 
+      hive.name.toLowerCase().includes(searchQuery.toLowerCase())
+    ) || [];
+    
+    // Then filter by apiary if selected
+    if (selectedApiaryId !== 'all') {
+      result = result.filter(hive => hive.apiary_id === selectedApiaryId);
+    }
+    
+    // Then filter by status
+    if (filterBy === FilterOptions.Healthy) {
+      result = result.filter(hive => !hive.alerts?.length);
+    } else if (filterBy === FilterOptions.NeedsAttention) {
+      result = result.filter(hive => hive.alerts?.length > 0);
+    }
+    
+    // Finally sort
+    return result.sort((a, b) => {
+      switch (sortBy) {
+        case SortOptions.NameAsc:
+          return a.name.localeCompare(b.name);
+        case SortOptions.NameDesc:
+          return b.name.localeCompare(a.name);
+        case SortOptions.DateAsc:
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case SortOptions.DateDesc:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        default:
+          return 0;
+      }
+    });
+  }, [hives, searchQuery, selectedApiaryId, filterBy, sortBy]);
+  
+  // Event handlers with useCallback to prevent unnecessary re-renders
+  const handleOpenAddModal = useCallback(() => {
+    setIsAddModalOpen(true);
+  }, []);
+  
+  const handleCloseAddModal = useCallback(() => {
+    setIsAddModalOpen(false);
+  }, []);
+  
+  const handleAddHive = useCallback(() => {
+    // This function is called after a hive is added successfully
+    refetch();
+  }, [refetch]);
+  
+  const handleHiveClick = useCallback((apiaryId, hiveId) => {
+    navigate(`/apiaries/${apiaryId}/hives/${hiveId}`);
+  }, [navigate]);
+  
+  const handleSearchChange = useCallback((e) => {
+    setSearchQuery(e.target.value);
+  }, []);
+  
+  const handleApiaryChange = useCallback((value) => {
+    setSelectedApiaryId(value);
+  }, []);
+  
+  const handleSortChange = useCallback((value) => {
+    setSortBy(value);
+  }, []);
+  
+  // Filter dropdown content
+  const filterDropdownContent = (
+    <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuCheckboxItem
+        checked={filterBy === FilterOptions.All}
+        onCheckedChange={() => setFilterBy(FilterOptions.All)}
+      >
+        All Hives
+      </DropdownMenuCheckboxItem>
+      <DropdownMenuCheckboxItem
+        checked={filterBy === FilterOptions.Healthy}
+        onCheckedChange={() => setFilterBy(FilterOptions.Healthy)}
+      >
+        Healthy Hives
+      </DropdownMenuCheckboxItem>
+      <DropdownMenuCheckboxItem
+        checked={filterBy === FilterOptions.NeedsAttention}
+        onCheckedChange={() => setFilterBy(FilterOptions.NeedsAttention)}
+      >
+        Needs Attention
+      </DropdownMenuCheckboxItem>
+    </DropdownMenuContent>
+  );
   
   return (
-    <>
-      <PageTransition>
-        <div className="container max-w-7xl pt-16 md:pt-8 pb-16 px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <div>
-              <motion.h1 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="text-3xl font-bold tracking-tight"
+    <PageTransition>
+      <div className="container max-w-7xl pt-8 pb-16">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold">Hives</h1>
+            <p className="text-muted-foreground">Manage and monitor your beehives</p>
+          </div>
+
+          <div className="flex space-x-2">
+            <div className="w-[200px]">
+              <Select 
+                value={selectedApiaryId} 
+                onValueChange={handleApiaryChange}
               >
-                Hives
-              </motion.h1>
-              <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-muted-foreground mt-1"
-              >
-                Monitor all your hives in one place
-              </motion.p>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Filter by apiary" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Apiaries</SelectItem>
+                  {isLoadingApiaries ? (
+                    <SelectItem value="loading" disabled>
+                      Loading...
+                    </SelectItem>
+                  ) : (
+                    apiaries.map((apiary) => (
+                      <SelectItem key={apiary.id} value={apiary.id}>{apiary.name}</SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
             
-            <div className="flex w-full md:w-auto flex-col sm:flex-row gap-3">
-              <div className="relative w-full sm:w-auto">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search hives..." 
-                  className="pl-9 w-full sm:w-[250px]"
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4" />
-                    Filters
-                    {filterByAlerts && (
-                      <Badge variant="secondary" className="ml-1 py-0">1</Badge>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setFilterByAlerts(!filterByAlerts)}>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-4 h-4 rounded border flex items-center justify-center ${filterByAlerts ? 'bg-primary border-primary' : 'border-input'}`}>
-                        {filterByAlerts && <span className="text-primary-foreground text-xs">✓</span>}
-                      </div>
-                      <span>Show only hives with alerts</span>
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-primary text-primary-foreground flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
-                onClick={() => setIsAddModalOpen(true)}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-                Add Hive
-              </motion.button>
-            </div>
+            <AddHiveModal 
+              trigger={
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" /> Add Hive
+                </Button>
+              }
+              onHiveAdded={handleAddHive}
+            />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search hives..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={handleSearchChange}
+            />
           </div>
           
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2 text-lg">Loading hives...</span>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Select value={sortBy} onValueChange={handleSortChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SortOptions.NameAsc}>
+                    <div className="flex items-center">
+                      <ArrowDownAZ className="mr-2 h-4 w-4" />
+                      Name (A-Z)
+                    </div>
+                  </SelectItem>
+                  <SelectItem value={SortOptions.NameDesc}>
+                    <div className="flex items-center">
+                      <ArrowUpZA className="mr-2 h-4 w-4" />
+                      Name (Z-A)
+                    </div>
+                  </SelectItem>
+                  <SelectItem value={SortOptions.DateAsc}>
+                    <div className="flex items-center">
+                      <ArrowDownUp className="mr-2 h-4 w-4" />
+                      Oldest first
+                    </div>
+                  </SelectItem>
+                  <SelectItem value={SortOptions.DateDesc}>
+                    <div className="flex items-center">
+                      <ArrowDownUp className="mr-2 h-4 w-4" />
+                      Newest first
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          ) : filteredHives.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-lg text-muted-foreground">
-                {searchTerm || filterByAlerts ? "No hives match your search criteria" : "No hives found. Add your first hive to get started!"}
-              </p>
-              {(searchTerm || filterByAlerts) && (
-                <Button variant="link" onClick={() => {
-                  setSearchTerm('');
-                  setFilterByAlerts(false);
-                }}>Clear filters</Button>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredHives.map((hive) => (
-                <HiveMetricsCard
-                  key={hive.id}
-                  id={hive.id}
-                  name={hive.name}
-                  apiaryId={hive.apiary_id}
-                  apiaryName={hive.apiaryName}
-                  metrics={hive.metrics}
-                  alerts={hive.alerts}
-                />
-              ))}
-            </div>
-          )}
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-10 p-0">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  <span className="sr-only">Filter</span>
+                </Button>
+              </DropdownMenuTrigger>
+              {filterDropdownContent}
+            </DropdownMenu>
+          </div>
         </div>
-      </PageTransition>
-      
-      <AddHiveModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddHive}
-      />
-    </>
+        
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array(6).fill(0).map((_, index) => (
+              <Card key={index} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="p-6">
+                    <Skeleton className="h-5 w-1/2 mb-2" />
+                    <Skeleton className="h-4 w-4/5 mb-4" />
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <Skeleton className="h-6 w-16" />
+                      <Skeleton className="h-6 w-20" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Skeleton className="h-8 w-8 mx-auto mb-2" />
+                        <Skeleton className="h-4 w-full" />
+                      </div>
+                      <div>
+                        <Skeleton className="h-8 w-8 mx-auto mb-2" />
+                        <Skeleton className="h-4 w-full" />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="p-12 text-center">
+            <AlertCircle className="h-16 w-16 mx-auto mb-4 text-destructive" />
+            <h3 className="text-xl font-semibold mb-2">Unable to load hives</h3>
+            <p className="text-muted-foreground mb-4">
+              There was a problem connecting to the server. Please check your connection and try again.
+            </p>
+            <Button onClick={() => refetch()} variant="outline">
+              Try Again
+            </Button>
+          </div>
+        ) : filteredAndSortedHives.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="mb-4">
+              <img 
+                src="/empty-hive.svg" 
+                alt="No hives found" 
+                className="w-32 h-32 mx-auto opacity-50"
+                onError={(e) => {
+                  e.currentTarget.src = '';
+                  e.currentTarget.alt = '🐝';
+                  e.currentTarget.className = 'text-6xl mb-4';
+                }}
+              />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">No hives found</h3>
+            <p className="text-muted-foreground mb-6">
+              {searchQuery || selectedApiaryId !== 'all' || filterBy !== FilterOptions.All
+                ? "No hives match your current filters. Try changing your search criteria."
+                : "You haven't added any hives yet. Add your first hive to get started."}
+            </p>
+            <Button onClick={handleOpenAddModal}>
+              <Plus className="h-4 w-4 mr-2" /> Add Your First Hive
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredAndSortedHives.map((hive) => (
+              <HiveCard 
+                key={hive.id} 
+                hive={hive} 
+                onClick={() => handleHiveClick(hive.apiary_id, hive.id)} 
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </PageTransition>
   );
 };
 
-export default Hives; 
+export default React.memo(Hives); 

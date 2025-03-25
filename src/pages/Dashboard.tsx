@@ -36,15 +36,63 @@ import UpcomingInspections from '@/components/dashboard/UpcomingInspections';
 import HiveStatusOverview from '@/components/dashboard/HiveStatusOverview';
 import DashboardChart from '@/components/dashboard/DashboardChart';
 import { SummaryMetric, MetricsProgressRow } from '@/components/dashboard/SummaryMetricsCard';
+import AddHiveModal from '@/components/dashboard/AddHiveModal';
+import AddApiaryModal from '@/components/dashboard/AddApiaryModal';
 
-import { 
-  getAllApiaries, 
-  getAllHives, 
-  getUpcomingInspections,
-  getOverdueInspections,
-  getCompletedInspections,
-  getAllInspections
-} from '@/utils/mockData';
+// For now, use simple mock data for inspections since we don't have a real service yet
+interface Inspection {
+  id: string;
+  apiaryId: string;
+  hiveId: string;
+  hiveName: string; // Added for display purposes
+  date: string;
+  type: 'regular' | 'health-check' | 'winter-prep' | 'varroa-check' | 'disease-treatment' | 'harvest-evaluation';
+  status: 'scheduled' | 'completed' | 'overdue' | 'cancelled';
+  findings?: any;
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+const upcomingInspections: Inspection[] = [
+  { id: '1', hiveId: '1', hiveName: 'Hive 1', apiaryId: '1', date: '2023-09-05', status: 'scheduled', type: 'regular', createdBy: 'user', createdAt: '2023-09-01' },
+  { id: '2', hiveId: '2', hiveName: 'Hive 2', apiaryId: '1', date: '2023-09-07', status: 'scheduled', type: 'health-check', createdBy: 'user', createdAt: '2023-09-01' }
+];
+const overdueInspections: Inspection[] = [
+  { id: '3', hiveId: '3', hiveName: 'Hive 3', apiaryId: '2', date: '2023-08-25', status: 'overdue', type: 'regular', createdBy: 'user', createdAt: '2023-08-20' }
+];
+const completedInspections: Inspection[] = [
+  { id: '4', hiveId: '4', hiveName: 'Hive 4', apiaryId: '2', date: '2023-08-20', status: 'completed', type: 'regular', createdBy: 'user', createdAt: '2023-08-15' },
+  { id: '5', hiveId: '5', hiveName: 'Hive 5', apiaryId: '3', date: '2023-08-15', status: 'completed', type: 'regular', createdBy: 'user', createdAt: '2023-08-10' }
+];
+const allInspections = [...upcomingInspections, ...overdueInspections, ...completedInspections];
+
+import { addHive, getAllHives, HiveWithDetails } from '@/services/hiveService';
+import { addApiary, getAllApiaries } from '@/services/apiaryService';
+import { useToast } from '@/components/ui/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+
+// Temporary AddInspectionModal component until we implement the real one
+const AddInspectionModal = ({ isOpen, onClose, onAdd, hives }: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onAdd: (data: any) => void; 
+  hives: HiveWithDetails[] 
+}) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-background p-6 rounded-lg shadow-lg max-w-md w-full">
+        <h2 className="text-xl font-bold mb-4">Schedule Inspection</h2>
+        <p className="text-muted-foreground mb-4">This feature will be implemented soon.</p>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => { onAdd({}); onClose(); }}>Save</Button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Generate some sample data for the production chart
 const generateProductionData = () => {
@@ -66,19 +114,19 @@ const generateProductionData = () => {
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [isAddHiveModalOpen, setIsAddHiveModalOpen] = useState(false);
+  const [isAddApiaryModalOpen, setIsAddApiaryModalOpen] = useState(false);
+  const [isAddInspectionModalOpen, setIsAddInspectionModalOpen] = useState(false);
+  const [hives, setHives] = useState<HiveWithDetails[]>([]);
+  const [apiaries, setApiaries] = useState<any[]>([]);
+  const [isLoadingHives, setIsLoadingHives] = useState(true);
+  const [isLoadingApiaries, setIsLoadingApiaries] = useState(true);
+  const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Data
-  const apiaries = getAllApiaries();
-  const hives = getAllHives();
-  const upcomingInspections = getUpcomingInspections(7);
-  const overdueInspections = getOverdueInspections();
-  const completedInspections = getCompletedInspections();
-  const allInspections = getAllInspections();
-  
   // Stats
-  const apiaryCount = apiaries.length;
-  const hiveCount = hives.length;
+  const apiaryCount = apiaries.length || 0;
+  const hiveCount = hives.length || 0;
   const hivesWithAlerts = hives.filter(hive => hive.alerts && hive.alerts.length > 0);
   const alertCount = hivesWithAlerts.length;
   
@@ -86,25 +134,135 @@ const Dashboard = () => {
   const productionData = generateProductionData();
   
   // Calculate averages for all metrics
-  const avgTemperature = apiaries.reduce((sum, a) => sum + a.avgTemperature, 0) / apiaryCount;
-  const avgHumidity = apiaries.reduce((sum, a) => sum + a.avgHumidity, 0) / apiaryCount;
-  const avgSound = apiaries.reduce((sum, a) => sum + a.avgSound, 0) / apiaryCount;
-  const avgWeight = apiaries.reduce((sum, a) => sum + a.avgWeight, 0) / apiaryCount;
+  const avgTemperature = apiaryCount > 0 ? apiaries.reduce((sum, a) => sum + a.avgTemperature, 0) / apiaryCount : 0;
+  const avgHumidity = apiaryCount > 0 ? apiaries.reduce((sum, a) => sum + a.avgHumidity, 0) / apiaryCount : 0;
+  const avgSound = apiaryCount > 0 ? apiaries.reduce((sum, a) => sum + a.avgSound, 0) / apiaryCount : 0;
+  const avgWeight = apiaryCount > 0 ? apiaries.reduce((sum, a) => sum + a.avgWeight, 0) / apiaryCount : 0;
 
-  // Simulate loading
+  // Load hives and apiaries when component mounts
   useEffect(() => {
-    setTimeout(() => setLoading(false), 500);
-  }, []);
+    const loadData = async () => {
+      try {
+        setIsLoadingHives(true);
+        setIsLoadingApiaries(true);
+        
+        const hivesData = await getAllHives();
+        const apiariesData = await getAllApiaries();
+        
+        setHives(hivesData);
+        setApiaries(apiariesData);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        toast({
+          variant: "destructive",
+          title: "Error loading data",
+          description: "There was a problem loading your data. Please try again.",
+        });
+      } finally {
+        setIsLoadingHives(false);
+        setIsLoadingApiaries(false);
+      }
+    };
+    
+    loadData();
+  }, [toast]);
 
   // Event handlers
-  const handleAddApiary = () => {
-    // In a real app, this would open a dialog
-    console.log('Add apiary clicked');
+  const handleAddHive = async (data: { 
+    name: string;
+    hive_id: string;
+    apiaryId: string;
+    type: string;
+    status: string;
+    installation_date?: string;
+    queen_type?: string;
+    queen_introduced_date?: string;
+    queen_marked?: boolean;
+    queen_marking_color?: string;
+    notes?: string;
+  }) => {
+    try {
+      setIsLoadingHives(true);
+      
+      // Add the hive
+      await addHive(data);
+      
+      // Refresh hives list
+      const updatedHives = await getAllHives();
+      setHives(updatedHives);
+      
+      toast({
+        title: "Hive added",
+        description: "Your new hive has been created successfully.",
+      });
+      
+      setIsAddHiveModalOpen(false);
+    } catch (error) {
+      console.error('Error adding hive:', error);
+      // Get the error message if it exists
+      const errorMessage = error instanceof Error ? error.message : "There was a problem creating the hive. Please try again.";
+      
+      toast({
+        variant: "destructive",
+        title: "Error adding hive",
+        description: errorMessage,
+      });
+    } finally {
+      setIsLoadingHives(false);
+    }
   };
-
-  const handleAddHive = () => {
-    // In a real app, this would open a dialog
-    console.log('Add hive clicked');
+  
+  // Handle adding a new apiary
+  const handleAddApiary = async (data: any) => {
+    try {
+      setIsLoadingApiaries(true);
+      
+      // Add the apiary
+      await addApiary(data);
+      
+      // Refresh apiaries list
+      const updatedApiaries = await getAllApiaries();
+      setApiaries(updatedApiaries);
+      
+      toast({
+        title: "Apiary added",
+        description: "Your new apiary has been created successfully.",
+      });
+      
+      setIsAddApiaryModalOpen(false);
+    } catch (error) {
+      console.error('Error adding apiary:', error);
+      toast({
+        variant: "destructive",
+        title: "Error adding apiary",
+        description: "There was a problem creating the apiary. Please try again.",
+      });
+    } finally {
+      setIsLoadingApiaries(false);
+    }
+  };
+  
+  // Handle adding a new inspection
+  const handleAddInspection = async (data: any) => {
+    try {
+      // TODO: Implement when inspection service is available
+      // await addInspection(data);
+      
+      toast({
+        title: "Inspection added",
+        description: "Your new inspection has been saved successfully.",
+      });
+      
+      setIsAddInspectionModalOpen(false);
+    } catch (error) {
+      console.error('Error adding inspection:', error);
+      toast({
+        variant: "destructive",
+        title: "Error adding inspection",
+        description: "There was a problem saving the inspection. Please try again.",
+      });
+    }
   };
 
   const handleScheduleInspection = () => {
@@ -115,7 +273,7 @@ const Dashboard = () => {
     // Find the apiary ID for this hive
     const hive = hives.find(h => h.id === hiveId);
     if (hive) {
-      navigate(`/apiaries/${hive.apiaryId}/hives/${hiveId}`);
+      navigate(`/apiaries/${hive.apiary_id}/hives/${hiveId}`);
     }
   };
 
@@ -227,9 +385,9 @@ const Dashboard = () => {
 
             {/* Quick Actions */}
             <QuickActions 
-              onAddApiary={handleAddApiary}
-              onAddHive={handleAddHive}
-              onScheduleInspection={handleScheduleInspection}
+              onAddApiary={() => setIsAddApiaryModalOpen(true)}
+              onAddHive={() => setIsAddHiveModalOpen(true)}
+              onScheduleInspection={() => setIsAddInspectionModalOpen(true)}
             />
 
             {/* Main Content Grid */}
@@ -261,11 +419,38 @@ const Dashboard = () => {
               />
 
               {/* Hive Status Overview */}
-              <HiveStatusOverview
-                hives={hivesWithAlerts.length > 0 ? hivesWithAlerts : hives.slice(0, 5)}
-                onViewHive={handleViewHive}
-              />
-        </div>
+              {hives.length > 0 && (
+                <HiveStatusOverview
+                  hives={hivesWithAlerts.length > 0 ? 
+                    hivesWithAlerts.map(hive => ({
+                      id: hive.id,
+                      name: hive.name,
+                      apiaryName: hive.apiaryName || '',
+                      metrics: hive.metrics || { 
+                        temperature: [], 
+                        humidity: [], 
+                        sound: [], 
+                        weight: [] 
+                      },
+                      alerts: hive.alerts || []
+                    })) : 
+                    hives.slice(0, 5).map(hive => ({
+                      id: hive.id,
+                      name: hive.name,
+                      apiaryName: hive.apiaryName || '',
+                      metrics: hive.metrics || { 
+                        temperature: [], 
+                        humidity: [], 
+                        sound: [], 
+                        weight: [] 
+                      },
+                      alerts: hive.alerts || []
+                    }))
+                  }
+                  onViewHive={handleViewHive}
+                />
+              )}
+            </div>
         
             {/* Metrics Overview */}
             <Card>
@@ -388,6 +573,7 @@ const Dashboard = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: apiaries.length * 0.1 }}
                 className="flex items-center justify-center bg-secondary/50 border border-dashed border-secondary-foreground/20 rounded-2xl p-5 h-full cursor-pointer hover:bg-secondary/80 transition-colors"
+                onClick={() => setIsAddApiaryModalOpen(true)}
               >
                 <div className="text-center">
                   <div className="bg-background w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -412,10 +598,10 @@ const Dashboard = () => {
                 <HiveMetricsCard
                   id={hive.id}
                   name={hive.name}
-                  apiaryId={hive.apiaryId}
-                  apiaryName={hive.apiaryName}
-                  metrics={hive.metrics}
-                  alerts={hive.alerts}
+                  apiaryId={hive.apiary_id}
+                  apiaryName={hive.apiaryName || ''}
+                  metrics={hive.metrics || { temperature: [], humidity: [], sound: [], weight: [] }}
+                  alerts={hive.alerts || []}
                 />
               </motion.div>
             ))}
@@ -441,7 +627,7 @@ const Dashboard = () => {
                     />
                     <SummaryMetric
                       title="Avg Production per Hive"
-                      value={parseFloat((248.5 / hiveCount).toFixed(1))}
+                      value={parseFloat((248.5 / hiveCount).toFixed(1)) || 0}
                       unit="kg"
                       icon={<Leaf className="h-4 w-4" />}
                       changeValue={5}
@@ -548,6 +734,25 @@ const Dashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
+      
+      <AddHiveModal
+        isOpen={isAddHiveModalOpen}
+        onClose={() => setIsAddHiveModalOpen(false)}
+        onAdd={handleAddHive}
+      />
+      
+      <AddApiaryModal
+        isOpen={isAddApiaryModalOpen}
+        onClose={() => setIsAddApiaryModalOpen(false)}
+        onAdd={handleAddApiary}
+      />
+      
+      <AddInspectionModal
+        isOpen={isAddInspectionModalOpen}
+        onClose={() => setIsAddInspectionModalOpen(false)}
+        onAdd={handleAddInspection}
+        hives={hives}
+      />
     </PageTransition>
   );
 };

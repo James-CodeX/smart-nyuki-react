@@ -13,9 +13,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { getAllApiaries } from '@/services/apiaryService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/lib/supabase';
+import { Loader2 } from 'lucide-react';
+import { checkHiveAvailability } from '@/services/hiveService';
 
 const formSchema = z.object({
   name: z.string().min(3, 'Name must be at least 3 characters'),
+  hive_id: z.string().min(1, 'Hive ID is required'),
   apiaryId: z.string().min(1, 'Please select an apiary'),
   type: z.string().min(1, 'Hive type is required'),
   status: z.string().min(1, 'Status is required'),
@@ -78,6 +82,9 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
   onAdd,
 }) => {
   const [apiaries, setApiaries] = useState<{id: string, name: string}[]>([]);
+  const [isCheckingHiveId, setIsCheckingHiveId] = useState(false);
+  const [hiveIdError, setHiveIdError] = useState<string | null>(null);
+  const [hiveIdStatus, setHiveIdStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid' | 'taken'>('idle');
   const { toast } = useToast();
   const {
     register,
@@ -85,11 +92,14 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
     reset,
     setValue,
     watch,
+    setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
+      hive_id: '',
       apiaryId: '',
       type: '',
       status: 'active',
@@ -103,6 +113,59 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
   });
 
   const queenMarked = watch('queen_marked');
+  const hiveId = watch('hive_id');
+
+  // Check if hive ID exists in metrics_time_series_data table and is not already registered
+  const checkHiveId = async (id: string) => {
+    if (!id) return;
+    
+    setIsCheckingHiveId(true);
+    setHiveIdStatus('checking');
+    setHiveIdError(null);
+    
+    try {
+      const result = await checkHiveAvailability(id);
+      
+      if (!result.exists) {
+        setHiveIdError('This hive ID does not exist in our system');
+        setHiveIdStatus('invalid');
+        setError('hive_id', { message: 'This hive ID does not exist in our system' });
+        return;
+      }
+      
+      if (!result.available) {
+        setHiveIdError(result.error || 'This hive ID is not available');
+        setHiveIdStatus('taken');
+        setError('hive_id', { message: result.error || 'This hive ID is not available' });
+        return;
+      }
+      
+      // Hive ID is valid and available
+      clearErrors('hive_id');
+      setHiveIdStatus('valid');
+    } catch (error) {
+      console.error('Error checking hive ID:', error);
+      setHiveIdError('Error checking hive ID');
+      setHiveIdStatus('invalid');
+      setError('hive_id', { message: 'Error checking hive ID' });
+    } finally {
+      setIsCheckingHiveId(false);
+    }
+  };
+
+  // React to changes in hive ID
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      if (hiveId && hiveId.length > 0) {
+        checkHiveId(hiveId);
+      } else {
+        setHiveIdStatus('idle');
+        setHiveIdError(null);
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [hiveId]);
 
   // Load apiaries when modal opens
   React.useEffect(() => {
@@ -125,11 +188,28 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
       };
       
       loadApiaries();
+      
+      // Reset form state
+      reset();
+      setHiveIdStatus('idle');
+      setHiveIdError(null);
     }
-  }, [isOpen, toast]);
+  }, [isOpen, toast, reset]);
 
   const onSubmit = async (data: FormValues) => {
     try {
+      // Final check for hive ID before submission
+      if (hiveIdStatus !== 'valid') {
+        setError('hive_id', { 
+          message: hiveIdStatus === 'taken' 
+            ? 'This hive ID is already registered' 
+            : hiveIdStatus === 'invalid' 
+              ? 'This hive ID does not exist in our system' 
+              : 'Please verify the hive ID' 
+        });
+        return;
+      }
+      
       onAdd(data);
       reset();
       onClose();
@@ -199,6 +279,47 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
                       {errors.name && (
                         <p className="text-sm text-destructive">{errors.name.message}</p>
                       )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="hive_id">Hive ID</Label>
+                      <div className="relative">
+                        <Input
+                          id="hive_id"
+                          placeholder="Enter the hive ID from your sensor"
+                          {...register('hive_id')}
+                          className={`${
+                            hiveIdStatus === 'valid' ? 'border-green-500 pr-10' :
+                            hiveIdStatus === 'invalid' || hiveIdStatus === 'taken' ? 'border-red-500 pr-10' : ''
+                          }`}
+                        />
+                        {hiveIdStatus === 'checking' && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          </div>
+                        )}
+                        {hiveIdStatus === 'valid' && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                          </div>
+                        )}
+                        {(hiveIdStatus === 'invalid' || hiveIdStatus === 'taken') && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      {errors.hive_id && (
+                        <p className="text-sm text-destructive">{errors.hive_id.message}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Enter the unique ID from your hive sensor. This will link your physical hive to the app.
+                      </p>
                     </div>
                     
                     <div className="space-y-2">
@@ -351,7 +472,10 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isSubmitting}>
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmitting || hiveIdStatus === 'checking' || hiveIdStatus === 'invalid' || hiveIdStatus === 'taken'}
+                  >
                     {isSubmitting ? 'Adding...' : 'Add Hive'}
                   </Button>
                 </div>
