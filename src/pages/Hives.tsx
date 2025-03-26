@@ -151,7 +151,9 @@ const Hives = () => {
   }, [refetch]);
   
   const handleHiveClick = useCallback((apiaryId, hiveId) => {
-    navigate(`/apiaries/${apiaryId}/hives/${hiveId}`);
+    navigate(`/apiaries/${apiaryId}/hives/${hiveId}`, {
+      state: { from: 'hives' }
+    });
   }, [navigate]);
   
   const handleSearchChange = useCallback((e) => {

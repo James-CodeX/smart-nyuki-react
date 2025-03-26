@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -141,6 +140,7 @@ const HiveMetricsCard: React.FC<HiveMetricsCardProps> = ({
       <div className="mt-4 flex justify-end">
         <Link 
           to={`/apiaries/${apiaryId}/hives/${id}`}
+          state={{ from: 'dashboard' }}
           className="text-primary flex items-center text-sm font-medium hover:underline"
         >
           View Details

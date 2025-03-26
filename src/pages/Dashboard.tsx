@@ -273,7 +273,9 @@ const Dashboard = () => {
     // Find the apiary ID for this hive
     const hive = hives.find(h => h.id === hiveId);
     if (hive) {
-      navigate(`/apiaries/${hive.apiary_id}/hives/${hiveId}`);
+      navigate(`/apiaries/${hive.apiary_id}/hives/${hiveId}`, {
+        state: { from: 'dashboard' }
+      });
     }
   };
 

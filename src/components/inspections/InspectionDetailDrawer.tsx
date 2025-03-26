@@ -1,5 +1,5 @@
-import React from 'react';
-import { format } from 'date-fns';
+import React, { useState, useEffect } from 'react';
+import { format, formatDistance, parseISO, isPast } from 'date-fns';
 import { 
   AlertCircle, 
   CheckCircle2, 
@@ -18,7 +18,25 @@ import {
   Ruler,
   Thermometer,
   Users,
-  X
+  X,
+  ThermometerSun, 
+  Droplets, 
+  CloudSun,
+  Egg, 
+  Activity, 
+  HeartPulse,
+  Weight, 
+  LayoutGrid, 
+  MapPin,
+  Sparkles,
+  Utensils,
+  Pill,
+  StickyNote,
+  AlarmClock,
+  BellRing,
+  AlertTriangle,
+  ImageIcon,
+  Loader2
 } from 'lucide-react';
 import {
   Drawer,
@@ -36,63 +54,150 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Inspection, getApiaryById, getHiveById } from '@/utils/mockData';
 import { cn } from '@/lib/utils';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { toast } from "@/components/ui/use-toast";
+import { InspectionWithHiveDetails } from '@/services/inspectionService';
+import { getInspectionFindings, InspectionFindings } from '@/services/inspectionService';
 
 interface InspectionDetailDrawerProps {
-  inspection: Inspection | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onEdit?: (inspection: Inspection) => void;
-  onChangeStatus?: (inspection: Inspection, status: 'scheduled' | 'completed' | 'cancelled') => void;
-  onDelete?: (inspection: Inspection) => void;
+  inspection: InspectionWithHiveDetails;
+  onDelete: () => void;
 }
+
+type InspectionStatus = 'completed' | 'scheduled' | 'overdue';
 
 const InspectionDetailDrawer: React.FC<InspectionDetailDrawerProps> = ({
   inspection,
-  isOpen,
-  onClose,
-  onEdit,
-  onChangeStatus,
-  onDelete
+  onDelete,
 }) => {
-  if (!inspection) return null;
+  const [findings, setFindings] = useState<InspectionFindings | null>(null);
+  const [loadingFindings, setLoadingFindings] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
-  const isCompleted = inspection.status === 'completed';
-  const isScheduled = inspection.status === 'scheduled';
-  const isOverdue = inspection.status === 'overdue' || 
-    (inspection.status === 'scheduled' && new Date(inspection.date) < new Date());
-  
-  const hive = getHiveById(inspection.apiaryId, inspection.hiveId);
-  const apiary = getApiaryById(inspection.apiaryId);
-  
-  const getStatusIcon = () => {
-    if (isOverdue) return <AlertCircle className="h-5 w-5 text-destructive" />;
-    if (isCompleted) return <CheckCircle2 className="h-5 w-5 text-green-600" />;
-    if (isScheduled) return <Clock className="h-5 w-5 text-blue-600" />;
-    return null;
+  // Helper functions for status
+  const getStatusLabel = (): InspectionStatus => {
+    const inspectionDate = parseISO(inspection.inspection_date);
+    const now = new Date();
+    if (isPast(inspectionDate)) {
+      return 'completed';
+    }
+    if (inspectionDate < now) {
+      return 'overdue';
+    }
+    return 'scheduled';
   };
-  
-  const getStatusLabel = () => {
-    if (isOverdue) return 'Overdue';
-    if (isCompleted) return 'Completed';
-    if (isScheduled) return 'Scheduled';
-    return inspection.status;
-  };
-  
+
   const getStatusColor = () => {
-    if (isOverdue) return "bg-destructive/10 text-destructive border-destructive/20";
-    if (isCompleted) return "bg-green-100 text-green-700 border-green-200";
-    if (isScheduled) return "bg-blue-100 text-blue-700 border-blue-200";
-    return "bg-muted text-muted-foreground border-muted";
+    const status = getStatusLabel();
+    switch (status) {
+      case 'completed':
+        return 'text-emerald-500 border-emerald-500';
+      case 'overdue':
+        return 'text-destructive border-destructive';
+      default:
+        return '';
+    }
+  };
+
+  const getStatusIcon = () => {
+    const status = getStatusLabel();
+    switch (status) {
+      case 'completed':
+        return <CheckCircle2 className="h-4 w-4" />;
+      case 'overdue':
+        return <AlertCircle className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
+    }
+  };
+  
+  // Format the inspection date
+  const formattedDate = format(parseISO(inspection.inspection_date), 'PPPP');
+  const timeAgo = formatDistance(parseISO(inspection.inspection_date), new Date(), { addSuffix: true });
+  
+  useEffect(() => {
+    const fetchFindings = async () => {
+      try {
+        setLoadingFindings(true);
+        const data = await getInspectionFindings(inspection.id);
+        setFindings(data);
+      } catch (error) {
+        console.error('Error fetching inspection findings:', error);
+      } finally {
+        setLoadingFindings(false);
+      }
+    };
+    
+    fetchFindings();
+  }, [inspection.id]);
+  
+  // Helper function to render health status badges
+  const renderHealthStatus = (value: boolean, label: string, icon: React.ReactNode) => (
+    <Badge variant={value ? "default" : "outline"} className="flex gap-1 items-center">
+      {value ? <CheckCircle2 className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+      <span>{label}</span>
+    </Badge>
+  );
+  
+  // Helper function to render the scale
+  const renderScale = (value: number | undefined, max: number, label: string) => {
+    if (value === undefined) return null;
+    
+    const dots = [];
+    for (let i = 1; i <= max; i++) {
+      dots.push(
+        <div 
+          key={i}
+          className={`w-2 h-2 rounded-full ${i <= value ? 'bg-primary' : 'bg-muted'}`}
+        />
+      );
+    }
+    
+    return (
+      <div className="flex flex-col gap-1">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        <div className="flex gap-1">
+          {dots}
+        </div>
+        <span className="text-xs">{value}/{max}</span>
+      </div>
+    );
+  };
+  
+  const handleDelete = () => {
+    onDelete();
+    setIsDeleteDialogOpen(false);
   };
   
   return (
-    <Drawer open={isOpen} onOpenChange={onClose}>
+    <Drawer open={true} onOpenChange={() => {}}>
       <DrawerContent className="max-h-[90vh]">
         <DrawerHeader className="border-b pb-4">
           <div className="flex items-center justify-between">
             <Badge 
               variant="outline" 
-              className={cn("capitalize", getStatusColor())}
+              className={cn(getStatusColor())}
             >
               <span className="flex items-center">
                 {getStatusIcon()}
@@ -101,37 +206,23 @@ const InspectionDetailDrawer: React.FC<InspectionDetailDrawerProps> = ({
             </Badge>
             
             <div className="flex items-center gap-2">
-              {onEdit && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => onEdit(inspection)}
-                >
-                  <Edit className="h-4 w-4 md:mr-1" />
-                  <span className="hidden md:inline">Edit</span>
-                </Button>
-              )}
-              
-              {onDelete && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="text-destructive"
-                  onClick={() => onDelete(inspection)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
+              <Button variant="outline" size="sm" className="gap-1 w-full sm:w-auto mt-2 sm:mt-0">
+                <ExternalLink className="h-4 w-4" />
+                <span>View Hive</span>
+              </Button>
             </div>
           </div>
           
           <DrawerTitle className="text-xl mt-3 flex items-center capitalize">
-            {inspection.type.replace('-', ' ')} Inspection
+            {inspection.hive_name} Inspection
           </DrawerTitle>
           
           <DrawerDescription className="flex items-center text-base">
             <Calendar className="h-4 w-4 mr-2" />
-            {format(new Date(inspection.date), 'EEEE, MMMM d, yyyy')}
+            {formattedDate}
+            <span className="mx-1">•</span>
+            <Clock className="mr-1 h-4 w-4" />
+            {timeAgo}
           </DrawerDescription>
         </DrawerHeader>
         
@@ -144,9 +235,8 @@ const InspectionDetailDrawer: React.FC<InspectionDetailDrawerProps> = ({
                   <Users className="h-5 w-5 text-primary" />
                   <div>
                     <p className="font-medium">
-                      {hive?.name} in {apiary?.name}
+                      {inspection.hive_name} in {inspection.apiary_name}
                     </p>
-                    <p className="text-sm text-muted-foreground">{apiary?.location}</p>
                   </div>
                 </div>
                 
@@ -159,170 +249,343 @@ const InspectionDetailDrawer: React.FC<InspectionDetailDrawerProps> = ({
             
             <Separator />
             
-            {isCompleted && inspection.findings && (
-              <>
-                <div className="space-y-3">
-                  <h3 className="text-sm font-medium text-primary">Inspection Findings</h3>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="border rounded-lg p-4">
-                      <div className="flex items-center gap-2">
-                        <Crown className="h-5 w-5 text-purple-500" />
-                        <h4 className="font-medium">Queen Status</h4>
-                      </div>
-                      <p className="mt-1 text-sm">
-                        {inspection.findings.queenSighted 
-                          ? "Queen sighted and appears healthy"
-                          : "Queen not sighted during inspection"}
-                      </p>
-                    </div>
-                    
-                    <div className="border rounded-lg p-4">
-                      <div className="flex items-center gap-2">
-                        <Bug className="h-5 w-5 text-red-500" />
-                        <h4 className="font-medium">Pests & Diseases</h4>
-                      </div>
-                      <p className="mt-1 text-sm">
-                        {inspection.findings.diseasesSighted 
-                          ? "Signs of disease or pests detected"
-                          : "No signs of disease or pests"}
-                      </p>
-                      {inspection.findings.varroaCount !== undefined && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Varroa count: {inspection.findings.varroaCount}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <h4 className="text-sm font-medium">Brood Pattern</h4>
-                          <span className="text-sm">{inspection.findings.broodPattern}/5</span>
-                        </div>
-                        <Progress value={inspection.findings.broodPattern * 20} className="h-2" />
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <h4 className="text-sm font-medium">Honey Stores</h4>
-                          <span className="text-sm">{inspection.findings.honeyStores}/5</span>
-                        </div>
-                        <Progress 
-                          value={inspection.findings.honeyStores * 20} 
-                          className="h-2 bg-muted"
-                          indicatorClassName="bg-amber-500"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <h4 className="text-sm font-medium">Temperament</h4>
-                          <span className="text-sm">{inspection.findings.temperament}/5</span>
-                        </div>
-                        <Progress 
-                          value={inspection.findings.temperament * 20} 
-                          className="h-2"
-                        />
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <h4 className="text-sm font-medium">Population</h4>
-                          <span className="text-sm">{inspection.findings.populationStrength}/5</span>
-                        </div>
-                        <Progress value={inspection.findings.populationStrength * 20} className="h-2" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <Separator />
-              </>
-            )}
-            
-            {inspection.notes && (
-              <div className="space-y-1.5">
-                <h3 className="text-sm font-medium text-muted-foreground">Notes</h3>
-                <div className="border rounded-lg p-4 bg-muted/10">
-                  <p className="text-sm whitespace-pre-line">{inspection.notes}</p>
-                </div>
-              </div>
-            )}
-            
-            <div className="space-y-1.5">
-              <h3 className="text-sm font-medium text-muted-foreground">Actions</h3>
-              
-              <div className="flex flex-wrap gap-2">
-                {isScheduled && onChangeStatus && (
-                  <Button 
-                    onClick={() => onChangeStatus(inspection, 'completed')}
-                    className="gap-1 flex-grow sm:flex-grow-0"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span className="sm:inline">Mark Completed</span>
-                  </Button>
+            {/* Environmental Conditions */}
+            <div>
+              <h4 className="font-medium mb-3">Environmental Conditions</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {inspection.temperature && (
+                  <Card className="bg-muted/50">
+                    <CardContent className="p-3 flex flex-col items-center justify-center text-center">
+                      <ThermometerSun className="h-5 w-5 text-amber-500 mb-1" />
+                      <span className="text-lg font-medium">{inspection.temperature}°C</span>
+                      <span className="text-xs text-muted-foreground">Temperature</span>
+                    </CardContent>
+                  </Card>
                 )}
                 
-                {(isScheduled || isOverdue) && onChangeStatus && (
-                  <Button 
-                    variant="outline"
-                    onClick={() => onChangeStatus(inspection, 'cancelled')}
-                    className="gap-1 border-destructive/20 text-destructive flex-grow sm:flex-grow-0"
-                  >
-                    <X className="h-4 w-4" />
-                    <span className="sm:inline">Cancel</span>
-                  </Button>
+                {inspection.humidity && (
+                  <Card className="bg-muted/50">
+                    <CardContent className="p-3 flex flex-col items-center justify-center text-center">
+                      <Droplets className="h-5 w-5 text-blue-500 mb-1" />
+                      <span className="text-lg font-medium">{inspection.humidity}%</span>
+                      <span className="text-xs text-muted-foreground">Humidity</span>
+                    </CardContent>
+                  </Card>
                 )}
                 
-                {isOverdue && onChangeStatus && (
-                  <Button 
-                    onClick={() => onChangeStatus(inspection, 'completed')}
-                    className="gap-1 flex-grow sm:flex-grow-0"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span className="sm:inline">Mark Completed</span>
-                  </Button>
+                {inspection.weight && (
+                  <Card className="bg-muted/50">
+                    <CardContent className="p-3 flex flex-col items-center justify-center text-center">
+                      <Weight className="h-5 w-5 text-emerald-500 mb-1" />
+                      <span className="text-lg font-medium">{inspection.weight} kg</span>
+                      <span className="text-xs text-muted-foreground">Weight</span>
+                    </CardContent>
+                  </Card>
                 )}
                 
-                {isScheduled && (
-                  <Button variant="outline" className="gap-1 flex-grow sm:flex-grow-0">
-                    <CalendarDays className="h-4 w-4" />
-                    <span className="sm:inline">Reschedule</span>
-                  </Button>
+                {inspection.weather_conditions && (
+                  <Card className="bg-muted/50">
+                    <CardContent className="p-3 flex flex-col items-center justify-center text-center">
+                      <CloudSun className="h-5 w-5 text-sky-500 mb-1" />
+                      <span className="text-sm font-medium line-clamp-1">{inspection.weather_conditions}</span>
+                      <span className="text-xs text-muted-foreground">Weather</span>
+                    </CardContent>
+                  </Card>
                 )}
               </div>
             </div>
             
-            <div className="text-xs text-muted-foreground pt-2 flex flex-col space-y-1">
-              <p>Created by: {inspection.createdBy}</p>
-              <p>Inspection ID: {inspection.id}</p>
-              <p>Created: {format(new Date(inspection.createdAt), 'MMM d, yyyy')}</p>
+            {/* Colony Status */}
+            <div>
+              <h4 className="font-medium mb-3">Colony Status</h4>
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {renderHealthStatus(inspection.queen_seen, "Queen Sighted", <Crown />)}
+                  {renderHealthStatus(inspection.eggs_seen, "Eggs Present", <Egg />)}
+                  {renderHealthStatus(inspection.larvae_seen, "Larvae Present", <Activity />)}
+                  {renderHealthStatus(inspection.queen_cells_seen, "Queen Cells", <AlertTriangle />)}
+                  {renderHealthStatus(inspection.disease_signs, "Disease Signs", <Bug />)}
+                </div>
+                
+                {inspection.disease_signs && inspection.disease_details && (
+                  <div className="mt-2 bg-destructive/10 p-3 rounded-md text-sm">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Bug className="h-4 w-4 text-destructive" />
+                      <span className="font-medium">Disease Details</span>
+                    </div>
+                    <p>{inspection.disease_details}</p>
+                  </div>
+                )}
+                
+                {inspection.hive_strength !== undefined && (
+                  <div className="mt-3">
+                    <span className="text-sm text-muted-foreground mb-1 block">Hive Strength</span>
+                    <div className="flex items-center gap-2">
+                      <HeartPulse className="h-4 w-4 text-primary" />
+                      <div className="w-full bg-muted rounded-full h-2.5">
+                        <div 
+                          className="bg-primary h-2.5 rounded-full" 
+                          style={{ width: `${(inspection.hive_strength / 10) * 100}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-sm font-medium min-w-[28px]">{inspection.hive_strength}/10</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Resources */}
+            <div>
+              <h4 className="font-medium mb-3">Resources</h4>
+              <div className="grid grid-cols-2 gap-4">
+                {inspection.honey_stores !== undefined && (
+                  <Card>
+                    <CardContent className="p-3">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-5 w-5 text-amber-500" />
+                          <span className="font-medium">Honey Stores</span>
+                        </div>
+                        <Badge variant="outline">{inspection.honey_stores}/5</Badge>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2 mt-2">
+                        <div 
+                          className="bg-amber-500 h-2 rounded-full" 
+                          style={{ width: `${(inspection.honey_stores / 5) * 100}%` }}
+                        ></div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                
+                {inspection.pollen_stores !== undefined && (
+                  <Card>
+                    <CardContent className="p-3">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <LayoutGrid className="h-5 w-5 text-yellow-500" />
+                          <span className="font-medium">Pollen Stores</span>
+                        </div>
+                        <Badge variant="outline">{inspection.pollen_stores}/5</Badge>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2 mt-2">
+                        <div 
+                          className="bg-yellow-500 h-2 rounded-full" 
+                          style={{ width: `${(inspection.pollen_stores / 5) * 100}%` }}
+                        ></div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+            
+            {/* Management Actions */}
+            {(inspection.added_supers || inspection.removed_supers || inspection.feed_added || inspection.medications_added) && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium mb-3">Management Actions</h4>
+                  <div className="space-y-3">
+                    {(inspection.added_supers || inspection.removed_supers) && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <LayoutGrid className="h-4 w-4" />
+                          <span>Supers</span>
+                        </div>
+                        <div className="flex gap-2">
+                          {inspection.added_supers > 0 && (
+                            <Badge variant="outline" className="bg-emerald-50">
+                              +{inspection.added_supers} Added
+                            </Badge>
+                          )}
+                          {inspection.removed_supers > 0 && (
+                            <Badge variant="outline" className="bg-red-50">
+                              -{inspection.removed_supers} Removed
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {inspection.feed_added && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Utensils className="h-4 w-4" />
+                          <span>Feed Added</span>
+                        </div>
+                        <div className="text-sm">
+                          {inspection.feed_type && <span className="font-medium">{inspection.feed_type}</span>}
+                          {inspection.feed_amount && <span> - {inspection.feed_amount}</span>}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {inspection.medications_added && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Pill className="h-4 w-4" />
+                          <span>Medications</span>
+                        </div>
+                        {inspection.medication_details && (
+                          <span className="text-sm">{inspection.medication_details}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+            
+            {/* Varroa Check */}
+            {inspection.varroa_check && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium mb-3">Varroa Check</h4>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bug className="h-4 w-4" />
+                      <span>Varroa Count</span>
+                    </div>
+                    {inspection.varroa_count !== undefined ? (
+                      <Badge 
+                        variant={inspection.varroa_count > 5 ? "destructive" : "outline"}
+                        className="flex gap-1 items-center"
+                      >
+                        {inspection.varroa_count > 5 ? 
+                          <AlertTriangle className="h-3.5 w-3.5" /> : 
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        }
+                        <span>{inspection.varroa_count}</span>
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">Not recorded</Badge>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+            
+            {/* Findings */}
+            {loadingFindings ? (
+              <div className="flex justify-center items-center py-4">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : findings ? (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium mb-3">Additional Findings</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    {renderScale(findings.brood_pattern, 5, "Brood Pattern")}
+                    {renderScale(findings.honey_stores, 5, "Honey Stores")}
+                    {renderScale(findings.population_strength, 5, "Population")}
+                    {renderScale(findings.temperament, 5, "Temperament")}
+                  </div>
+                  
+                  {findings.notes && (
+                    <div className="mt-4 text-sm p-3 bg-muted/50 rounded-md">
+                      <div className="flex items-center gap-2 mb-1">
+                        <StickyNote className="h-4 w-4" />
+                        <span className="font-medium">Finding Notes</span>
+                      </div>
+                      <p>{findings.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : null}
+            
+            {/* Notes */}
+            {inspection.notes && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium mb-2">Notes</h4>
+                  <div className="p-3 bg-muted/50 rounded-md">
+                    <p className="text-sm">{inspection.notes}</p>
+                  </div>
+                </div>
+              </>
+            )}
+            
+            {/* Images */}
+            {inspection.images && inspection.images.length > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium mb-3">Images</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {inspection.images.map((image, index) => (
+                      <div key={index} className="aspect-square bg-muted rounded-md overflow-hidden">
+                        <img src={image} alt={`Inspection ${index + 1}`} className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+            
+            {/* Metadata */}
+            <Separator />
+            <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                <span>Created: {format(parseISO(inspection.created_at), 'PPp')}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                <span>Last Updated: {format(parseISO(inspection.updated_at), 'PPp')}</span>
+              </div>
+            </div>
+            
+            {/* Actions */}
+            <div className="flex justify-between">
+              <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Delete Inspection</DialogTitle>
+                    <DialogDescription>
+                      Are you sure you want to delete this inspection? This action cannot be undone.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button variant="destructive" onClick={handleDelete}>
+                      Delete
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </ScrollArea>
         
         <DrawerFooter className="border-t pt-4 gap-2">
           <div className="flex flex-col sm:flex-row justify-between gap-2">
-            <Button variant="outline" onClick={onClose} className="order-2 sm:order-1">
+            <Button variant="outline" onClick={() => {}} className="order-2 sm:order-1">
               Close Details
             </Button>
             
             <div className="flex gap-2 flex-col sm:flex-row order-1 sm:order-2">
-              {onEdit && (
-                <Button variant="outline" onClick={() => onEdit(inspection)}>
-                  <PenSquare className="h-4 w-4 mr-1" />
-                  Edit Inspection
-                </Button>
-              )}
+              <Button variant="outline" onClick={() => {}}>
+                <PenSquare className="h-4 w-4 mr-1" />
+                Edit Inspection
+              </Button>
               
               <Button className="gap-1">
                 <CheckCircle2 className="h-4 w-4" />
-                {isCompleted ? 'Edit Findings' : 'Record Findings'}
+                Record Findings
               </Button>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   ChevronLeft, Thermometer, Droplets, Volume2, Weight, 
@@ -271,6 +271,7 @@ const analyzeWeight = (data: Array<{time: string, value: number}>) => {
 
 const HiveDetails = () => {
   const { apiaryId, hiveId } = useParams<{ apiaryId: string; hiveId: string }>();
+  const location = useLocation();
   const [hive, setHive] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [alertsEnabled, setAlertsEnabled] = useState(true);
@@ -432,10 +433,17 @@ const HiveDetails = () => {
   return (
     <PageTransition>
       <div className="container max-w-7xl pt-16 md:pt-8 pb-16 px-4 sm:px-6 lg:px-8">
-        <Link to={`/apiaries/${apiaryId}`} className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Back to Apiary
-        </Link>
+        {location.state?.from === 'hives' ? (
+          <Link to="/hives" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Back to Hives
+          </Link>
+        ) : (
+          <Link to={`/apiaries/${apiaryId}`} className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Back to Apiary
+          </Link>
+        )}
         
         <div className="flex justify-between items-start mb-8">
           <div>
