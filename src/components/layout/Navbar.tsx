@@ -5,6 +5,37 @@ import { motion } from 'framer-motion';
 import { Menu, X, Home, Grid, Menu as HiveIcon, Map, Settings, ChevronLeft, ChevronRight, BarChart3, ClipboardCheck, LogOut, BellRing } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
+// SVG Logo component - directly embedded instead of imported
+const Logo = ({ className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100" className={className} width="180">
+    <circle cx="50" cy="50" r="45" fill="#FFCE21"/>
+    <g transform="translate(15, 15)">
+      {/* Simple bee icon */}
+      <ellipse cx="35" cy="35" rx="25" ry="20" fill="#FFC700" />
+      <path d="M35,15 L35,55 M25,25 L45,25 M25,45 L45,45" stroke="#000" strokeWidth="4" />
+      <path d="M15,30 Q5,35 15,40 M55,30 Q65,35 55,40" stroke="#000" fill="none" strokeWidth="2" />
+      <circle cx="30" cy="35" r="3" fill="#000" />
+      <circle cx="40" cy="35" r="3" fill="#000" />
+    </g>
+    <text x="105" y="45" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="30" fill="#000">Smart</text>
+    <text x="105" y="75" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="30" fill="#000">Nyuki</text>
+  </svg>
+);
+
+// Small Bee Icon for collapsed sidebar
+const BeeIcon = ({ className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 70" className={className} width="40" height="40">
+    <circle cx="35" cy="35" r="32" fill="#FFCE21"/>
+    <g transform="translate(10, 10)">
+      <ellipse cx="25" cy="25" rx="18" ry="15" fill="#FFC700" />
+      <path d="M25,10 L25,40 M18,18 L32,18 M18,32 L32,32" stroke="#000" strokeWidth="3" />
+      <path d="M10,22 Q5,25 10,28 M40,22 Q45,25 40,28" stroke="#000" fill="none" strokeWidth="1.5" />
+      <circle cx="22" cy="25" r="2" fill="#000" />
+      <circle cx="28" cy="25" r="2" fill="#000" />
+    </g>
+  </svg>
+);
+
 interface SidebarProps {
   onCollapsedChange?: (collapsed: boolean) => void;
 }
@@ -107,21 +138,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
         <div className="flex items-center p-4 border-b border-border h-16">
           {!isCollapsed && (
             <Link to="/" className="flex items-center min-w-0">
-              <span className="h-10 w-10 flex-shrink-0 rounded-full bg-primary/20 flex items-center justify-center">
-                <motion.div whileHover={{ rotate: 10 }} className="text-primary font-bold text-xl">
-                  🐝
-                </motion.div>
-              </span>
-              <span className="ml-3 text-xl font-medium text-foreground truncate">Smart-Nyuki</span>
+              <Logo />
             </Link>
           )}
           {isCollapsed && (
             <Link to="/" className="flex items-center justify-center w-full">
-              <span className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                <motion.div whileHover={{ rotate: 10 }} className="text-primary font-bold text-xl">
-                  🐝
-                </motion.div>
-              </span>
+              <motion.div whileHover={{ rotate: 10 }} className="flex items-center justify-center">
+                <BeeIcon />
+              </motion.div>
             </Link>
           )}
         </div>
@@ -196,12 +220,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
         >
           <div className="flex items-center p-4 border-b border-border h-16">
             <Link to="/" className="flex items-center" onClick={() => setIsMobileOpen(false)}>
-              <span className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                <motion.div whileHover={{ rotate: 10 }} className="text-primary font-bold text-xl">
-                  🐝
-                </motion.div>
-              </span>
-              <span className="ml-3 text-xl font-medium text-foreground">Smart-Nyuki</span>
+              <Logo />
             </Link>
           </div>
           
