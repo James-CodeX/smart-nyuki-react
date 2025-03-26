@@ -59,24 +59,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
+import MetricGraph from '@/components/ui/MetricGraph';
+import DashboardChart from '@/components/dashboard/DashboardChart';
 
 import { 
-  LineChart as RechartsLineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  Legend,
 } from 'recharts';
 import { cn } from '@/lib/utils';
 import {
@@ -338,6 +330,7 @@ const Production = () => {
   const [yearlyData, setYearlyData] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
   const [dailyWeightData, setDailyWeightData] = useState([]);
+  const [formattedWeightData, setFormattedWeightData] = useState([]);
   const [apiaries, setApiaries] = useState([]);
   const [hives, setHives] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -359,7 +352,14 @@ const Production = () => {
       
       setProductionData(apiaryProductionData);
       setYearlyData(yearData);
-      setMonthlyData(monthData);
+      
+      // Format monthly data for charts (monthData already comes with 'month' and 'production' properties)
+      const formattedMonthlyData = monthData.map(item => ({
+        time: item.month,
+        value: item.production || 0 // Ensure we have a number, even if it's 0
+      }));
+      setMonthlyData(formattedMonthlyData);
+      
       setApiaries(apiariesData);
       setHives(hivesData);
       
@@ -369,6 +369,13 @@ const Production = () => {
         // Load weight data for first hive
         const weightData = await getDailyWeightData(hivesData[0].id, 30);
         setDailyWeightData(weightData);
+        
+        // Format weight data for the MetricGraph component
+        const formattedData = weightData.map(item => ({
+          time: item.date,
+          value: item.weight || 0 // Ensure we have a number, even if it's 0
+        }));
+        setFormattedWeightData(formattedData);
       }
     } catch (error) {
       console.error('Error loading production data:', error);
@@ -393,6 +400,13 @@ const Production = () => {
         try {
           const weightData = await getDailyWeightData(selectedHiveForWeight, 30);
           setDailyWeightData(weightData);
+          
+          // Format weight data for the MetricGraph component
+          const formattedData = weightData.map(item => ({
+            time: item.date,
+            value: item.weight || 0 // Ensure we have a number, even if it's 0
+          }));
+          setFormattedWeightData(formattedData);
         } catch (error) {
           console.error('Error loading weight data:', error);
         }
@@ -423,6 +437,12 @@ const Production = () => {
   const filteredData = selectedApiary === 'all' 
     ? productionData 
     : productionData.filter(apiary => apiary.id === selectedApiary);
+  
+  // Format yearly data for charts
+  const formattedYearlyData = yearlyData.map(item => ({
+    time: item.year.toString(),
+    value: item.total_production
+  }));
   
   if (loading) {
     return (
@@ -584,60 +604,31 @@ const Production = () => {
               <TabsContent value="chart" className="pt-4">
                 {timeRange === 'year' ? (
                   <div className="w-full aspect-[3/2] sm:aspect-[4/2] md:aspect-[5/2]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={yearlyData}
-                        margin={{ top: 10, right: 30, left: 0, bottom: 30 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                        <XAxis 
-                          dataKey="year" 
-                          tick={{ fontSize: 12 }}
-                          tickMargin={10}
-                        />
-                        <YAxis 
-                          unit=" kg"
-                          tick={{ fontSize: 12 }}
-                          tickMargin={10}
-                        />
-                        <Tooltip formatter={(value) => [`${value} kg`, 'Production']} />
-                        <Bar 
-                          dataKey="totalProduction" 
-                          name="Production" 
-                          fill="hsl(var(--primary))" 
-                          radius={[4, 4, 0, 0]} 
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <DashboardChart
+                      title="Yearly Production"
+                      data={formattedYearlyData}
+                      type="bar"
+                      dataKey="time"
+                      categories={["value"]}
+                      colors={["hsl(var(--primary))"]}
+                      height={350}
+                      tooltipFormatter={(value) => `${value} kg`}
+                      yAxisFormatter={(value) => `${value} kg`}
+                    />
                   </div>
                 ) : (
                   <div className="w-full aspect-[3/2] sm:aspect-[4/2] md:aspect-[5/2]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={monthlyData}
-                        margin={{ top: 10, right: 30, left: 0, bottom: 30 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                        <XAxis 
-                          dataKey="month" 
-                          tick={{ fontSize: 12 }}
-                          tickMargin={10}
-                        />
-                        <YAxis
-                          unit=" kg"
-                          tick={{ fontSize: 12 }}
-                          tickMargin={10}
-                        />
-                        <Tooltip formatter={(value) => [`${value} kg`, 'Production']} />
-                        <Legend verticalAlign="top" height={36} />
-                        <Bar 
-                          dataKey="production" 
-                          name="Production" 
-                          fill="hsl(var(--primary))" 
-                          radius={[4, 4, 0, 0]} 
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <DashboardChart
+                      title="Monthly Production"
+                      data={monthlyData}
+                      type="bar"
+                      dataKey="time"
+                      categories={["value"]}
+                      colors={["hsl(var(--primary))"]}
+                      height={350}
+                      tooltipFormatter={(value) => `${value} kg`}
+                      yAxisFormatter={(value) => `${value} kg`}
+                    />
                   </div>
                 )}
               </TabsContent>
@@ -657,15 +648,15 @@ const Production = () => {
                         yearlyData.map((data) => (
                           <TableRow key={data.year}>
                             <TableCell className="font-medium">{data.year}</TableCell>
-                            <TableCell className="text-right">{data.totalProduction.toFixed(1)}</TableCell>
+                            <TableCell className="text-right">{data.total_production.toFixed(1)}</TableCell>
                           </TableRow>
                         ))
                       ) : (
                         monthlyData.map((data, index) => (
                           <TableRow key={index}>
-                            <TableCell className="font-medium">{data.month}</TableCell>
-                            <TableCell className="text-right">{data.production.toFixed(1)}</TableCell>
-                            <TableCell className="text-right">{data.year}</TableCell>
+                            <TableCell className="font-medium">{data.time}</TableCell>
+                            <TableCell className="text-right">{data.value.toFixed(1)}</TableCell>
+                            <TableCell className="text-right">{new Date().getFullYear()}</TableCell>
                           </TableRow>
                         ))
                       )}
@@ -707,54 +698,39 @@ const Production = () => {
           
           <CardContent>
             <div className="w-full aspect-[3/2] sm:aspect-[4/2] md:aspect-[5/2]">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsLineChart
-                  data={dailyWeightData}
-                  margin={{ top: 10, right: 30, left: 0, bottom: 30 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{ fontSize: 12 }}
-                    tickMargin={10}
-                    interval={isMobile() ? 6 : 3}
-                  />
-                  <YAxis
-                    unit=" kg"
-                    tick={{ fontSize: 12 }}
-                    tickMargin={10}
-                    domain={['dataMin - 1', 'dataMax + 1']}
-                  />
-                  <Tooltip 
-                    formatter={(value, name) => [
-                      `${value !== null ? value : 'N/A'} ${name === 'weight' ? 'kg' : 'kg/day'}`, 
-                      name === 'weight' ? 'Total Weight' : 'Daily Change'
-                    ]} 
-                  />
-                  <Legend verticalAlign="top" height={36} />
-                  <Line
-                    type="monotone"
-                    dataKey="weight"
-                    name="Weight"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    dot={{ r: 1 }}
-                    activeDot={{ r: 6 }}
-                    connectNulls={true}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="change"
-                    name="Daily Change"
-                    stroke="hsl(var(--warning))"
-                    strokeWidth={2}
-                    strokeDasharray="4 4"
-                    dot={false}
-                    activeDot={{ r: 6 }}
-                    connectNulls={true}
-                  />
-                </RechartsLineChart>
-              </ResponsiveContainer>
+              {formattedWeightData.length > 0 ? (
+                <MetricGraph
+                  data={formattedWeightData}
+                  color="#2563eb"
+                  gradientId="weightGradient-production"
+                  unit="kg"
+                  className="h-full"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  No weight data available for this hive
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-6">
+              <h4 className="text-sm font-medium mb-2">Daily Weight Change</h4>
+              <div className="w-full aspect-[3/2] sm:aspect-[4/2] md:aspect-[5/2]">
+                <DashboardChart
+                  title="Daily Weight Change"
+                  data={dailyWeightData.map(item => ({
+                    time: item.date,
+                    value: item.change !== null ? item.change : 0
+                  }))}
+                  type="line"
+                  dataKey="time"
+                  categories={["value"]}
+                  colors={["hsl(var(--warning))"]}
+                  height={250}
+                  tooltipFormatter={(value) => value !== null ? `${value.toFixed(2)} kg/day` : 'N/A'}
+                  yAxisFormatter={(value) => typeof value === 'number' ? `${value.toFixed(value % 1 === 0 ? 0 : 1)} kg` : `${value} kg`}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

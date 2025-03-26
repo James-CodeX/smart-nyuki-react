@@ -52,7 +52,56 @@ const DashboardChart: React.FC<DashboardChartProps> = ({
   tooltipFormatter = (value) => `${value}`,
   valueChange
 }) => {
+  // Check if data is empty or invalid
+  const hasValidData = Array.isArray(data) && data.length > 0;
+
   const renderChart = () => {
+    // If no valid data, show a placeholder message
+    if (!hasValidData) {
+      return (
+        <div 
+          className="flex items-center justify-center text-muted-foreground text-sm"
+          style={{ height: height }}
+        >
+          No data available
+        </div>
+      );
+    }
+    
+    // Calculate domain for Y axis
+    const calculateDomain = () => {
+      // Extract all values from all data series
+      const allValues = [];
+      for (const category of categories) {
+        const categoryValues = data.map(item => Number(item[category])).filter(val => !isNaN(val));
+        allValues.push(...categoryValues);
+      }
+      
+      if (allValues.length === 0) return [0, 1];
+      
+      // Find min and max
+      const minValue = Math.min(...allValues);
+      const maxValue = Math.max(...allValues);
+      
+      // Calculate range and buffer
+      const range = maxValue - minValue;
+      const bufferPercentage = 0.15; // 15% buffer
+      const minBufferAmount = 0.5; // Minimum buffer amount
+      
+      let buffer = range * bufferPercentage;
+      if (buffer < minBufferAmount || range === 0) {
+        buffer = minBufferAmount;
+      }
+      
+      // Set minimum to 0 if all values are positive
+      const yMin = minValue >= 0 ? 0 : Math.floor(minValue - buffer);
+      const yMax = Math.ceil(maxValue + buffer);
+      
+      return [yMin, yMax];
+    };
+    
+    const domain = calculateDomain();
+    
     const commonProps = {
       data,
       margin: { top: 10, right: 10, left: 10, bottom: 10 }
@@ -76,7 +125,9 @@ const DashboardChart: React.FC<DashboardChartProps> = ({
                 tickLine={false} 
                 tick={{ fontSize: 12 }} 
                 tickFormatter={yAxisFormatter}
-                tickMargin={8} 
+                tickMargin={8}
+                domain={domain}
+                tickCount={5}
               />
               <Tooltip 
                 formatter={tooltipFormatter}
@@ -111,7 +162,9 @@ const DashboardChart: React.FC<DashboardChartProps> = ({
                 tickLine={false} 
                 tick={{ fontSize: 12 }} 
                 tickFormatter={yAxisFormatter}
-                tickMargin={8} 
+                tickMargin={8}
+                domain={domain}
+                tickCount={5}
               />
               <Tooltip 
                 formatter={tooltipFormatter}
@@ -149,7 +202,9 @@ const DashboardChart: React.FC<DashboardChartProps> = ({
                 tickLine={false} 
                 tick={{ fontSize: 12 }} 
                 tickFormatter={yAxisFormatter}
-                tickMargin={8} 
+                tickMargin={8}
+                domain={domain}
+                tickCount={5}
               />
               <Tooltip 
                 formatter={tooltipFormatter}
@@ -201,7 +256,7 @@ const DashboardChart: React.FC<DashboardChartProps> = ({
       <CardContent className="pt-0 px-4 pb-4">
         {renderChart()}
         
-        {categories.length > 1 && (
+        {hasValidData && categories.length > 1 && (
           <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 pt-4">
             {categories.map((category, index) => (
               <div key={category} className="flex items-center gap-1">

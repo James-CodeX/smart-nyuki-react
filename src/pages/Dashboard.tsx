@@ -450,7 +450,7 @@ const Dashboard = () => {
                   onViewHive={handleViewHive}
                 />
               )}
-            </div>
+        </div>
         
             {/* Metrics Overview */}
             <Card>

@@ -1,15 +1,9 @@
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Thermometer, 
-  Droplets, 
-  Volume2, 
-  Weight, 
-  AlertCircle 
-} from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ChevronRight, AlertTriangle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { HiveWithDetails } from '@/services/hiveService';
-import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import MetricGraph from '../ui/MetricGraph';
 
 interface HiveCardProps {
   hive: HiveWithDetails;
@@ -39,168 +33,186 @@ const HiveCard: React.FC<HiveCardProps> = ({ hive, onClick }) => {
   const metrics = hive.metrics || { temperature: [], humidity: [], weight: [], sound: [] };
   
   // Calculate the latest metrics
-  const latestTemp = metrics.temperature.length > 0 
+  const currentTemp = metrics.temperature.length > 0 
     ? metrics.temperature[metrics.temperature.length - 1].value 
-    : null;
+    : 0;
   
-  const latestHumidity = metrics.humidity.length > 0 
+  const currentHumidity = metrics.humidity.length > 0 
     ? metrics.humidity[metrics.humidity.length - 1].value 
-    : null;
+    : 0;
   
-  const latestWeight = metrics.weight.length > 0 
+  const currentSound = metrics.sound.length > 0 
+    ? metrics.sound[metrics.sound.length - 1].value 
+    : 0;
+  
+  const currentWeight = metrics.weight.length > 0 
     ? metrics.weight[metrics.weight.length - 1].value 
-    : null;
+    : 0;
   
-  // Get the last 10 temperature readings for graph - handle both time and timestamp formats
-  const tempData = metrics.temperature
-    .slice(-10)
-    .map(item => {
+  // Determine status colors
+  const tempColor = currentTemp > 36 ? 'text-red-500' : currentTemp < 32 ? 'text-blue-500' : 'text-green-500';
+  const humidityColor = currentHumidity > 65 ? 'text-blue-500' : currentHumidity < 40 ? 'text-yellow-500' : 'text-green-500';
+  
+  // Convert metrics to the format expected by MetricGraph
+  const normalizeMetrics = (metricsArray: MetricItem[]): TimeMetric[] => {
+    // First, sort the array by timestamp in ascending order
+    const sortedArray = [...metricsArray].sort((a, b) => {
+      const timeA = hasTimestamp(a) ? a.timestamp : a.time;
+      const timeB = hasTimestamp(b) ? b.timestamp : b.time;
+      return new Date(timeA).getTime() - new Date(timeB).getTime();
+    });
+    
+    // Take only the last 24 points for better visibility
+    const limitedArray = sortedArray.slice(-24);
+    
+    return limitedArray.map(item => {
+      // Get the appropriate time string (either time or timestamp)
       const timeString = hasTimestamp(item) ? item.timestamp : item.time;
+      
+      // Format the date string into a readable time format (HH:MM)
+      let formattedTime = '';
+      try {
+        const date = new Date(timeString);
+        formattedTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } catch (err) {
+        console.error('Error formatting time:', err);
+        formattedTime = timeString; // Fallback to original string if parsing fails
+      }
+      
       return {
-        time: new Date(timeString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: formattedTime,
         value: item.value
       };
     });
-
-  // Get the last 10 weight readings for graph - handle both time and timestamp formats
-  const weightData = metrics.weight
-    .slice(-10)
-    .map(item => {
-      const timeString = hasTimestamp(item) ? item.timestamp : item.time;
-      return {
-        time: new Date(timeString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        value: item.value
-      };
-    });
+  };
+  
+  const temperatureData = normalizeMetrics(metrics.temperature);
+  const humidityData = normalizeMetrics(metrics.humidity);
+  const soundData = normalizeMetrics(metrics.sound);
+  const weightData = normalizeMetrics(metrics.weight);
+  
+  // Create unique gradient IDs for this hive
+  const tempGradientId = `tempGradient-${hive.id}`;
+  const humidityGradientId = `humidityGradient-${hive.id}`;
+  const soundGradientId = `soundGradient-${hive.id}`;
+  const weightGradientId = `weightGradient-${hive.id}`;
   
   const hasAlerts = hive.alerts && hive.alerts.length > 0;
 
-  // Format for tooltip
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-2 border border-gray-200 rounded shadow text-xs">
-          <p>{`${label}: ${payload[0].value.toFixed(1)}`}</p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // Get latest time for "updated" timestamp
-  const getLatestUpdateTime = () => {
-    if (metrics.temperature.length === 0) return 'Never';
-    
-    const latestItem = metrics.temperature[0];
-    const timeString = hasTimestamp(latestItem) ? latestItem.timestamp : latestItem.time;
-    return new Date(timeString).toLocaleString();
-  };
-
   return (
-    <Card 
-      className={`overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${hasAlerts ? 'border-red-300' : ''}`}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className={cn(
+        "metric-card p-5 cursor-pointer",
+        hasAlerts ? 'border-amber-200' : ''
+      )}
       onClick={onClick}
     >
-      <CardContent className="p-0">
-        <div className="p-4">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <h3 className="text-lg font-semibold">{hive.name}</h3>
-              <p className="text-sm text-muted-foreground">{hive.apiaryName}</p>
-            </div>
-            {hasAlerts && (
-              <Badge variant="destructive" className="flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {hive.alerts.length}
-              </Badge>
-            )}
-          </div>
-          
-          <div className="flex flex-wrap gap-2 mb-2">
-            <Badge variant="outline">{hive.type}</Badge>
-            <Badge variant="secondary">{hive.status}</Badge>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4 mb-2">
-            <div className="flex flex-col">
-              <div className="flex items-center mb-1">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-red-100 mr-2">
-                  <Thermometer className="h-3 w-3 text-red-600" />
-                </div>
-                <span className="text-sm font-medium">
-                  {latestTemp !== null ? `${latestTemp.toFixed(1)}°C` : 'N/A'}
-                </span>
-              </div>
-              <div className="h-16 w-full">
-                {tempData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={tempData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                      <XAxis dataKey="time" hide />
-                      <YAxis hide domain={['auto', 'auto']} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Line
-                        type="monotone"
-                        dataKey="value"
-                        stroke="#ef4444"
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 3 }}
-                        isAnimationActive={false}
-                        connectNulls
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
-                    No data
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex flex-col">
-              <div className="flex items-center mb-1">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 mr-2">
-                  <Weight className="h-3 w-3 text-amber-600" />
-                </div>
-                <span className="text-sm font-medium">
-                  {latestWeight !== null ? `${latestWeight.toFixed(1)} kg` : 'N/A'}
-                </span>
-              </div>
-              <div className="h-16 w-full">
-                {weightData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={weightData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                      <XAxis dataKey="time" hide />
-                      <YAxis hide domain={['auto', 'auto']} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Line
-                        type="monotone"
-                        dataKey="value"
-                        stroke="#d97706"
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 3 }}
-                        isAnimationActive={false}
-                        connectNulls
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
-                    No data
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <div className="text-xs text-muted-foreground text-right">
-            Updated: {getLatestUpdateTime()}
-          </div>
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-lg font-medium">{hive.name}</h3>
+          <p className="text-muted-foreground text-sm">{hive.apiaryName}</p>
         </div>
-      </CardContent>
-    </Card>
+        {hasAlerts && (
+          <motion.div
+            initial={{ scale: 0.8 }}
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ repeat: Infinity, repeatType: 'reverse', duration: 2 }}
+            className="bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-xs font-medium flex items-center"
+          >
+            <AlertTriangle className="h-3 w-3 mr-1" />
+            {hive.alerts.length} {hive.alerts.length === 1 ? 'Alert' : 'Alerts'}
+          </motion.div>
+        )}
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">Temperature</span>
+            <span className={cn("text-sm font-bold", tempColor)}>
+              {currentTemp.toFixed(1)} °C
+            </span>
+          </div>
+          <MetricGraph 
+            data={temperatureData} 
+            color="#ef4444" 
+            gradientId={tempGradientId} 
+            unit="°C"
+            min={25}
+            max={40}
+            className="h-[120px] sm:h-[140px]"
+          />
+        </div>
+        
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">Humidity</span>
+            <span className={cn("text-sm font-bold", humidityColor)}>
+              {currentHumidity.toFixed(0)} %
+            </span>
+          </div>
+          <MetricGraph 
+            data={humidityData} 
+            color="#0ea5e9" 
+            gradientId={humidityGradientId} 
+            unit="%"
+            min={30}
+            max={80}
+            className="h-[120px] sm:h-[140px]"
+          />
+        </div>
+        
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">Sound Level</span>
+            <span className="text-sm font-bold text-purple-600">
+              {currentSound.toFixed(0)} dB
+            </span>
+          </div>
+          <MetricGraph 
+            data={soundData} 
+            color="#8b5cf6" 
+            gradientId={soundGradientId} 
+            unit="dB"
+            min={20}
+            max={80}
+            className="h-[120px] sm:h-[140px]"
+          />
+        </div>
+        
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">Weight</span>
+            <span className="text-sm font-bold text-amber-600">
+              {currentWeight.toFixed(1)} kg
+            </span>
+          </div>
+          <MetricGraph 
+            data={weightData} 
+            color="#d97706" 
+            gradientId={weightGradientId} 
+            unit="kg"
+            min={5}
+            max={30}
+            className="h-[120px] sm:h-[140px]"
+          />
+        </div>
+      </div>
+      
+      <div className="mt-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
+        <div className="flex flex-wrap gap-2">
+          <span className="bg-secondary text-xs px-2 py-1 rounded-full">{hive.type}</span>
+          <span className="bg-secondary text-xs px-2 py-1 rounded-full">{hive.status}</span>
+        </div>
+        <div className="text-primary flex items-center text-sm font-medium hover:underline">
+          Details
+          <ChevronRight className="h-4 w-4 ml-1" />
+        </div>
+      </div>
+    </motion.div>
   );
 };
 
