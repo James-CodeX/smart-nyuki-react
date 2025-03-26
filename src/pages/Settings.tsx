@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bell, User, Lock, Thermometer, Droplets, Volume2, Weight, Save, Database, Download, Upload, RefreshCw, Languages, Monitor, Sun, Moon, PieChart, Share2, Eye, EyeOff, UserCircle, Share, Settings2 } from 'lucide-react';
+import { Bell, User, Lock, Thermometer, Droplets, Volume2, Weight, Save, Database, Download, Upload, RefreshCw, Languages, Monitor, Sun, Moon, PieChart, Share2, Eye, EyeOff, UserCircle, Share, Settings2, LogOut } from 'lucide-react';
 import PageTransition from '@/components/layout/PageTransition';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,8 @@ import {
   removeSharing
 } from '@/services/settingsService';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 // Profile Section
 const ProfileSection = () => {
@@ -1700,6 +1702,51 @@ const SharingSection = () => {
   );
 };
 
+// Logout Section
+const LogoutSection = () => {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await signOut();
+      navigate('/auth');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to log out. Please try again."
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="metric-card p-6">
+        <h3 className="text-lg font-medium mb-4">Account Logout</h3>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">Sign out of your account on this device.</p>
+          
+          <button 
+            className="w-full flex items-center justify-center gap-2 p-3 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-lg font-medium"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+          >
+            <LogOut className="h-5 w-5" />
+            {isLoggingOut ? 'Logging out...' : 'Logout'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');
   
@@ -1721,6 +1768,7 @@ const Settings = () => {
             <option value="sharing">Sharing & Privacy</option>
             <option value="security">Security</option>
             <option value="data">Data Management</option>
+            <option value="logout" className="text-destructive font-medium">Logout</option>
           </select>
         </div>
         
@@ -1795,6 +1843,17 @@ const Settings = () => {
                     <span>Data Management</span>
                   </button>
                 </li>
+                <li>
+                  <button
+                    className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 ${
+                      activeTab === 'logout' ? 'bg-destructive text-destructive-foreground' : 'hover:bg-secondary text-destructive hover:text-destructive'
+                    }`}
+                    onClick={() => setActiveTab('logout')}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Logout</span>
+                  </button>
+                </li>
               </ul>
             </div>
           </div>
@@ -1806,6 +1865,7 @@ const Settings = () => {
             {activeTab === 'sharing' && <SharingSection />}
             {activeTab === 'security' && <SecuritySection />}
             {activeTab === 'data' && <DataManagementSection />}
+            {activeTab === 'logout' && <LogoutSection />}
           </div>
         </div>
       </div>

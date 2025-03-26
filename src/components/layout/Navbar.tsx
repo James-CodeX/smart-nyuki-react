@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { Menu, X, Home, Grid, Menu as HiveIcon, Map, Settings, ChevronLeft, ChevronRight, BarChart3, ClipboardCheck, LogOut, BellRing } from 'lucide-react';
+import { Menu, X, Home, Grid, Menu as HiveIcon, Settings, ChevronLeft, ChevronRight, BarChart3, ClipboardCheck, BellRing } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 // SVG Logo component - directly embedded instead of imported
@@ -83,7 +83,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
     { name: 'Production', to: '/production', icon: BarChart3 },
     { name: 'Inspections', to: '/inspections', icon: ClipboardCheck },
     { name: 'Alerts', to: '/alerts', icon: BellRing },
-    { name: 'Map View', to: '/map', icon: Map },
     { name: 'Settings', to: '/settings', icon: Settings },
   ];
   
@@ -98,11 +97,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
 
   const toggleMobileMenu = () => {
     setIsMobileOpen(!isMobileOpen);
-  };
-
-  const handleLogout = async () => {
-    await signOut();
-    navigate('/auth');
   };
 
   return (
@@ -179,18 +173,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
           })}
         </nav>
         
-        {/* Logout Button */}
-        <button
-          onClick={handleLogout}
-          className={cn(
-            "flex items-center px-3 py-3 rounded-lg transition-colors text-muted-foreground hover:text-destructive hover:bg-destructive/10 mx-3 mb-3",
-            isCollapsed ? "justify-center" : "justify-start"
-          )}
-        >
-          <LogOut className={cn("h-5 w-5", isCollapsed ? "" : "mr-3")} />
-          {!isCollapsed && <span>Logout</span>}
-        </button>
-        
         {/* Button with updated event handler */}
         <button 
           onClick={toggleSidebar}
@@ -244,15 +226,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
                 </Link>
               );
             })}
-            
-            {/* Mobile Logout Button */}
-            <button
-              onClick={handleLogout}
-              className="flex items-center px-3 py-3 rounded-lg transition-colors text-muted-foreground hover:text-destructive hover:bg-destructive/10 w-full text-left"
-            >
-              <LogOut className="h-5 w-5 mr-3" />
-              <span>Logout</span>
-            </button>
           </nav>
         </motion.div>
       </motion.div>
