@@ -310,16 +310,28 @@ const InspectionDetail = () => {
       console.log('Updating inspection with:', updateData);
       console.log('Adding findings:', findingsData);
       
-      // Update the inspection
-      await updateInspection(id, updateData, findingsData);
+      try {
+        // Update the inspection
+        await updateInspection(id, updateData, findingsData);
+        console.log('Inspection update successful');
+      } catch (updateError) {
+        console.error('Error in updateInspection call:', updateError);
+        throw updateError;
+      }
       
-      // Update local state - need to preserve the UI fields that aren't in the database
-      setInspection({
-        ...updateData,
-        hive_name,
-        apiary_id,
-        apiary_name
-      });
+      try {
+        // Update local state - need to preserve the UI fields that aren't in the database
+        setInspection({
+          ...updateData,
+          hive_name,
+          apiary_id,
+          apiary_name
+        });
+        console.log('Local state update successful');
+      } catch (stateError) {
+        console.error('Error updating local state:', stateError);
+        // Don't throw - we want to continue even if state update fails
+      }
       
       toast({
         title: "Success",
@@ -328,12 +340,21 @@ const InspectionDetail = () => {
       
       setIsEditDialogOpen(false);
       
-      // Refresh the data
-      const updatedInspection = await getInspectionById(id);
-      setInspection(updatedInspection);
-      const updatedFindings = await getInspectionFindings(id);
-      setFindings(updatedFindings);
-      
+      try {
+        // Refresh the data
+        console.log('Refreshing inspection data');
+        const updatedInspection = await getInspectionById(id);
+        console.log('Retrieved updated inspection:', updatedInspection);
+        setInspection(updatedInspection);
+        
+        console.log('Refreshing findings data');
+        const updatedFindings = await getInspectionFindings(id);
+        console.log('Retrieved updated findings:', updatedFindings);
+        setFindings(updatedFindings);
+      } catch (refreshError) {
+        console.error('Error refreshing data after update:', refreshError);
+        // Don't throw - we want the user to see success even if refresh fails
+      }
     } catch (error) {
       console.error('Error completing inspection:', error);
       toast({

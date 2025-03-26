@@ -237,12 +237,14 @@ export const getInspectionById = async (inspectionId: string): Promise<Inspectio
       .eq('hive_id', inspection.hive_id)
       .single();
 
+    console.log('Hive data:', hive); // Debug log to see the structure
+
     // Transform the data to match our interface
     const transformedInspection = {
       ...inspection,
       hive_name: hive?.name || 'Unknown',
       apiary_id: hive?.apiary_id || '',
-      apiary_name: hive?.apiaries && hive.apiaries[0]?.name || 'Unknown',
+      apiary_name: (hive?.apiaries as any)?.name || 'Unknown',
     };
 
     return transformedInspection;
@@ -257,6 +259,23 @@ export const getInspectionById = async (inspectionId: string): Promise<Inspectio
  */
 export const getInspectionFindings = async (inspectionId: string): Promise<InspectionFindings | null> => {
   try {
+    // First check if any findings exist for this inspection
+    const { count, error: countError } = await supabase
+      .from('inspection_findings')
+      .select('*', { count: 'exact', head: true })
+      .eq('inspection_id', inspectionId);
+    
+    if (countError) {
+      throw countError;
+    }
+    
+    // If no findings exist, return null immediately
+    if (count === 0) {
+      console.log('No findings found for inspection:', inspectionId);
+      return null;
+    }
+    
+    // If we have findings, fetch them
     const { data: findings, error } = await supabase
       .from('inspection_findings')
       .select('*')
@@ -264,16 +283,14 @@ export const getInspectionFindings = async (inspectionId: string): Promise<Inspe
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null; // No findings found
-      }
       throw error;
     }
 
     return findings;
   } catch (error) {
     console.error('Error fetching inspection findings:', error);
-    throw error;
+    // Return null instead of throwing to prevent UI errors when findings don't exist
+    return null;
   }
 };
 
@@ -435,18 +452,18 @@ export const updateInspection = async (
     if (findings) {
       console.log('Processing findings data:', findings);
       
-      // Check if findings already exist
-      const { data: existingFindings, error: findingsQueryError } = await supabase
+      // Check if findings already exist - use count to avoid .single() error
+      const { count, error: countError } = await supabase
         .from('inspection_findings')
-        .select('id')
-        .eq('inspection_id', id)
-        .single();
-
-      if (findingsQueryError && findingsQueryError.code !== 'PGRST116') {
-        // If error other than 'not found', throw it
-        console.error('Error checking existing findings:', findingsQueryError);
-        throw findingsQueryError;
+        .select('*', { count: 'exact', head: true })
+        .eq('inspection_id', id);
+      
+      if (countError) {
+        console.error('Error checking existing findings count:', countError);
+        throw countError;
       }
+      
+      const existingFindings = count > 0;
 
       // Ensure required fields have values
       const completeFindings = {
@@ -463,7 +480,7 @@ export const updateInspection = async (
 
       if (existingFindings) {
         // Update existing findings
-        console.log('Updating existing findings:', existingFindings.id);
+        console.log('Updating existing findings for inspection:', id);
         const { error: findingsError } = await supabase
           .from('inspection_findings')
           .update({
