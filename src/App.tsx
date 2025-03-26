@@ -20,6 +20,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Production = lazy(() => import("./pages/Production"));
 const Inspections = lazy(() => import("./pages/Inspections"));
 const InspectionDetail = lazy(() => import("./pages/InspectionDetail"));
+const Alerts = lazy(() => import("./pages/Alerts"));
 const Auth = lazy(() => import("./pages/Auth"));
 
 import Sidebar from "./components/layout/Navbar";
@@ -155,6 +156,16 @@ const AppRoutes = () => {
             <ProtectedRoute>
               <PageWrapper>
                 <InspectionDetail />
+              </PageWrapper>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/alerts"
+          element={
+            <ProtectedRoute>
+              <PageWrapper>
+                <Alerts />
               </PageWrapper>
             </ProtectedRoute>
           }

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { Menu, X, Home, Grid, Menu as HiveIcon, Map, Settings, ChevronLeft, ChevronRight, BarChart3, ClipboardCheck, LogOut } from 'lucide-react';
+import { Menu, X, Home, Grid, Menu as HiveIcon, Map, Settings, ChevronLeft, ChevronRight, BarChart3, ClipboardCheck, LogOut, BellRing } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 interface SidebarProps {
@@ -51,6 +51,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
     { name: 'Hives', to: '/hives', icon: HiveIcon },
     { name: 'Production', to: '/production', icon: BarChart3 },
     { name: 'Inspections', to: '/inspections', icon: ClipboardCheck },
+    { name: 'Alerts', to: '/alerts', icon: BellRing },
     { name: 'Map View', to: '/map', icon: Map },
     { name: 'Settings', to: '/settings', icon: Settings },
   ];

@@ -61,20 +61,10 @@ export interface InspectionWithHiveDetails extends Inspection {
  */
 export const getAllInspections = async (): Promise<InspectionWithHiveDetails[]> => {
   try {
+    // First get the inspections
     const { data: inspections, error } = await supabase
       .from('inspections')
-      .select(`
-        *,
-        hives (
-          id,
-          name,
-          apiary_id,
-          apiaries (
-            id,
-            name
-          )
-        )
-      `)
+      .select('*')
       .order('inspection_date', { ascending: false });
 
     if (error) {
@@ -85,13 +75,35 @@ export const getAllInspections = async (): Promise<InspectionWithHiveDetails[]> 
       return [];
     }
 
+    // Get all the hives for lookup
+    const { data: hives } = await supabase
+      .from('hives')
+      .select(`
+        hive_id,
+        name,
+        apiary_id,
+        apiaries (
+          id,
+          name
+        )
+      `);
+
+    // Create a map of hives by hive_id for fast lookup
+    const hivesMap = (hives || []).reduce((map, hive) => {
+      map[hive.hive_id] = hive;
+      return map;
+    }, {});
+
     // Transform the data to match our interface
-    const transformedInspections = inspections.map(inspection => ({
-      ...inspection,
-      hive_name: inspection.hives?.name || 'Unknown',
-      apiary_id: inspection.hives?.apiary_id || '',
-      apiary_name: inspection.hives?.apiaries?.name || 'Unknown',
-    }));
+    const transformedInspections = inspections.map(inspection => {
+      const hive = hivesMap[inspection.hive_id];
+      return {
+        ...inspection,
+        hive_name: hive?.name || 'Unknown',
+        apiary_id: hive?.apiary_id || '',
+        apiary_name: hive?.apiaries?.name || 'Unknown',
+      };
+    });
 
     return transformedInspections;
   } catch (error) {
@@ -127,21 +139,38 @@ export const getInspectionsByHive = async (hiveId: string): Promise<Inspection[]
  */
 export const getInspectionsByApiary = async (apiaryId: string): Promise<InspectionWithHiveDetails[]> => {
   try {
-    const { data: inspections, error } = await supabase
-      .from('inspections')
+    // Get all hives for this apiary
+    const { data: hives } = await supabase
+      .from('hives')
       .select(`
-        *,
-        hives (
+        hive_id,
+        name,
+        apiary_id,
+        apiaries (
           id,
-          name,
-          apiary_id,
-          apiaries (
-            id,
-            name
-          )
+          name
         )
       `)
-      .eq('hives.apiary_id', apiaryId)
+      .eq('apiary_id', apiaryId);
+    
+    if (!hives?.length) {
+      return [];
+    }
+    
+    // Extract hive_ids
+    const hiveIds = hives.map(hive => hive.hive_id);
+    
+    // Create a map of hives by hive_id for fast lookup
+    const hivesMap = hives.reduce((map, hive) => {
+      map[hive.hive_id] = hive;
+      return map;
+    }, {});
+    
+    // Get all inspections for these hives
+    const { data: inspections, error } = await supabase
+      .from('inspections')
+      .select('*')
+      .in('hive_id', hiveIds)
       .order('inspection_date', { ascending: false });
 
     if (error) {
@@ -153,12 +182,15 @@ export const getInspectionsByApiary = async (apiaryId: string): Promise<Inspecti
     }
 
     // Transform the data to match our interface
-    const transformedInspections = inspections.map(inspection => ({
-      ...inspection,
-      hive_name: inspection.hives?.name || 'Unknown',
-      apiary_id: inspection.hives?.apiary_id || '',
-      apiary_name: inspection.hives?.apiaries?.name || 'Unknown',
-    }));
+    const transformedInspections = inspections.map(inspection => {
+      const hive = hivesMap[inspection.hive_id];
+      return {
+        ...inspection,
+        hive_name: hive?.name || 'Unknown',
+        apiary_id: hive?.apiary_id || '',
+        apiary_name: hive?.apiaries?.name || 'Unknown',
+      };
+    });
 
     return transformedInspections;
   } catch (error) {
@@ -172,20 +204,10 @@ export const getInspectionsByApiary = async (apiaryId: string): Promise<Inspecti
  */
 export const getInspectionById = async (inspectionId: string): Promise<InspectionWithHiveDetails | null> => {
   try {
+    // Get the inspection
     const { data: inspection, error } = await supabase
       .from('inspections')
-      .select(`
-        *,
-        hives (
-          id,
-          name,
-          apiary_id,
-          apiaries (
-            id,
-            name
-          )
-        )
-      `)
+      .select('*')
       .eq('id', inspectionId)
       .single();
 
@@ -200,12 +222,27 @@ export const getInspectionById = async (inspectionId: string): Promise<Inspectio
       return null;
     }
 
+    // Get the hive details
+    const { data: hive } = await supabase
+      .from('hives')
+      .select(`
+        hive_id,
+        name,
+        apiary_id,
+        apiaries (
+          id,
+          name
+        )
+      `)
+      .eq('hive_id', inspection.hive_id)
+      .single();
+
     // Transform the data to match our interface
     const transformedInspection = {
       ...inspection,
-      hive_name: inspection.hives?.name || 'Unknown',
-      apiary_id: inspection.hives?.apiary_id || '',
-      apiary_name: inspection.hives?.apiaries?.name || 'Unknown',
+      hive_name: hive?.name || 'Unknown',
+      apiary_id: hive?.apiary_id || '',
+      apiary_name: hive?.apiaries?.name || 'Unknown',
     };
 
     return transformedInspection;
