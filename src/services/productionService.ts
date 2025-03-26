@@ -48,6 +48,19 @@ export interface ApiaryProductionSummary {
   }[];
 }
 
+export interface EnhancedForecastData {
+  month: string;
+  actual: number;
+  projected: number;
+  confidence: number; // 0-100 confidence percentage
+  factors: {
+    weight: number;
+    harvestFrequency: number;
+    seasonal: number;
+    historical: number;
+  };
+}
+
 /**
  * Get all production data for all apiaries
  */
@@ -630,88 +643,261 @@ export const getProductionTimeSeries = async (
 };
 
 /**
- * Get forecast data for projected vs actual production
+ * Get forecast data for projected vs actual production with enhanced accuracy
+ * @param timeframe Time period to analyze ('month' | 'quarter' | 'year')
+ * @param hiveId Optional hive ID to filter by
  * @param apiaryId Optional apiary ID to filter by
- * @returns Array of forecast data points
+ * @returns Array of enhanced forecast data points
  */
 export const getProductionForecast = async (
+  timeframe: 'month' | 'quarter' | 'year' = 'month',
+  hiveId?: string,
   apiaryId?: string
-): Promise<{ month: string; projected: number; actual: number }[]> => {
+): Promise<EnhancedForecastData[]> => {
   try {
-    // Get actual production data by month for the current year
-    const currentYear = new Date().getFullYear();
-    let query = supabase
-      .from('hive_production_data')
-      .select('date, amount, apiary_id, projected_harvest')
-      .gte('date', `${currentYear}-01-01`)
-      .lte('date', `${currentYear}-12-31`);
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
     
-    if (apiaryId) {
-      query = query.eq('apiary_id', apiaryId);
+    // Define date ranges based on timeframe
+    let startDate: string;
+    let historyMonths: number;
+    
+    switch (timeframe) {
+      case 'quarter':
+        startDate = new Date(currentYear, currentMonth - 3, 1).toISOString().split('T')[0];
+        historyMonths = 12; // Use 1 year of data for quarterly forecasts
+        break;
+      case 'year':
+        startDate = new Date(currentYear, 0, 1).toISOString().split('T')[0];
+        historyMonths = 36; // Use 3 years of data for yearly forecasts
+        break;
+      case 'month':
+      default:
+        startDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0];
+        historyMonths = 6; // Use 6 months of data for monthly forecasts
     }
     
-    const { data, error } = await query;
+    // Get historical production data
+    let historyStartDate = new Date(currentYear, currentMonth - historyMonths, 1).toISOString().split('T')[0];
+    let productionQuery = supabase
+      .from('hive_production_data')
+      .select('date, amount, hive_id, apiary_id, projected_harvest, type')
+      .gte('date', historyStartDate);
     
-    if (error) {
-      console.error('Error fetching production forecast data:', error);
+    // Apply filters if provided
+    if (hiveId) {
+      productionQuery = productionQuery.eq('hive_id', hiveId);
+    } else if (apiaryId) {
+      productionQuery = productionQuery.eq('apiary_id', apiaryId);
+    }
+    
+    const { data: productionData, error: productionError } = await productionQuery;
+    
+    if (productionError) {
+      console.error('Error fetching production history data:', productionError);
       return [];
     }
     
-    // Group data by month
-    const groupedData = data.reduce((acc, record) => {
+    // Get weight data for each relevant hive
+    const hiveIds = hiveId 
+      ? [hiveId] 
+      : [...new Set(productionData.map(record => record.hive_id))];
+    
+    // Get weight data for the hives
+    const weightDataByHive: Record<string, { date: string; weight: number }[]> = {};
+    
+    await Promise.all(hiveIds.map(async (id) => {
+      const { data: weightData, error: weightError } = await supabase
+        .from('metrics_time_series_data')
+        .select('timestamp, weight_value')
+        .eq('hive_id', id)
+        .gte('timestamp', historyStartDate)
+        .order('timestamp', { ascending: true });
+      
+      if (!weightError && weightData && weightData.length > 0) {
+        weightDataByHive[id] = weightData
+          .filter(d => d.weight_value !== null)
+          .map(d => ({
+            date: d.timestamp.split('T')[0],
+            weight: parseFloat(d.weight_value)
+          }));
+      }
+    }));
+    
+    // Get seasonal patterns from historical data
+    // Group data by month to identify seasonal patterns
+    const seasonalPatterns = productionData.reduce((acc, record) => {
       const date = new Date(record.date);
-      const month = date.toLocaleString('default', { month: 'short' });
+      const month = date.getMonth();
       
       if (!acc[month]) {
         acc[month] = {
-          actual: 0,
-          projected: 0
+          count: 0,
+          total: 0
         };
       }
       
-      acc[month].actual += record.amount;
-      
-      if (record.projected_harvest) {
-        acc[month].projected += record.projected_harvest;
-      }
+      acc[month].count += 1;
+      acc[month].total += record.amount;
       
       return acc;
-    }, {});
+    }, Array(12).fill(null).map(() => ({ count: 0, total: 0 })));
     
-    // Create an array of all months
+    // Calculate average production by month
+    const monthlyAverages = seasonalPatterns.map(data => 
+      data.count > 0 ? data.total / data.count : 0
+    );
+    
+    // Calculate highest monthly average to normalize seasonal factors
+    const maxMonthlyAvg = Math.max(...monthlyAverages.filter(v => v > 0)) || 1;
+    
+    // Calculate seasonal factors (0-1 scale where 1 is the best producing month)
+    const seasonalFactors = monthlyAverages.map(avg => avg / maxMonthlyAvg);
+    
+    // Calculate harvest frequency per hive
+    const harvestFrequencyByHive: Record<string, number> = {};
+    
+    hiveIds.forEach(id => {
+      const hiveRecords = productionData.filter(record => record.hive_id === id);
+      if (hiveRecords.length < 2) {
+        harvestFrequencyByHive[id] = 0; // Not enough data for frequency
+      } else {
+        // Sort records by date
+        const sortedRecords = [...hiveRecords].sort((a, b) => 
+          new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+        
+        // Calculate average days between harvests
+        let totalDays = 0;
+        for (let i = 1; i < sortedRecords.length; i++) {
+          const currentDate = new Date(sortedRecords[i].date);
+          const prevDate = new Date(sortedRecords[i-1].date);
+          const diffDays = Math.round((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+          totalDays += diffDays;
+        }
+        
+        const avgDaysBetweenHarvests = totalDays / (sortedRecords.length - 1);
+        harvestFrequencyByHive[id] = avgDaysBetweenHarvests;
+      }
+    });
+    
+    // Create an array of all months for our forecast
     const allMonths = [
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
     
-    // Fill in missing months with estimated projections
-    const forecastData = allMonths.map(month => {
-      if (!groupedData[month]) {
-        // For future months, estimate projections based on hive count
-        const currentMonth = new Date().getMonth();
-        const monthIndex = allMonths.indexOf(month);
+    // Generate forecast data
+    const forecastMonths = timeframe === 'year' ? 12 : (timeframe === 'quarter' ? 3 : 1);
+    const forecastData: EnhancedForecastData[] = [];
+    
+    for (let i = 0; i < forecastMonths; i++) {
+      const forecastMonth = (currentMonth + i) % 12;
+      const forecastYear = currentYear + Math.floor((currentMonth + i) / 12);
+      
+      // Get actual production data for this month if it exists
+      const actualProduction = productionData
+        .filter(record => {
+          const recordDate = new Date(record.date);
+          return recordDate.getMonth() === forecastMonth && recordDate.getFullYear() === forecastYear;
+        })
+        .reduce((sum, record) => sum + record.amount, 0);
+      
+      // Calculate projected production
+      let projectedProduction = 0;
+      let confidenceScore = 0;
+      let weightFactor = 0;
+      let harvestFrequencyFactor = 0;
+      let seasonalFactor = seasonalFactors[forecastMonth] || 0;
+      let historicalFactor = 0;
+      
+      // Calculate per-hive forecasts and aggregate
+      let validHiveCount = 0;
+      
+      hiveIds.forEach(id => {
+        // Get latest weight for this hive
+        const hiveWeightData = weightDataByHive[id] || [];
+        const latestWeight = hiveWeightData.length > 0 
+          ? hiveWeightData[hiveWeightData.length - 1].weight 
+          : 0;
         
-        if (monthIndex > currentMonth) {
-          return {
-            month,
-            actual: 0,
-            projected: Math.random() * 10 + 5 // Random projection for demo
-          };
+        // Get historical production for this hive in this month
+        const hiveHistoricalData = productionData.filter(record => {
+          const recordDate = new Date(record.date);
+          return record.hive_id === id && 
+                 recordDate.getMonth() === forecastMonth && 
+                 recordDate.getFullYear() < forecastYear;
+        });
+        
+        const hiveHistoricalAvg = hiveHistoricalData.length > 0
+          ? hiveHistoricalData.reduce((sum, record) => sum + record.amount, 0) / hiveHistoricalData.length
+          : 0;
+        
+        // Skip hives with no data
+        if (latestWeight === 0 && hiveHistoricalAvg === 0) {
+          return;
         }
         
-        return {
-          month,
-          actual: 0,
-          projected: 0
-        };
+        validHiveCount++;
+        
+        // Weight-based projection (heavier hives tend to produce more)
+        // Assume 10% of weight above 20kg is harvestable honey
+        const weightBasedProduction = latestWeight > 20 ? (latestWeight - 20) * 0.1 : 0;
+        
+        // Frequency-based adjustment
+        const frequencyAdjustment = harvestFrequencyByHive[id] > 0 
+          ? 1 / (harvestFrequencyByHive[id] / 30) // Normalize to monthly frequency
+          : 0;
+        
+        // Calculate confidence for this hive's prediction
+        const hiveConfidence = Math.min(
+          100,
+          (latestWeight > 0 ? 30 : 0) + 
+          (hiveHistoricalAvg > 0 ? 40 : 0) + 
+          (harvestFrequencyByHive[id] > 0 ? 30 : 0)
+        );
+        
+        // Calculate individual hive projection
+        const hiveProjection = Math.max(
+          weightBasedProduction,
+          hiveHistoricalAvg * seasonalFactor * frequencyAdjustment
+        );
+        
+        // Add to totals
+        projectedProduction += hiveProjection;
+        confidenceScore += hiveConfidence;
+        weightFactor += latestWeight > 0 ? (latestWeight / 100) : 0; // Normalize to 0-1 scale
+        harvestFrequencyFactor += frequencyAdjustment > 0 ? Math.min(1, frequencyAdjustment / 3) : 0;
+        historicalFactor += hiveHistoricalAvg > 0 ? 1 : 0;
+      });
+      
+      // Average the factors across hives
+      if (validHiveCount > 0) {
+        confidenceScore /= validHiveCount;
+        weightFactor /= validHiveCount;
+        harvestFrequencyFactor /= validHiveCount;
+        historicalFactor /= validHiveCount;
+      } else {
+        // Fallback when no valid hives with data
+        projectedProduction = Math.random() * 10 + 5; // Random projection
+        confidenceScore = 10; // Very low confidence
       }
       
-      return {
-        month,
-        actual: Number(groupedData[month].actual.toFixed(1)),
-        projected: Number(groupedData[month].projected.toFixed(1))
-      };
-    });
+      // Round values for cleaner display
+      forecastData.push({
+        month: allMonths[forecastMonth],
+        actual: Number(actualProduction.toFixed(1)),
+        projected: Number(projectedProduction.toFixed(1)),
+        confidence: Math.round(confidenceScore),
+        factors: {
+          weight: Number(weightFactor.toFixed(2)),
+          harvestFrequency: Number(harvestFrequencyFactor.toFixed(2)),
+          seasonal: Number(seasonalFactor.toFixed(2)),
+          historical: Number(historicalFactor.toFixed(2))
+        }
+      });
+    }
     
     return forecastData;
   } catch (error) {

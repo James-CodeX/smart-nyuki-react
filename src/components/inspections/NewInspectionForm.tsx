@@ -75,12 +75,20 @@ const NewInspectionForm: React.FC<NewInspectionFormProps> = ({
   preselectedHiveId,
   preselectedApiaryId
 }) => {
+  // Debug logs for props
+  console.log("NewInspectionForm props:", { 
+    apiaries, 
+    hives, 
+    preselectedHiveId, 
+    preselectedApiaryId 
+  });
+  
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [apiaryId, setApiaryId] = useState<string>(preselectedApiaryId || '');
-  const [filteredHives, setFilteredHives] = useState(hives);
+  const [filteredHives, setFilteredHives] = useState<any[]>(hives);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadedApiaries, setLoadedApiaries] = useState<Array<{ id: string; name: string }>>(apiaries);
-  const [loadedHives, setLoadedHives] = useState<Array<{ id: string; name: string; apiary_id: string }>>(hives);
+  const [loadedHives, setLoadedHives] = useState<any[]>(hives);
   
   // Set initial values, using initialDate if provided
   const initialValues = {
@@ -134,11 +142,21 @@ const NewInspectionForm: React.FC<NewInspectionFormProps> = ({
   
   // Filter hives when apiary selection changes
   useEffect(() => {
+    console.log("Apiary selected:", apiaryId);
     const hivesToFilter = loadedHives.length > 0 ? loadedHives : hives;
-    if (apiaryId) {
+    console.log("Available hives to filter:", hivesToFilter);
+    
+    if (apiaryId && hivesToFilter.length > 0) {
+      // Debug each hive to see what's there
+      hivesToFilter.forEach(hive => {
+        console.log("Checking hive:", hive, "apiary_id:", hive.apiary_id, "against selected:", apiaryId);
+      });
+      
       const filtered = hivesToFilter.filter(hive => hive.apiary_id === apiaryId);
+      console.log("Filtered hives for apiary:", filtered);
       setFilteredHives(filtered);
     } else {
+      console.log("No apiary selected or no hives, showing all hives");
       setFilteredHives(hivesToFilter);
     }
   }, [apiaryId, hives, loadedHives]);
@@ -216,7 +234,9 @@ const NewInspectionForm: React.FC<NewInspectionFormProps> = ({
   
   // Ensure filteredHives is always an array
   const hivesToDisplay = Array.isArray(filteredHives) ? filteredHives : [];
+  console.log("HivesToDisplay when rendering:", hivesToDisplay);
   const displayApiaries = loadedApiaries.length > 0 ? loadedApiaries : apiaries;
+  console.log("DisplayApiaries when rendering:", displayApiaries);
 
   return (
     <Form {...form}>
@@ -275,12 +295,12 @@ const NewInspectionForm: React.FC<NewInspectionFormProps> = ({
                   <SelectContent>
                     {hivesToDisplay.length > 0 ? (
                       hivesToDisplay.map((hive) => (
-                        <SelectItem key={hive.id} value={hive.id}>
+                        <SelectItem key={hive.hive_id || hive.id} value={hive.hive_id || hive.id}>
                           {hive.name}
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="none" disabled>No hives available</SelectItem>
+                      <SelectItem key="no-hives" value="none" disabled>No hives available</SelectItem>
                     )}
                   </SelectContent>
                 </Select>

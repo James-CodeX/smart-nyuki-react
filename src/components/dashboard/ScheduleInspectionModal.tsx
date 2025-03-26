@@ -47,6 +47,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 
 interface ScheduleInspectionModalProps {
   isOpen: boolean;
@@ -65,7 +66,7 @@ const formSchema = z.object({
   }),
   type: z.enum(['regular', 'health-check', 'winter-prep', 'varroa-check', 'disease-treatment', 'harvest-evaluation'], {
     required_error: "Please select an inspection type",
-  }),
+  }).optional(),
   notes: z.string().optional(),
 });
 
@@ -101,14 +102,30 @@ const ScheduleInspectionModal: React.FC<ScheduleInspectionModalProps> = ({
         throw new Error('Selected hive not found');
       }
       
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) {
+        console.error('Error getting user:', userError);
+        throw new Error('Failed to authenticate user');
+      }
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
       // Prepare inspection data
       const inspectionData = {
         hive_id: data.hiveId,
         inspection_date: format(data.inspectionDate, 'yyyy-MM-dd'),
-        type: data.type,
-        status: 'scheduled',
         notes: data.notes || '',
+        user_id: user.id, // Include user_id which is required by RLS policy
       };
+      
+      // Store the type/status as notes if needed for display purposes
+      if (data.type) {
+        inspectionData.notes = `Type: ${data.type}${inspectionData.notes ? '\n\n' + inspectionData.notes : ''}`;
+      }
+      
+      console.log('Creating inspection with data:', inspectionData);
       
       // Create the inspection
       await createInspection(inspectionData);
