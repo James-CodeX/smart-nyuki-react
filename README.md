@@ -1,69 +1,148 @@
-# Welcome to your Lovable project
+# Smart Nyuki - Modern Beekeeping Management System
 
-## Project info
+![Smart Nyuki Logo](public/logo.png)
 
-**URL**: https://lovable.dev/projects/9c23ace8-81e2-4219-8561-834465d7eb9d
+Smart Nyuki is a comprehensive beekeeping management application that empowers beekeepers to efficiently track and optimize their apiaries, hives, and honey production. The name "Nyuki" means "bee" in Swahili, reflecting the application's focus on beekeeping.
 
-## How can I edit this code?
+## 🐝 Overview
 
-There are several ways of editing your application.
+Smart Nyuki provides beekeepers with a complete ecosystem for monitoring and managing their beekeeping operations. The application combines intuitive user interface with powerful analytics capabilities to help beekeepers make data-driven decisions, improve hive health, and maximize honey production.
 
-**Use Lovable**
+## ✨ Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/9c23ace8-81e2-4219-8561-834465d7eb9d) and start prompting.
+### Apiary Management
+- Create and manage multiple apiaries with detailed location information
+- Track environmental conditions for each apiary
+- Monitor apiary-wide statistics and metrics
 
-Changes made via Lovable will be committed automatically to this repo.
+### Hive Tracking
+- Maintain detailed records for each beehive
+- Track queen information (introduction date, type, marking)
+- Monitor hive health and status in real-time
 
-**Use your preferred IDE**
+### Inspections
+- Record comprehensive inspection data
+- Track hive strength, diseases, queen sightings, and more
+- Document treatments and interventions
+- Attach images to inspection records
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Data Collection & Monitoring
+- Real-time metrics for temperature, humidity, sound, and weight
+- Automated alerts for abnormal conditions
+- Historical data visualization and trend analysis
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Production Tracking
+- Record honey and other hive product harvests
+- Track production statistics by apiary, hive, and time period
+- Analyze production efficiency and quality
 
-Follow these steps:
+### Weather Integration
+- Local weather forecasts for apiaries
+- Weather data correlation with hive performance
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Alerts System
+- Receive notifications about critical hive conditions
+- Customizable alert thresholds
+- Alert prioritization based on severity
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Data Management
+- Export and import your beekeeping data
+- Create data backups
+- Analyze comprehensive statistics
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Comprehensive Settings
+- Personalize your profile
+- Configure notification preferences
+- Customize appearance settings
+- Manage security and sharing preferences
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+## 🚀 Technology Stack
+
+- **Frontend**: React, TypeScript, Tailwind CSS, shadcn/ui
+- **State Management**: React Query
+- **Authentication**: Supabase Auth
+- **Database**: PostgreSQL (Supabase)
+- **Storage**: Supabase Storage
+- **Animations**: Framer Motion
+- **Data Visualization**: Recharts, Tremor
+- **Forms**: React Hook Form, Zod validation
+- **Deployment**: Netlify
+
+## 📊 Database Schema
+
+Smart Nyuki uses a comprehensive PostgreSQL database with the following core tables:
+
+- **Profiles**: User profile information
+- **Apiaries**: Beekeeping locations
+- **Hives**: Individual beehives
+- **Inspections**: Detailed inspection records
+- **Metrics**: Core sensor data (temperature, humidity, sound, weight)
+- **Metrics_Time_Series_Data**: Time-series monitoring data
+- **Alerts**: System-generated notifications
+- **Hive_Production_Data**: Records of honey and other products
+- **Production_Summary**: Aggregated production statistics
+
+For a complete database schema, see [DatabaseSetup.md](DatabaseSetup.md).
+
+## 🏗️ Project Structure
+
+```
+src/
+├── assets/         # Static assets and images
+├── components/     # Reusable UI components
+│   ├── dashboard/  # Dashboard-specific components
+│   ├── layout/     # Layout components (sidebar, navigation)
+│   └── ui/         # Shared UI components
+├── context/        # React context providers
+├── hooks/          # Custom React hooks
+├── lib/            # Library configurations
+├── pages/          # Main application pages
+├── services/       # API and data services
+└── utils/          # Utility functions
 ```
 
-**Edit a file directly in GitHub**
+## 🛠️ Development Setup
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/James-CodeX/smart-nyuki-react.git
+   cd smart-nyuki-react
+   ```
 
-**Use GitHub Codespaces**
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+3. Set up environment variables:
+   - Copy `.env.example` to `.env`
+   - Update the Supabase URL and API key
 
-## What technologies are used for this project?
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-This project is built with .
+5. Open your browser to `http://localhost:5173`
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 📱 Mobile Support
 
-## How can I deploy this project?
+Smart Nyuki is designed with a responsive layout that works on both desktop and mobile devices, allowing beekeepers to access their data from anywhere.
 
-Simply open [Lovable](https://lovable.dev/projects/9c23ace8-81e2-4219-8561-834465d7eb9d) and click on Share -> Publish.
+## 🔒 Security
 
-## I want to use a custom domain - is that possible?
+- Authentication via Supabase Auth
+- Row-level security policies for data protection
+- Secure API access with token authentication
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+## 🤝 Contributing
+
+Contributions to Smart Nyuki are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 📞 Contact
+
+For any questions or support, please reach out to [James-CodeX](mailto:james.nyakairu@students.jkuat.ac.ke).
