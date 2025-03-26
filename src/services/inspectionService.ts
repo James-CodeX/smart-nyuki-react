@@ -241,41 +241,61 @@ export const getInspectionFindings = async (inspectionId: string): Promise<Inspe
 };
 
 /**
- * Create a new inspection
+ * Create a new inspection with the option to add findings data
+ * @param inspectionData - The inspection data to create
+ * @param findingsData - Optional findings data to create
+ * @returns The created inspection
  */
 export const createInspection = async (
-  inspectionData: Omit<Inspection, 'id' | 'created_at' | 'updated_at'>,
-  findingsData?: Omit<InspectionFindings, 'id' | 'created_at' | 'updated_at' | 'inspection_id'>
+  inspectionData: Partial<Omit<Inspection, 'id' | 'created_at' | 'updated_at'>>,
+  findingsData?: Partial<Omit<InspectionFindings, 'id' | 'created_at' | 'updated_at' | 'inspection_id'>>
 ): Promise<Inspection> => {
   try {
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError) throw userError;
-    if (!user) throw new Error('User not authenticated');
+    // Set default values for boolean fields if not provided
+    const defaultedInspectionData = {
+      queen_seen: false,
+      eggs_seen: false,
+      larvae_seen: false,
+      queen_cells_seen: false,
+      disease_signs: false,
+      varroa_check: false,
+      feed_added: false,
+      medications_added: false,
+      ...inspectionData
+    };
 
-    // Start a transaction by using a single query connection
-    const { data: newInspection, error: inspectionError } = await supabase
+    // Insert the inspection
+    const { data: inspection, error } = await supabase
       .from('inspections')
-      .insert({ ...inspectionData, user_id: user.id })
-      .select()
+      .insert(defaultedInspectionData)
+      .select('*')
       .single();
 
-    if (inspectionError) throw inspectionError;
+    if (error) throw error;
 
-    // If we have findings data, insert it
-    if (findingsData && newInspection) {
+    // If findings data is provided, create findings record
+    if (findingsData && Object.keys(findingsData).length > 0) {
+      // Default values for required fields in findings
+      const defaultedFindingsData = {
+        queen_sighted: false,
+        brood_pattern: 1,
+        honey_stores: 3,
+        population_strength: 5,
+        temperament: 3,
+        diseases_sighted: false,
+        ...findingsData,
+        inspection_id: inspection.id,
+        user_id: inspection.user_id,
+      };
+
       const { error: findingsError } = await supabase
         .from('inspection_findings')
-        .insert({
-          ...findingsData,
-          inspection_id: newInspection.id,
-          user_id: user.id
-        });
+        .insert(defaultedFindingsData);
 
       if (findingsError) throw findingsError;
     }
 
-    return newInspection;
+    return inspection;
   } catch (error) {
     console.error('Error creating inspection:', error);
     throw error;
@@ -283,59 +303,156 @@ export const createInspection = async (
 };
 
 /**
- * Update an existing inspection
+ * Update an existing inspection and optionally its findings
+ * @param id - The inspection id
+ * @param inspection - The updated inspection data
+ * @param findings - Optional findings data to update or create
+ * @returns The updated inspection
  */
 export const updateInspection = async (
-  inspectionId: string,
-  inspectionData: Partial<Omit<Inspection, 'id' | 'created_at' | 'updated_at' | 'user_id'>>,
-  findingsData?: Partial<Omit<InspectionFindings, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'inspection_id'>>
+  id: string,
+  inspection: Partial<Inspection>,
+  findings?: Partial<InspectionFindings>
 ): Promise<Inspection> => {
   try {
+    console.log('Updating inspection with data:', inspection);
+    
+    // Extract only valid database fields to prevent errors
+    const {
+      hive_id,
+      inspection_date,
+      weight,
+      temperature,
+      humidity, 
+      weather_conditions,
+      hive_strength,
+      queen_seen,
+      eggs_seen,
+      larvae_seen,
+      queen_cells_seen,
+      disease_signs,
+      disease_details,
+      varroa_check,
+      varroa_count,
+      honey_stores,
+      pollen_stores,
+      added_supers,
+      removed_supers,
+      feed_added,
+      feed_type,
+      feed_amount,
+      medications_added,
+      medication_details,
+      notes,
+      images,
+      user_id
+    } = inspection;
+
+    // Build a clean update object with only the fields that exist
+    const updateObj: any = {};
+    if (hive_id !== undefined) updateObj.hive_id = hive_id;
+    if (inspection_date !== undefined) updateObj.inspection_date = inspection_date;
+    if (weight !== undefined) updateObj.weight = weight;
+    if (temperature !== undefined) updateObj.temperature = temperature;
+    if (humidity !== undefined) updateObj.humidity = humidity;
+    if (weather_conditions !== undefined) updateObj.weather_conditions = weather_conditions;
+    if (hive_strength !== undefined) updateObj.hive_strength = hive_strength;
+    if (queen_seen !== undefined) updateObj.queen_seen = queen_seen;
+    if (eggs_seen !== undefined) updateObj.eggs_seen = eggs_seen;
+    if (larvae_seen !== undefined) updateObj.larvae_seen = larvae_seen;
+    if (queen_cells_seen !== undefined) updateObj.queen_cells_seen = queen_cells_seen;
+    if (disease_signs !== undefined) updateObj.disease_signs = disease_signs;
+    if (disease_details !== undefined) updateObj.disease_details = disease_details;
+    if (varroa_check !== undefined) updateObj.varroa_check = varroa_check;
+    if (varroa_count !== undefined) updateObj.varroa_count = varroa_count;
+    if (honey_stores !== undefined) updateObj.honey_stores = honey_stores;
+    if (pollen_stores !== undefined) updateObj.pollen_stores = pollen_stores;
+    if (added_supers !== undefined) updateObj.added_supers = added_supers;
+    if (removed_supers !== undefined) updateObj.removed_supers = removed_supers;
+    if (feed_added !== undefined) updateObj.feed_added = feed_added;
+    if (feed_type !== undefined) updateObj.feed_type = feed_type;
+    if (feed_amount !== undefined) updateObj.feed_amount = feed_amount;
+    if (medications_added !== undefined) updateObj.medications_added = medications_added;
+    if (medication_details !== undefined) updateObj.medication_details = medication_details;
+    if (notes !== undefined) updateObj.notes = notes;
+    if (images !== undefined) updateObj.images = images;
+    if (user_id !== undefined) updateObj.user_id = user_id;
+    
+    // Always update the timestamp
+    updateObj.updated_at = new Date().toISOString();
+    
     // Update the inspection
-    const { data: updatedInspection, error: inspectionError } = await supabase
+    const { data: updatedInspection, error } = await supabase
       .from('inspections')
-      .update(inspectionData)
-      .eq('id', inspectionId)
-      .select()
+      .update(updateObj)
+      .eq('id', id)
+      .select('*')
       .single();
 
-    if (inspectionError) throw inspectionError;
+    if (error) {
+      console.error('Error updating inspection:', error);
+      throw error;
+    }
 
-    // If we have findings data, update or insert it
-    if (findingsData) {
+    // If findings provided, update or create them
+    if (findings) {
+      console.log('Processing findings data:', findings);
+      
       // Check if findings already exist
-      const { data: existingFindings, error: findingsCheckError } = await supabase
+      const { data: existingFindings, error: findingsQueryError } = await supabase
         .from('inspection_findings')
         .select('id')
-        .eq('inspection_id', inspectionId)
-        .maybeSingle();
+        .eq('inspection_id', id)
+        .single();
 
-      if (findingsCheckError) throw findingsCheckError;
+      if (findingsQueryError && findingsQueryError.code !== 'PGRST116') {
+        // If error other than 'not found', throw it
+        console.error('Error checking existing findings:', findingsQueryError);
+        throw findingsQueryError;
+      }
+
+      // Ensure required fields have values
+      const completeFindings = {
+        queen_sighted: findings.queen_sighted !== undefined ? findings.queen_sighted : false,
+        brood_pattern: findings.brood_pattern || 1,
+        honey_stores: findings.honey_stores || 3,
+        population_strength: findings.population_strength || 5,
+        temperament: findings.temperament || 3,
+        diseases_sighted: findings.diseases_sighted !== undefined ? findings.diseases_sighted : false,
+        varroa_count: findings.varroa_count,
+        notes: findings.notes,
+        user_id: findings.user_id
+      };
 
       if (existingFindings) {
         // Update existing findings
-        const { error: updateFindingsError } = await supabase
+        console.log('Updating existing findings:', existingFindings.id);
+        const { error: findingsError } = await supabase
           .from('inspection_findings')
-          .update(findingsData)
-          .eq('id', existingFindings.id);
+          .update({
+            ...completeFindings,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('inspection_id', id);
 
-        if (updateFindingsError) throw updateFindingsError;
+        if (findingsError) {
+          console.error('Error updating findings:', findingsError);
+          throw findingsError;
+        }
       } else {
-        // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError) throw userError;
-        if (!user) throw new Error('User not authenticated');
-
-        // Insert new findings
-        const { error: insertFindingsError } = await supabase
+        // Create new findings
+        console.log('Creating new findings for inspection:', id);
+        const { error: findingsError } = await supabase
           .from('inspection_findings')
           .insert({
-            ...findingsData,
-            inspection_id: inspectionId,
-            user_id: user.id
+            ...completeFindings,
+            inspection_id: id,
           });
 
-        if (insertFindingsError) throw insertFindingsError;
+        if (findingsError) {
+          console.error('Error creating findings:', findingsError);
+          throw findingsError;
+        }
       }
     }
 

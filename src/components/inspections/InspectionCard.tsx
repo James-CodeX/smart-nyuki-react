@@ -15,7 +15,8 @@ import {
   BugPlay,
   ThermometerSun,
   Weight,
-  Ruler
+  Ruler,
+  CheckCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from "@/components/ui/badge";
@@ -30,31 +31,38 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { InspectionWithHiveDetails } from '@/services/inspectionService';
 
+type InspectionStatus = 'completed' | 'scheduled' | 'overdue';
+
 interface InspectionCardProps {
   inspection: InspectionWithHiveDetails;
   onClick: () => void;
   onDelete: () => void;
+  onComplete?: () => void;
+  status?: InspectionStatus;
 }
 
 const InspectionCard: React.FC<InspectionCardProps> = ({
   inspection,
   onClick,
   onDelete,
+  onComplete,
+  status: providedStatus,
 }) => {
   const inspectionDate = parseISO(inspection.inspection_date);
-  const isCompleted = isPast(inspectionDate);
   
-  // Determine status for badge
-  let status: 'completed' | 'scheduled' | 'overdue' = 'scheduled';
-  if (isPast(inspectionDate)) {
-    status = 'completed';
+  // Determine status for badge - use provided status if available, otherwise determine it
+  let status: InspectionStatus = providedStatus || 'scheduled';
+  if (!providedStatus) {
+    if (isPast(inspectionDate)) {
+      status = 'completed';
+    }
   }
   
   // Function to get the badge variant based on inspection status
   const getBadgeVariant = () => {
     switch (status) {
       case 'completed':
-        return 'success';
+        return 'default';
       case 'overdue':
         return 'destructive';
       default:
@@ -90,7 +98,7 @@ const InspectionCard: React.FC<InspectionCardProps> = ({
       insights.push({
         icon: <CheckCircle2 className="h-4 w-4 text-success" />,
         text: 'Queen sighted',
-        variant: 'success' as const
+        variant: 'secondary' as const
       });
     }
     
@@ -148,6 +156,19 @@ const InspectionCard: React.FC<InspectionCardProps> = ({
                 <Clipboard className="h-4 w-4 mr-2" />
                 View details
               </DropdownMenuItem>
+              
+              {onComplete && status !== 'completed' && (
+                <DropdownMenuItem 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onComplete();
+                  }}
+                >
+                  <CheckCheck className="h-4 w-4 mr-2" />
+                  Complete inspection
+                </DropdownMenuItem>
+              )}
+              
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:bg-destructive focus:text-destructive-foreground"

@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format, parseISO, isPast } from 'date-fns';
+import { format, parseISO, isPast, addDays } from 'date-fns';
 import { 
   Plus, 
   Search, 
   ClipboardCheck, 
   CalendarDays, 
   Calendar,
-  CheckCircle2, 
-  Clock
+  CheckCircle2,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,15 +23,26 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import PageTransition from '@/components/PageTransition';
 import InspectionCard from '@/components/inspections/InspectionCard';
 import InspectionCalendar, { CalendarInspection } from '@/components/inspections/InspectionCalendar';
+import NewInspectionForm from '@/components/inspections/NewInspectionForm';
 import * as inspectionService from '@/services/inspectionService';
+import * as apiaryService from '@/services/apiaryService';
+import * as hiveService from '@/services/hiveService';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 const Inspections = () => {
   const navigate = useNavigate();
   const [inspections, setInspections] = useState<inspectionService.InspectionWithHiveDetails[]>([]);
+  const [apiaries, setApiaries] = useState<any[]>([]);
+  const [hives, setHives] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
@@ -38,19 +50,28 @@ const Inspections = () => {
   const [inspectionToDelete, setInspectionToDelete] = useState<string | null>(null);
   const [isNewInspectionOpen, setIsNewInspectionOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isCompleteInspectionOpen, setIsCompleteInspectionOpen] = useState(false);
+  const [inspectionToComplete, setInspectionToComplete] = useState<inspectionService.InspectionWithHiveDetails | null>(null);
   const isMobile = useMediaQuery('(max-width: 640px)');
 
   useEffect(() => {
-    fetchInspections();
+    fetchData();
   }, []);
-
-  const fetchInspections = async () => {
+  
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const data = await inspectionService.getAllInspections();
-      setInspections(data);
+      const [inspectionsData, apiariesData, hivesData] = await Promise.all([
+        inspectionService.getAllInspections(),
+        apiaryService.getAllApiaries(),
+        hiveService.getAllHives()
+      ]);
+      
+      setInspections(inspectionsData);
+      setApiaries(apiariesData);
+      setHives(hivesData);
     } catch (error) {
-      console.error('Error fetching inspections:', error);
+      console.error('Error fetching data:', error);
       toast({
         title: "Error",
         description: "Failed to load inspections",
@@ -59,6 +80,16 @@ const Inspections = () => {
     } finally {
       setLoading(false);
     }
+  };
+  
+  const handleInspectionAdded = async () => {
+    await fetchData();
+    setIsNewInspectionOpen(false);
+    setSelectedDate(null);
+    toast({
+      title: "Success",
+      description: "Inspection scheduled successfully",
+    });
   };
 
   const handleDeleteInspection = async (id: string) => {
@@ -91,10 +122,24 @@ const Inspections = () => {
 
   const getInspectionStatus = (inspection: inspectionService.InspectionWithHiveDetails): 'completed' | 'scheduled' | 'overdue' => {
     const inspectionDate = parseISO(inspection.inspection_date);
-    if (isPast(inspectionDate)) {
+    const today = new Date();
+    
+    // Consider an inspection completed if there are certain fields filled in
+    if (inspection.notes || inspection.queen_seen || inspection.eggs_seen || inspection.larvae_seen) {
       return 'completed';
     }
+    
+    // If it's in the past but not completed, it's overdue
+    if (isPast(inspectionDate) && inspectionDate < today) {
+      return 'overdue';
+    }
+    
     return 'scheduled';
+  };
+
+  const handleCompleteInspection = (inspection: inspectionService.InspectionWithHiveDetails) => {
+    setInspectionToComplete(inspection);
+    setIsCompleteInspectionOpen(true);
   };
 
   // Transform inspections to the format expected by the calendar component
@@ -130,6 +175,16 @@ const Inspections = () => {
     setIsNewInspectionOpen(true);
   };
 
+  // Get upcoming inspections due in the next 7 days
+  const upcomingInspections = inspections.filter(inspection => {
+    const inspectionDate = parseISO(inspection.inspection_date);
+    const nextWeek = addDays(new Date(), 7);
+    const status = getInspectionStatus(inspection);
+    
+    return (status === 'scheduled' || status === 'overdue') && 
+           inspectionDate <= nextWeek;
+  });
+
   const filteredInspections = inspections
     .filter(inspection => {
       const matchesSearch = inspection.hive_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -143,7 +198,9 @@ const Inspections = () => {
         case 'completed':
           return matchesSearch && status === 'completed';
         case 'upcoming':
-          return matchesSearch && status === 'scheduled';
+          return matchesSearch && (status === 'scheduled' || status === 'overdue');
+        case 'overdue':
+          return matchesSearch && status === 'overdue';
         default:
           return matchesSearch;
       }
@@ -161,7 +218,7 @@ const Inspections = () => {
       </p>
     </div>
   );
-
+  
   return (
     <PageTransition>
       <div className="container max-w-7xl py-6 space-y-8">
@@ -169,25 +226,73 @@ const Inspections = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Inspections</h1>
             <p className="text-muted-foreground">
-              View and manage your hive inspections
+              Schedule, track, and manage your hive inspections
             </p>
           </div>
-
+          
           <div className="flex items-center gap-2">
             <Button onClick={() => setIsNewInspectionOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              New Inspection
-            </Button>
+              Schedule Inspection
+                  </Button>
           </div>
         </div>
+        
+        {/* Upcoming Inspections Alert */}
+        {upcomingInspections.length > 0 && (
+          <div className="bg-muted p-4 rounded-lg border">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertCircle className="h-5 w-5 text-amber-500" />
+              <h3 className="font-medium">Upcoming Inspections</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-3">
+              You have {upcomingInspections.length} inspection{upcomingInspections.length > 1 ? 's' : ''} scheduled in the next 7 days.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {upcomingInspections.slice(0, 3).map(inspection => (
+                <TooltipProvider key={inspection.id}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-xs"
+                        onClick={() => navigate(`/inspections/${inspection.id}`)}
+                      >
+                        {inspection.hive_name} • {format(parseISO(inspection.inspection_date), 'MMM dd')}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="text-xs">
+                        <p className="font-medium">{inspection.hive_name}</p>
+                        <p>{format(parseISO(inspection.inspection_date), 'PPP')}</p>
+                        <p className="text-muted-foreground">{inspection.apiary_name}</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ))}
+              {upcomingInspections.length > 3 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-xs"
+                  onClick={() => setActiveTab('upcoming')}
+                >
+                  +{upcomingInspections.length - 3} more
+                </Button>
+              )}
+            </div>
+        </div>
+        )}
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex w-full max-w-sm items-center space-x-2">
-              <Input
-                placeholder="Search inspections..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                  <Input
+                    placeholder="Search inspections..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full sm:w-[300px]"
               />
             </div>
@@ -202,6 +307,10 @@ const Inspections = () => {
               <TabsTrigger value="upcoming" className="flex gap-2">
                 <CalendarDays className="h-4 w-4" />
                 Upcoming
+              </TabsTrigger>
+              <TabsTrigger value="overdue" className="flex gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Overdue
               </TabsTrigger>
               <TabsTrigger value="completed" className="flex gap-2">
                 <CheckCircle2 className="h-4 w-4" />
@@ -226,6 +335,9 @@ const Inspections = () => {
                       inspection={inspection}
                       onClick={() => navigate(`/inspections/${inspection.id}`)}
                       onDelete={() => handleDeleteInspection(inspection.id)}
+                      onComplete={getInspectionStatus(inspection) !== 'completed' ? 
+                        () => handleCompleteInspection(inspection) : undefined}
+                      status={getInspectionStatus(inspection)}
                     />
                   ))}
                 </div>
@@ -239,7 +351,7 @@ const Inspections = () => {
                 )
               )}
             </TabsContent>
-
+            
             <TabsContent value="upcoming" className="pt-4">
               {loading ? (
                 <div className="flex justify-center items-center h-48">
@@ -253,6 +365,8 @@ const Inspections = () => {
                       inspection={inspection}
                       onClick={() => navigate(`/inspections/${inspection.id}`)}
                       onDelete={() => handleDeleteInspection(inspection.id)}
+                      onComplete={() => handleCompleteInspection(inspection)}
+                      status={getInspectionStatus(inspection)}
                     />
                   ))}
                 </div>
@@ -266,7 +380,36 @@ const Inspections = () => {
                 )
               )}
             </TabsContent>
-
+            
+            <TabsContent value="overdue" className="pt-4">
+              {loading ? (
+                <div className="flex justify-center items-center h-48">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                </div>
+              ) : filteredInspections.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredInspections.map((inspection) => (
+                    <InspectionCard
+                      key={inspection.id}
+                      inspection={inspection}
+                      onClick={() => navigate(`/inspections/${inspection.id}`)}
+                      onDelete={() => handleDeleteInspection(inspection.id)}
+                      onComplete={() => handleCompleteInspection(inspection)}
+                      status={getInspectionStatus(inspection)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                renderEmptyState(
+                  "No overdue inspections",
+                  searchQuery
+                    ? "No overdue inspections match your search criteria"
+                    : "You don't have any overdue inspections",
+                  <AlertCircle className="h-full w-full" />
+                )
+              )}
+            </TabsContent>
+            
             <TabsContent value="completed" className="pt-4">
               {loading ? (
                 <div className="flex justify-center items-center h-48">
@@ -280,6 +423,7 @@ const Inspections = () => {
                       inspection={inspection}
                       onClick={() => navigate(`/inspections/${inspection.id}`)}
                       onDelete={() => handleDeleteInspection(inspection.id)}
+                      status={getInspectionStatus(inspection)}
                     />
                   ))}
                 </div>
@@ -306,14 +450,14 @@ const Inspections = () => {
                       inspections={calendarInspections}
                       onDayClick={handleDayClick}
                       onAddClick={handleAddClick}
-                    />
-                  </div>
+                          />
+                        </div>
                 </div>
               )}
             </TabsContent>
           </Tabs>
         </div>
-
+        
         <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <DialogContent>
             <DialogHeader>
@@ -333,33 +477,82 @@ const Inspections = () => {
           </DialogContent>
         </Dialog>
 
-        {/* This placeholder would be replaced with an actual new inspection form component */}
+        {/* New Inspection Form Dialog */}
         <Dialog open={isNewInspectionOpen} onOpenChange={setIsNewInspectionOpen}>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>New Inspection</DialogTitle>
+              <DialogTitle>Schedule New Inspection</DialogTitle>
               <DialogDescription>
                 {selectedDate 
-                  ? `Create a new inspection for ${format(selectedDate, 'MMMM d, yyyy')}`
-                  : 'Create a new hive inspection record'}
+                  ? `Plan an inspection for ${format(selectedDate, 'MMMM d, yyyy')}`
+                  : 'Set a date and time for your next hive inspection'}
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4">
-              <p className="text-center text-muted-foreground">
-                The inspection form component would be integrated here
-              </p>
+            <div className="max-h-[60vh] overflow-y-auto">
+              <NewInspectionForm 
+                onInspectionAdded={handleInspectionAdded} 
+                onCancel={() => {
+                  setIsNewInspectionOpen(false);
+                  setSelectedDate(null);
+                }} 
+                apiaries={apiaries}
+                hives={hives}
+                initialDate={selectedDate}
+              />
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Complete Inspection Dialog */}
+        <Dialog open={isCompleteInspectionOpen} onOpenChange={setIsCompleteInspectionOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+                  <DialogHeader>
+              <DialogTitle>Complete Inspection</DialogTitle>
+                    <DialogDescription>
+                {inspectionToComplete && (
+                  <>Record findings for the inspection of {inspectionToComplete.hive_name} on {format(parseISO(inspectionToComplete.inspection_date), 'MMMM d, yyyy')}</>
+                )}
+                    </DialogDescription>
+                  </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="flex justify-between items-center">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsCompleteInspectionOpen(false);
+                    setInspectionToComplete(null);
+                    if (inspectionToComplete) {
+                      navigate(`/inspections/${inspectionToComplete.id}`);
+                    }
+                  }}
+                  className="w-full"
+                >
+                  Go to Inspection Page to Complete
+                </Button>
+              </div>
+              
+              <div className="bg-muted rounded-md p-4 text-sm">
+                <p className="font-medium mb-2">About completing inspections:</p>
+                <ul className="space-y-1 list-disc list-inside">
+                  <li>Record your findings on the inspection page</li>
+                  <li>Include details like queen sighting, brood pattern, and hive health</li>
+                  <li>Add notes for future reference</li>
+                  <li>Upload photos of the inspection</li>
+                </ul>
+              </div>
+            </div>
+            
             <DialogFooter>
               <Button variant="outline" onClick={() => {
-                setIsNewInspectionOpen(false);
-                setSelectedDate(null);
+                setIsCompleteInspectionOpen(false);
+                setInspectionToComplete(null);
               }}>
                 Cancel
               </Button>
-              <Button type="submit">Create Inspection</Button>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                </DialogContent>
+              </Dialog>
       </div>
     </PageTransition>
   );
