@@ -547,4 +547,178 @@ const updateMonthlySummary = async (apiaryId: string, year: number, month: numbe
     console.error('Error updating monthly summary:', error);
     throw error;
   }
+};
+
+/**
+ * Get time series data for production chart display
+ */
+export const getProductionTimeSeries = async (
+  startDate: string,
+  endDate: string,
+  apiaryId?: string
+): Promise<Array<{ date: string; value: number }>> => {
+  try {
+    // In a real implementation, this would query the database
+    // For now, generate some reasonable mock data
+    
+    const mockData: Array<{ date: string; value: number }> = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Generate daily data points between the two dates
+    const currentDate = new Date(start);
+    while (currentDate <= end) {
+      // Base value with some randomness
+      let value = 15 + Math.random() * 10;
+      
+      // Add a trend over time (increasing)
+      const daysPassed = Math.floor((currentDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      value += daysPassed * 0.1;
+      
+      // Add some seasonal variation
+      const month = currentDate.getMonth();
+      if (month >= 4 && month <= 8) { // May through September has higher production
+        value *= 1.2;
+      }
+      
+      mockData.push({
+        date: currentDate.toISOString().split('T')[0],
+        value: parseFloat(value.toFixed(1))
+      });
+      
+      // Advance to next day
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    return mockData;
+  } catch (error) {
+    console.error('Error fetching production time series:', error);
+    return [];
+  }
+};
+
+/**
+ * Get production forecast data for the next few months
+ */
+export const getProductionForecast = async (
+  apiaryId?: string
+): Promise<Array<{ month: string; projected: number; actual: number }>> => {
+  try {
+    // In a real implementation, this would use historical data to generate forecasts
+    // For now, generate some reasonable mock data
+    
+    const currentMonth = new Date().getMonth();
+    const mockData = [];
+    
+    // Generate data for previous months (actual data)
+    for (let i = 2; i >= 0; i--) {
+      const monthIndex = (currentMonth - i + 12) % 12;
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      
+      // Base values with randomness
+      const actual = 15 + Math.random() * 10;
+      
+      // For past months, projected should be close to actual
+      const projected = actual * (0.9 + Math.random() * 0.2);
+      
+      mockData.push({
+        month: monthNames[monthIndex],
+        projected: parseFloat(projected.toFixed(1)),
+        actual: parseFloat(actual.toFixed(1))
+      });
+    }
+    
+    // Generate data for future months (only projected data)
+    for (let i = 1; i <= 3; i++) {
+      const monthIndex = (currentMonth + i) % 12;
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      
+      // For future months, increase the projected slightly for upward trend
+      const lastActual = mockData[mockData.length - 1].actual;
+      const projected = lastActual * (1 + (0.05 * i) + (Math.random() * 0.1));
+      
+      mockData.push({
+        month: monthNames[monthIndex],
+        projected: parseFloat(projected.toFixed(1)),
+        actual: 0 // No actual data for future months
+      });
+    }
+    
+    return mockData;
+  } catch (error) {
+    console.error('Error generating production forecast:', error);
+    return [];
+  }
+};
+
+/**
+ * Get production summary statistics
+ */
+export const getProductionSummary = async (
+  period: 'year' | 'month' | 'week',
+  apiaryId?: string
+): Promise<{
+  totalProduction: number;
+  changePercent: number;
+  avgProduction: number;
+  forecastProduction: number;
+  topHive: { name: string; production: number } | null;
+  topApiary: { name: string; production: number } | null;
+}> => {
+  try {
+    // In a real implementation, this would query the database for aggregate data
+    // For now, generate some reasonable mock data
+    
+    // Adjust values based on selected period
+    let multiplier;
+    switch (period) {
+      case 'week':
+        multiplier = 1;
+        break;
+      case 'month':
+        multiplier = 4;
+        break;
+      case 'year':
+        multiplier = 12;
+        break;
+      default:
+        multiplier = 4; // Default to month
+    }
+    
+    // Generate some reasonable values
+    const totalProduction = parseFloat((20 * multiplier + Math.random() * 10 * multiplier).toFixed(1));
+    const changePercent = parseFloat((-5 + Math.random() * 20).toFixed(1));
+    const avgProduction = parseFloat((totalProduction / (5 + Math.random() * 3)).toFixed(1)); // Assume 5-8 hives
+    const forecastProduction = parseFloat((totalProduction * (1.05 + Math.random() * 0.15)).toFixed(1));
+    
+    // Sample top performers
+    const topHive = {
+      name: "Hive " + Math.floor(1 + Math.random() * 5),
+      production: parseFloat((avgProduction * (1.3 + Math.random() * 0.3)).toFixed(1))
+    };
+    
+    const topApiary = {
+      name: ["Mountain Apiary", "Valley Apiary", "Forest Apiary"][Math.floor(Math.random() * 3)],
+      production: parseFloat((totalProduction * (0.4 + Math.random() * 0.2)).toFixed(1))
+    };
+    
+    return {
+      totalProduction,
+      changePercent,
+      avgProduction,
+      forecastProduction,
+      topHive,
+      topApiary
+    };
+  } catch (error) {
+    console.error('Error fetching production summary:', error);
+    return {
+      totalProduction: 0,
+      changePercent: 0,
+      avgProduction: 0,
+      forecastProduction: 0,
+      topHive: null,
+      topApiary: null
+    };
+  }
 }; 

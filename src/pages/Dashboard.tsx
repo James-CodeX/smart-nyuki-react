@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -38,6 +38,10 @@ import DashboardChart from '@/components/dashboard/DashboardChart';
 import { SummaryMetric, MetricsProgressRow } from '@/components/dashboard/SummaryMetricsCard';
 import AddHiveModal from '@/components/dashboard/AddHiveModal';
 import AddApiaryModal from '@/components/dashboard/AddApiaryModal';
+import AlertsManagement from '@/components/dashboard/AlertsManagement';
+import ProductionAnalytics from '@/components/dashboard/ProductionAnalytics';
+import WeatherWidget from '@/components/dashboard/WeatherWidget';
+import ScheduleInspectionModal from '@/components/dashboard/ScheduleInspectionModal';
 
 // For now, use simple mock data for inspections since we don't have a real service yet
 interface Inspection {
@@ -72,28 +76,6 @@ import { addApiary, getAllApiaries } from '@/services/apiaryService';
 import { useToast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Temporary AddInspectionModal component until we implement the real one
-const AddInspectionModal = ({ isOpen, onClose, onAdd, hives }: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  onAdd: (data: any) => void; 
-  hives: HiveWithDetails[] 
-}) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background p-6 rounded-lg shadow-lg max-w-md w-full">
-        <h2 className="text-xl font-bold mb-4">Schedule Inspection</h2>
-        <p className="text-muted-foreground mb-4">This feature will be implemented soon.</p>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => { onAdd({}); onClose(); }}>Save</Button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // Generate some sample data for the production chart
 const generateProductionData = () => {
   const data = [];
@@ -109,6 +91,41 @@ const generateProductionData = () => {
   }
   
   return data;
+};
+
+// Create a single-property MetricsProgressRow component above the Dashboard component function
+const SingleMetricsProgressRow = ({ 
+  title, 
+  value, 
+  unit, 
+  icon, 
+  progress, 
+  loading 
+}: { 
+  title: string, 
+  value: number, 
+  unit: string, 
+  icon: React.ReactNode, 
+  progress: number,
+  loading: boolean 
+}) => {
+  if (loading) {
+    return <div className="h-8 bg-muted animate-pulse rounded-md mb-2"></div>;
+  }
+  
+  return (
+    <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center gap-2">
+        <div className="p-1.5 bg-secondary rounded-full">
+          {icon}
+        </div>
+        <span className="text-sm">{title}</span>
+      </div>
+      <div className="flex items-center">
+        <span className="font-medium">{value}{unit}</span>
+      </div>
+    </div>
+  );
 };
 
 const Dashboard = () => {
@@ -246,21 +263,20 @@ const Dashboard = () => {
   // Handle adding a new inspection
   const handleAddInspection = async (data: any) => {
     try {
-      // TODO: Implement when inspection service is available
-      // await addInspection(data);
-      
+      // This would be implemented when we have a real inspection service
+      // For now, just show a success message
       toast({
-        title: "Inspection added",
-        description: "Your new inspection has been saved successfully.",
+        title: "Inspection scheduled",
+        description: "Your inspection has been scheduled successfully.",
       });
       
       setIsAddInspectionModalOpen(false);
     } catch (error) {
-      console.error('Error adding inspection:', error);
+      console.error('Error scheduling inspection:', error);
       toast({
         variant: "destructive",
-        title: "Error adding inspection",
-        description: "There was a problem saving the inspection. Please try again.",
+        title: "Error scheduling inspection",
+        description: "There was a problem scheduling the inspection. Please try again.",
       });
     }
   };
@@ -303,458 +319,227 @@ const Dashboard = () => {
   
   return (
     <PageTransition>
-      <div className="container max-w-7xl pt-16 md:pt-6 pb-16 px-4 sm:px-6 lg:px-8">
-        <header className="mb-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="container mx-auto py-6 max-w-7xl">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-6">
           <div>
-            <motion.h1 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="text-3xl font-bold tracking-tight"
-            >
-              Smart-Nyuki Dashboard
-            </motion.h1>
-            <motion.p 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-muted-foreground"
-            >
-                {format(new Date(), 'EEEE, MMMM d, yyyy')} • Overview of your beekeeping operation
-            </motion.p>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground">
+              Welcome back! Here's an overview of your beekeeping operation.
+            </p>
           </div>
-          
-            <div className="flex flex-wrap gap-3">
-            <Link to="/map">
-                <Button variant="outline" size="sm" className="h-9">
-                  <Map className="h-4 w-4 mr-2" />
-                Map View
-                </Button>
-            </Link>
-              <Button className="h-9">
-                <Plus className="h-4 w-4 mr-2" />
-              Add Apiary
-              </Button>
-            </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsAddInspectionModalOpen(true)}
+              disabled={hives.length === 0}
+            >
+              <CalendarDays className="mr-2 h-4 w-4" />
+              Schedule Inspection
+            </Button>
+            <Button 
+              onClick={() => setIsAddHiveModalOpen(true)}
+              disabled={apiaries.length === 0}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Hive
+            </Button>
           </div>
-        </header>
+        </div>
 
-        <Tabs 
-          defaultValue={activeTab} 
-          onValueChange={setActiveTab}
-          className="mb-8"
-        >
-          <TabsList className="bg-background border w-full md:w-auto justify-start overflow-auto">
-            <TabsTrigger value="overview" className="text-sm">Overview</TabsTrigger>
-            <TabsTrigger value="apiaries" className="text-sm">Apiaries</TabsTrigger>
-            <TabsTrigger value="hives" className="text-sm">Hives</TabsTrigger>
-            <TabsTrigger value="production" className="text-sm">Production</TabsTrigger>
-            <TabsTrigger value="inspections" className="text-sm">Inspections</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
-        
-          <TabsContent value="overview" className="space-y-6 mt-0">
-            {/* Key Stats Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <TabsContent value="overview" className="space-y-6">
+            {/* First row: Stats */}
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-4">
               <StatisticsCard
-                title="Total Apiaries"
+                title="Apiaries"
                 value={apiaryCount}
-                icon={<Users className="h-4 w-4 text-blue-600" />}
-                change={{ value: 0, trend: 'neutral' }}
-                description="Total locations"
+                description="Total apiaries"
+                icon={<Map className="h-4 w-4 text-muted-foreground" />}
               />
               <StatisticsCard
-                title="Total Hives"
+                title="Hives"
                 value={hiveCount}
-                icon={<Leaf className="h-4 w-4 text-green-600" />}
-                change={{ value: 5, trend: 'up' }}
-                description="5% growth this month"
+                description="Total hives"
+                icon={<Users className="h-4 w-4 text-muted-foreground" />}
               />
               <StatisticsCard
                 title="Alerts"
                 value={alertCount}
-                icon={<AlertCircle className="h-4 w-4 text-red-600" />}
-                change={alertCount > 0 ? { value: alertCount, trend: 'up' } : { value: 0, trend: 'neutral' }}
-                description={alertCount > 0 ? "Hives need attention" : "All hives healthy"}
+                description="Hives need attention"
+                icon={<AlertCircle className="h-4 w-4 text-muted-foreground" />}
               />
               <StatisticsCard
                 title="Inspections"
-                value={upcomingInspections.length}
-                icon={<CalendarDays className="h-4 w-4 text-purple-600" />}
-                description="Due this week"
+                value={upcomingInspections.length + overdueInspections.length}
+                description={overdueInspections.length > 0 ? `${overdueInspections.length} overdue` : 'Upcoming inspections'}
+                icon={<ClipboardCheck className="h-4 w-4 text-muted-foreground" />}
+                change={overdueInspections.length > 0 ? { value: overdueInspections.length, trend: 'up' } : undefined}
               />
             </div>
-
-            {/* Quick Actions */}
-            <QuickActions 
-              onAddApiary={() => setIsAddApiaryModalOpen(true)}
-              onAddHive={() => setIsAddHiveModalOpen(true)}
-              onScheduleInspection={() => setIsAddInspectionModalOpen(true)}
-            />
-
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Production Trend */}
-              <DashboardChart
-                title="Honey Production"
-                description="Last 30 days trend"
-                data={productionData}
-                type="area"
-                dataKey="date"
-                categories={['value']}
-                colors={['#f59e0b']}
-                height={220}
-                valueChange={{
-                  value: 15.2,
-                  percentage: 12,
-                  trend: 'up'
+            
+            {/* Second row: Metrics Summary and Alerts */}
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-medium flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    <span>Apiary Metrics</span>
+                  </CardTitle>
+                  <CardDescription>Average metrics across all apiaries</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <SingleMetricsProgressRow 
+                      title="Temperature"
+                      value={avgTemperature}
+                      unit="°C"
+                      icon={<Thermometer className="h-4 w-4" />}
+                      progress={65}
+                      loading={loading}
+                    />
+                    <SingleMetricsProgressRow 
+                      title="Humidity"
+                      value={avgHumidity}
+                      unit="%"
+                      icon={<Droplets className="h-4 w-4" />}
+                      progress={45}
+                      loading={loading}
+                    />
+                    <SingleMetricsProgressRow 
+                      title="Sound"
+                      value={avgSound}
+                      unit="dB"
+                      icon={<Volume2 className="h-4 w-4" />}
+                      progress={35}
+                      loading={loading}
+                    />
+                    <SingleMetricsProgressRow 
+                      title="Weight"
+                      value={avgWeight}
+                      unit="kg"
+                      icon={<Weight className="h-4 w-4" />}
+                      progress={55}
+                      loading={loading}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* New Alerts Management Component */}
+              <AlertsManagement 
+                onResolve={() => {
+                  // Refresh data when an alert is resolved
+                  const loadData = async () => {
+                    try {
+                      const hivesData = await getAllHives();
+                      setHives(hivesData);
+                    } catch (error) {
+                      console.error('Error refreshing hives data:', error);
+                    }
+                  };
+                  loadData();
                 }}
-                yAxisFormatter={(value) => `${value}kg`}
-                tooltipFormatter={(value) => `${value}kg`}
               />
-
-              {/* Upcoming Inspections */}
+            </div>
+            
+            {/* Third row: Weather Widget and Quick Actions */}
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+              {/* New Weather Widget Component */}
+              <WeatherWidget />
+              
+              <QuickActions 
+                onAddHive={() => setIsAddHiveModalOpen(true)}
+                onAddApiary={() => setIsAddApiaryModalOpen(true)}
+                onScheduleInspection={() => setIsAddInspectionModalOpen(true)}
+              />
+            </div>
+            
+            {/* Fourth row: Upcoming Inspections and Hive Status */}
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
               <UpcomingInspections
-                inspections={[...overdueInspections, ...upcomingInspections].slice(0, 5)}
+                inspections={[...upcomingInspections, ...overdueInspections, ...completedInspections].slice(0, 5)}
                 onViewAll={() => navigate('/inspections')}
                 onViewInspection={(inspection) => console.log('View inspection', inspection)}
               />
-
-              {/* Hive Status Overview */}
-              {hives.length > 0 && (
-                <HiveStatusOverview
-                  hives={hivesWithAlerts.length > 0 ? 
-                    hivesWithAlerts.map(hive => ({
-                      id: hive.id,
-                      name: hive.name,
-                      apiaryName: hive.apiaryName || '',
-                      metrics: hive.metrics || { 
-                        temperature: [], 
-                        humidity: [], 
-                        sound: [], 
-                        weight: [] 
-                      },
-                      alerts: hive.alerts || []
-                    })) : 
-                    hives.slice(0, 5).map(hive => ({
-                      id: hive.id,
-                      name: hive.name,
-                      apiaryName: hive.apiaryName || '',
-                      metrics: hive.metrics || { 
-                        temperature: [], 
-                        humidity: [], 
-                        sound: [], 
-                        weight: [] 
-                      },
-                      alerts: hive.alerts || []
-                    }))
+              <HiveStatusOverview 
+                hives={isLoadingHives ? [] : hives.map(hive => ({
+                  id: hive.id,
+                  name: hive.name,
+                  apiaryName: hive.apiaryName || '',
+                  alerts: hive.alerts || [],
+                  metrics: hive.metrics || { 
+                    temperature: [], 
+                    humidity: [], 
+                    sound: [], 
+                    weight: [] 
                   }
-                  onViewHive={handleViewHive}
-                />
-              )}
-        </div>
-        
-            {/* Metrics Overview */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-md">Overall Metrics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <MetricsProgressRow 
-                    metrics={[
-                      {
-                        title: 'Avg Temperature',
-                        value: parseFloat(avgTemperature.toFixed(1)),
-                        max: 40,
-                        icon: <Thermometer className="h-4 w-4" />,
-                        color: 'bg-red-500/10 text-red-500'
-                      },
-                      {
-                        title: 'Avg Humidity',
-                        value: parseFloat(avgHumidity.toFixed(1)),
-                        max: 100,
-                        icon: <Droplets className="h-4 w-4" />,
-                        color: 'bg-blue-500/10 text-blue-500'
-                      },
-                      {
-                        title: 'Avg Sound',
-                        value: parseFloat(avgSound.toFixed(1)),
-                        max: 80,
-                        icon: <Volume2 className="h-4 w-4" />,
-                        color: 'bg-purple-500/10 text-purple-500'
-                      },
-                      {
-                        title: 'Avg Weight',
-                        value: parseFloat(avgWeight.toFixed(1)),
-                        max: 30,
-                        icon: <Weight className="h-4 w-4" />,
-                        color: 'bg-amber-500/10 text-amber-500'
-                      }
-                    ]}
-                  />
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="md:col-span-2">
-                      <DashboardChart
-                        title="Weekly Metrics Trend"
-                        data={productionData.slice(-7)}
-                        type="line"
-                        dataKey="date"
-                        categories={['Temp', 'Humidity', 'Weight']}
-                        colors={['#ef4444', '#3b82f6', '#f59e0b']}
-                        height={220}
-                      />
-                    </div>
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Inspection Status</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                              <CheckCircle2 className="h-5 w-5 text-green-600" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium">{completedInspections.length}</p>
-                              <p className="text-xs text-muted-foreground">Completed</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                              <Clock className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium">{upcomingInspections.length}</p>
-                              <p className="text-xs text-muted-foreground">Scheduled</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
-                              <AlertCircle className="h-5 w-5 text-red-600" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium">{overdueInspections.length}</p>
-                              <p className="text-xs text-muted-foreground">Overdue</p>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="apiaries" className="space-y-6 mt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {apiaries.map((apiary, i) => (
-                <motion.div
-                  key={apiary.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: i * 0.1 }}
-                >
-                  <ApiaryCard
-                    id={apiary.id}
-                    name={apiary.name}
-                    location={apiary.location}
-                    hiveCount={apiary.hiveCount}
-                    avgTemperature={apiary.avgTemperature}
-                    avgHumidity={apiary.avgHumidity}
-                    avgSound={apiary.avgSound}
-                    avgWeight={apiary.avgWeight}
-                  />
-                </motion.div>
-              ))}
-              
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: apiaries.length * 0.1 }}
-                className="flex items-center justify-center bg-secondary/50 border border-dashed border-secondary-foreground/20 rounded-2xl p-5 h-full cursor-pointer hover:bg-secondary/80 transition-colors"
-                onClick={() => setIsAddApiaryModalOpen(true)}
-              >
-                <div className="text-center">
-                  <div className="bg-background w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Plus className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-medium">Add New Apiary</h3>
-                  <p className="text-muted-foreground text-sm mt-1">Expand your beekeeping operation</p>
-                </div>
-              </motion.div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="hives" className="space-y-6 mt-0">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {hives.map((hive, i) => (
-              <motion.div
-                key={hive.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: i * 0.1 }}
-              >
-                <HiveMetricsCard
-                  id={hive.id}
-                  name={hive.name}
-                  apiaryId={hive.apiary_id}
-                  apiaryName={hive.apiaryName || ''}
-                  metrics={hive.metrics || { temperature: [], humidity: [], sound: [], weight: [] }}
-                  alerts={hive.alerts || []}
-                />
-              </motion.div>
-            ))}
-          </div>
-          </TabsContent>
-
-          <TabsContent value="production" className="space-y-6 mt-0">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-md">Honey Production Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <SummaryMetric
-                      title="Total Production"
-                      value="248.5"
-                      unit="kg"
-                      icon={<BarChart3 className="h-4 w-4" />}
-                      changeValue={12}
-                      trend="up"
-                      status="success"
-                    />
-                    <SummaryMetric
-                      title="Avg Production per Hive"
-                      value={parseFloat((248.5 / hiveCount).toFixed(1)) || 0}
-                      unit="kg"
-                      icon={<Leaf className="h-4 w-4" />}
-                      changeValue={5}
-                      trend="up"
-                      status="info"
-                    />
-                    <SummaryMetric
-                      title="Projected Harvest"
-                      value="42.8"
-                      unit="kg"
-                      icon={<TrendingUp className="h-4 w-4" />}
-                      description="Estimated next 30 days"
-                      status="info"
-                    />
-                  </div>
-                  
-                  <DashboardChart
-                    title="Monthly Production"
-                    data={[
-                      { month: 'Jan', value: 25.2 },
-                      { month: 'Feb', value: 18.7 },
-                      { month: 'Mar', value: 22.4 },
-                      { month: 'Apr', value: 28.3 },
-                      { month: 'May', value: 35.8 },
-                      { month: 'Jun', value: 41.2 },
-                      { month: 'Jul', value: 39.5 },
-                      { month: 'Aug', value: 37.1 }
-                    ]}
-                    type="bar"
-                    dataKey="month"
-                    categories={['value']}
-                    colors={['#f59e0b']}
-                    height={300}
-                    yAxisFormatter={(value) => `${value}kg`}
-                    tooltipFormatter={(value) => `${value}kg`}
-                  />
-
-                  <div className="flex justify-center mt-4">
-                    <Button 
-                      variant="outline" 
-                      className="gap-2"
-                      onClick={() => navigate('/production')}
-                    >
-                      View Full Production Report
-                      <ArrowRightCircle className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="inspections" className="space-y-6 mt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatisticsCard
-                title="Total Inspections"
-                value={allInspections.length}
-                icon={<ClipboardCheck className="h-4 w-4 text-primary" />}
-                description="All-time"
-              />
-              <StatisticsCard
-                title="Completed"
-                value={completedInspections.length}
-                icon={<CheckCircle2 className="h-4 w-4 text-green-600" />}
-                description="Successfully completed"
-              />
-              <StatisticsCard
-                title="Scheduled"
-                value={upcomingInspections.length}
-                icon={<Clock className="h-4 w-4 text-blue-600" />}
-                description="Upcoming next 7 days"
-              />
-              <StatisticsCard
-                title="Overdue"
-                value={overdueInspections.length}
-                icon={<AlertCircle className="h-4 w-4 text-red-600" />}
-                description="Require immediate attention"
+                }))}
+                onViewHive={handleViewHive}
               />
             </div>
-
+          </TabsContent>
+          
+          <TabsContent value="analytics" className="space-y-6">
+            {/* Production Analytics */}
+            <ProductionAnalytics />
+            
+            {/* Charts for hive performance */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-md">Inspection Calendar</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  <span>Hive Performance</span>
+                </CardTitle>
+                <CardDescription>Compare metrics across your hives</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex justify-center py-12">
-                  <div className="text-center">
-                    <BellRing className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium">Inspection Calendar</h3>
-                    <p className="text-muted-foreground mb-4 max-w-md">
-                      Track and schedule your hive inspections using our comprehensive calendar view.
-                    </p>
-                    <Button 
-                      onClick={() => navigate('/inspections')}
-                      className="gap-2"
-                    >
-                      Go to Inspections
-                      <ArrowRightCircle className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+                <DashboardChart 
+                  title="Temperature Comparison"
+                  data={hives.map(hive => ({
+                    name: hive.name,
+                    value: hive.metrics?.temperature.length ? 
+                      hive.metrics.temperature[hive.metrics.temperature.length - 1].value : 0
+                  }))} 
+                  dataKey="name"
+                  height={300}
+                />
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+        
+        {/* Modals */}
+        <AddHiveModal
+          isOpen={isAddHiveModalOpen}
+          onClose={() => setIsAddHiveModalOpen(false)}
+          onAdd={handleAddHive}
+        />
+        
+        <AddApiaryModal
+          isOpen={isAddApiaryModalOpen}
+          onClose={() => setIsAddApiaryModalOpen(false)}
+          onAdd={handleAddApiary}
+        />
+        
+        {/* New Inspection Modal */}
+        <ScheduleInspectionModal
+          isOpen={isAddInspectionModalOpen}
+          onClose={() => setIsAddInspectionModalOpen(false)}
+          onScheduled={() => {
+            toast({
+              title: "Inspection Scheduled",
+              description: "Your inspection has been scheduled successfully.",
+            });
+            // In a real implementation, we would refresh the inspections data here
+          }}
+          hives={hives}
+        />
       </div>
-      
-      <AddHiveModal
-        isOpen={isAddHiveModalOpen}
-        onClose={() => setIsAddHiveModalOpen(false)}
-        onAdd={handleAddHive}
-      />
-      
-      <AddApiaryModal
-        isOpen={isAddApiaryModalOpen}
-        onClose={() => setIsAddApiaryModalOpen(false)}
-        onAdd={handleAddApiary}
-      />
-      
-      <AddInspectionModal
-        isOpen={isAddInspectionModalOpen}
-        onClose={() => setIsAddInspectionModalOpen(false)}
-        onAdd={handleAddInspection}
-        hives={hives}
-      />
     </PageTransition>
   );
 };
