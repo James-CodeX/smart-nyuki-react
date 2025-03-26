@@ -30,9 +30,9 @@ type FormValues = z.infer<typeof formSchema>;
 interface EditHiveModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onEdit: (data: FormValues & { id: string }) => void;
+  onEdit: (data: FormValues & { hive_id: string }) => void;
   hive: {
-    id: string;
+    hive_id: string;
     name: string;
     type: string;
     status: string;
@@ -130,7 +130,7 @@ const EditHiveModal: React.FC<EditHiveModalProps> = ({
 
   const onSubmit = async (data: FormValues) => {
     try {
-      onEdit({ ...data, id: hive.id });
+      onEdit({ ...data, hive_id: hive.hive_id });
       onClose();
       toast({
         title: 'Hive updated',

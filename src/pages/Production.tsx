@@ -229,7 +229,7 @@ const AddProductionRecordDialog = ({ open, setOpen, apiaries, hives, onAddSucces
                 </SelectTrigger>
                 <SelectContent>
                   {filteredHives.map(hive => (
-                    <SelectItem key={hive.id} value={hive.id}>
+                    <SelectItem key={hive.hive_id} value={hive.hive_id}>
                       {hive.name}
                     </SelectItem>
                   ))}
@@ -373,9 +373,9 @@ const Production = () => {
       
       // Set default hive and apiary for weight data if available
       if (hivesData.length > 0) {
-        setSelectedHiveForWeight(hivesData[0].id);
+        setSelectedHiveForWeight(hivesData[0].hive_id);
         // Load weight data for first hive
-        const weightData = await getDailyWeightData(hivesData[0].id, 30);
+        const weightData = await getDailyWeightData(hivesData[0].hive_id, 30);
         setDailyWeightData(weightData);
         
         // Format weight data for the MetricGraph component
@@ -805,7 +805,7 @@ const Production = () => {
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {apiary.hives.map((hive) => (
-                          <Card key={hive.id} className="bg-card overflow-hidden border shadow-sm hover:shadow-md transition-all">
+                          <Card key={hive.hive_id} className="bg-card overflow-hidden border shadow-sm hover:shadow-md transition-all">
                             <CardContent className="p-4">
                               <div className="flex justify-between items-start">
                                 <h4 className="font-medium flex items-center gap-1">
@@ -894,7 +894,7 @@ const Production = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {hives.map(hive => (
-                      <SelectItem key={hive.id} value={hive.id}>
+                      <SelectItem key={hive.hive_id} value={hive.hive_id}>
                         {hive.name}
                       </SelectItem>
                     ))}

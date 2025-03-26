@@ -92,10 +92,10 @@ const HiveCard: React.FC<HiveCardProps> = ({ hive, onClick }) => {
   const weightData = normalizeMetrics(metrics.weight);
   
   // Create unique gradient IDs for this hive
-  const tempGradientId = `tempGradient-${hive.id}`;
-  const humidityGradientId = `humidityGradient-${hive.id}`;
-  const soundGradientId = `soundGradient-${hive.id}`;
-  const weightGradientId = `weightGradient-${hive.id}`;
+  const tempGradientId = `tempGradient-${hive.hive_id}`;
+  const humidityGradientId = `humidityGradient-${hive.hive_id}`;
+  const soundGradientId = `soundGradient-${hive.hive_id}`;
+  const weightGradientId = `weightGradient-${hive.hive_id}`;
   
   const hasAlerts = hive.alerts && hive.alerts.length > 0;
 

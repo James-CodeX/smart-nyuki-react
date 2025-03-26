@@ -61,20 +61,25 @@ const AppRoutes = () => {
   };
 
   // Page wrapper component to avoid repeating the same layout structure
-  const PageWrapper = ({ children }: { children: React.ReactNode }) => (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar onCollapsedChange={handleSidebarStateChange} />
-      <div 
-        className={`flex-1 transition-all duration-300 relative ${
-          isCollapsed ? 'pl-[80px]' : 'pl-[250px]'
-        }`}
-      >
-        <Suspense fallback={<PageLoader />}>
-          {children}
-        </Suspense>
+  const PageWrapper = ({ children }: { children: React.ReactNode }) => {
+    // Memoize the content class to prevent unnecessary rerenders
+    const contentClass = useMemo(() => {
+      return `flex-1 transition-all duration-300 ease-in-out relative ${
+        isCollapsed ? 'md:pl-[80px]' : 'md:pl-[250px]'
+      }`;
+    }, [isCollapsed]);
+
+    return (
+      <div className="flex min-h-screen bg-background">
+        <Sidebar onCollapsedChange={handleSidebarStateChange} />
+        <div className={contentClass}>
+          <Suspense fallback={<PageLoader />}>
+            {children}
+          </Suspense>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <AnimatePresence mode="wait">

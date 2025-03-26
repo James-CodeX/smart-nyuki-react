@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { HiveWithDetails, fetchHiveDetails } from '@/services/hiveService';
+import { HiveWithDetails, HiveWithFullDetails, fetchHiveDetails } from '@/services/hiveService';
 
 export interface HiveCreateInput {
   name: string;
@@ -9,6 +9,13 @@ export interface HiveCreateInput {
   hive_id: string;
   type: string;
   status: string;
+  installation_date?: string;
+  queen_type?: string;
+  queen_introduced_date?: string;
+  queen_marked?: boolean;
+  queen_marking_color?: string;
+  notes?: string;
+  alerts_enabled?: boolean;
   description?: string;
 }
 
@@ -19,17 +26,16 @@ type ApiaryWithName = {
 export const useHives = () => {
   const queryClient = useQueryClient();
 
-  const fetchHives = async (): Promise<HiveWithDetails[]> => {
+  const fetchHives = async (): Promise<HiveWithFullDetails[]> => {
     try {
       // Fetch basic hive data
       const { data: hives, error } = await supabase
         .from('hives')
         .select(`
-          id,
+          hive_id,
           name,
           type,
           status,
-          hive_id,
           apiary_id,
           created_at,
           updated_at,
@@ -54,7 +60,7 @@ export const useHives = () => {
       const hivesWithDetails = await Promise.all(
         hives.map(async (hive) => {
           try {
-            const details = await fetchHiveDetails(hive.id);
+            const details = await fetchHiveDetails(hive.hive_id);
             
             // Convert metrics from timestamp to time format
             const convertedMetrics = {
@@ -90,7 +96,6 @@ export const useHives = () => {
             const apiaryName = apiaryData?.name || 'Unknown';
             
             return {
-              id: hive.id,
               name: hive.name,
               hive_id: hive.hive_id,
               apiary_id: hive.apiary_id,
@@ -103,16 +108,15 @@ export const useHives = () => {
               apiaryName: apiaryName,
               metrics: convertedMetrics,
               alerts: convertedAlerts
-            } as unknown as HiveWithDetails;
+            } as unknown as HiveWithFullDetails;
           } catch (err) {
-            console.error(`Error fetching details for hive ${hive.id}:`, err);
+            console.error(`Error fetching details for hive ${hive.hive_id}:`, err);
             
             // Get name from apiaries object
             const apiaryData = hive.apiaries as unknown as ApiaryWithName;
             const apiaryName = apiaryData?.name || 'Unknown';
             
             return {
-              id: hive.id,
               name: hive.name,
               hive_id: hive.hive_id,
               apiary_id: hive.apiary_id,
@@ -130,7 +134,7 @@ export const useHives = () => {
                 sound: []
               },
               alerts: []
-            } as unknown as HiveWithDetails;
+            } as unknown as HiveWithFullDetails;
           }
         })
       );
@@ -142,13 +146,21 @@ export const useHives = () => {
     }
   };
 
-  const addHive = async (hive: HiveCreateInput): Promise<HiveWithDetails> => {
+  const addHive = async (hive: HiveCreateInput): Promise<HiveWithFullDetails> => {
     // Create a new object without the description field if it's not in the DB
     const { description, ...hiveData } = hive;
     
+    // Get the current authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError) throw new Error(authError.message);
+    if (!user) throw new Error('User not authenticated');
+    
     const { data, error } = await supabase
       .from('hives')
-      .insert([hiveData])
+      .insert([{
+        ...hiveData,
+        user_id: user.id  // Set the user_id to the current authenticated user
+      }])
       .select()
       .single();
 
@@ -179,17 +191,17 @@ export const useHives = () => {
         sound: []
       },
       alerts: []
-    } as unknown as HiveWithDetails;
+    } as unknown as HiveWithFullDetails;
   };
 
-  const updateHive = async (id: string, updates: Partial<HiveCreateInput>): Promise<HiveWithDetails> => {
+  const updateHive = async (id: string, updates: Partial<HiveCreateInput>): Promise<HiveWithFullDetails> => {
     // Create a new object without the description field if it's not in the DB
     const { description, ...updateData } = updates;
     
     const { data, error } = await supabase
       .from('hives')
       .update(updateData)
-      .eq('id', id)
+      .eq('hive_id', id)
       .select()
       .single();
 
@@ -245,17 +257,18 @@ export const useHives = () => {
         ...data,
         hive_id: data.hive_id,
         apiaryName: apiary?.name || 'Unknown',
-        description: description || '', // Add the description from the input or empty string
+        description: description || '',
         metrics: convertedMetrics,
         alerts: convertedAlerts
-      } as unknown as HiveWithDetails;
-    } catch (err) {
-      console.error(`Error fetching details for updated hive ${id}:`, err);
+      } as unknown as HiveWithFullDetails;
+    } catch (error) {
+      console.error('Error fetching hive details:', error);
+      
       return {
         ...data,
         hive_id: data.hive_id,
         apiaryName: apiary?.name || 'Unknown',
-        description: description || '', // Add the description from the input or empty string
+        description: description || '',
         metrics: {
           temperature: [],
           humidity: [],
@@ -263,7 +276,7 @@ export const useHives = () => {
           sound: []
         },
         alerts: []
-      } as unknown as HiveWithDetails;
+      } as unknown as HiveWithFullDetails;
     }
   };
 
@@ -271,14 +284,14 @@ export const useHives = () => {
     const { error } = await supabase
       .from('hives')
       .delete()
-      .eq('id', id);
+      .eq('hive_id', id);
 
     if (error) {
       throw new Error(error.message);
     }
   };
 
-  const hivesQuery = useQuery<HiveWithDetails[], Error>({
+  const hivesQuery = useQuery<HiveWithFullDetails[], Error>({
     queryKey: ['hives'],
     queryFn: fetchHives,
   });

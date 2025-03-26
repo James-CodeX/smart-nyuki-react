@@ -39,6 +39,7 @@ export interface ApiaryProductionSummary {
   hives: {
     id: string;
     name: string;
+    hive_id: string;
     production: number;
     lastHarvest: string;
     weightChange: number | null;
@@ -70,7 +71,7 @@ export const getAllProductionData = async (): Promise<ApiaryProductionSummary[]>
       // Get hives for this apiary
       const { data: hives, error: hivesError } = await supabase
         .from('hives')
-        .select('id, name')
+        .select('name, hive_id')
         .eq('apiary_id', apiary.id);
 
       if (hivesError) {
@@ -84,14 +85,15 @@ export const getAllProductionData = async (): Promise<ApiaryProductionSummary[]>
         const { data: hiveProduction, error: hiveProductionError } = await supabase
           .from('hive_production_data')
           .select('amount, date')
-          .eq('hive_id', hive.id)
+          .eq('hive_id', hive.hive_id)
           .order('date', { ascending: false });
 
         if (hiveProductionError) {
           console.error('Error fetching hive production:', hiveProductionError);
           return {
-            id: hive.id,
+            id: hive.hive_id,
             name: hive.name,
+            hive_id: hive.hive_id,
             production: 0,
             lastHarvest: 'No harvests',
             weightChange: null,
@@ -112,7 +114,7 @@ export const getAllProductionData = async (): Promise<ApiaryProductionSummary[]>
         const { data: metricData, error: metricError } = await supabase
           .from('metrics_time_series_data')
           .select('weight_value, timestamp')
-          .eq('hive_id', hive.id)
+          .eq('hive_id', hive.hive_id)
           .order('timestamp', { ascending: false })
           .limit(2);
 
@@ -130,8 +132,9 @@ export const getAllProductionData = async (): Promise<ApiaryProductionSummary[]>
         }
 
         return {
-          id: hive.id,
+          id: hive.hive_id,
           name: hive.name,
+          hive_id: hive.hive_id,
           production: totalHiveProduction,
           lastHarvest,
           weightChange,

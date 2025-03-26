@@ -1,7 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
 export interface Hive {
-  id: string;
   name: string;
   hive_id: string;
   apiary_id: string;
@@ -28,23 +27,65 @@ export interface HiveWithDetails extends Hive {
     sound: Array<{ time: string; value: number }>;
     weight: Array<{ time: string; value: number }>;
   };
-  alerts?: Array<{ id: string; type: string; message: string; severity: string; created_at: string }>;
+  alerts: Array<{ id: string; type: string; message: string; severity: string; created_at: string }>;
 }
 
 export interface HiveDetails {
   metrics: {
-    temperature: Array<{ timestamp: string; value: number }>;
-    humidity: Array<{ timestamp: string; value: number }>;
-    weight: Array<{ timestamp: string; value: number }>;
-    sound: Array<{ timestamp: string; value: number }>;
+    temperature: { timestamp: string; value: number }[];
+    humidity: { timestamp: string; value: number }[];
+    weight: { timestamp: string; value: number }[];
+    sound: { timestamp: string; value: number }[];
   };
-  alerts: Array<{ id: string; type: string; message: string; timestamp: string; severity: string }>;
+  alerts: {
+    id: string;
+    type: string;
+    message: string;
+    timestamp: string;
+    severity: string;
+  }[];
+}
+
+export interface HiveCreateInput {
+  name: string;
+  apiary_id: string;
+  hive_id: string;
+  type: string;
+  status: string;
+  installation_date?: string;
+  queen_type?: string;
+  queen_introduced_date?: string;
+  queen_marked?: boolean;
+  queen_marking_color?: string;
+  notes?: string;
+}
+
+export interface HiveWithFullDetails extends Omit<HiveCreateInput, 'apiary_id'> {
+  apiary_id: string;
+  apiaryName: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  is_registered: boolean;
+  metrics: {
+    temperature: { time: string; value: number }[];
+    humidity: { time: string; value: number }[];
+    weight: { time: string; value: number }[];
+    sound: { time: string; value: number }[];
+  };
+  alerts: {
+    id: string;
+    type: string;
+    message: string;
+    severity: string;
+    created_at: string;
+  }[];
 }
 
 /**
  * Fetch all hives for the authenticated user with optimized batch querying
  */
-export const getAllHives = async (): Promise<HiveWithDetails[]> => {
+export const getAllHives = async (): Promise<HiveWithFullDetails[]> => {
   try {
     // Get all hives with apiary name in a single joined query
     const { data: hives, error } = await supabase
@@ -65,8 +106,8 @@ export const getAllHives = async (): Promise<HiveWithDetails[]> => {
       return [];
     }
 
-    // Extract all hive IDs for batch queries
-    const hiveIds = hives.map(hive => hive.id);
+    // Extract all hive_ids for batch queries - they're now the primary keys
+    const hiveIds = hives.map(hive => hive.hive_id);
 
     // Batch query for time series data - get all metrics in a single query
     const { data: timeSeriesData, error: metricsError } = await supabase
@@ -79,7 +120,7 @@ export const getAllHives = async (): Promise<HiveWithDetails[]> => {
       console.error('Error fetching metrics data:', metricsError);
     }
 
-    // Group metrics by hive ID for faster access
+    // Group metrics by hive_id for faster access
     const metricsByHiveId = timeSeriesData?.reduce((acc, metric) => {
       if (!acc[metric.hive_id]) {
         acc[metric.hive_id] = [];
@@ -112,7 +153,7 @@ export const getAllHives = async (): Promise<HiveWithDetails[]> => {
     // Process all hives with their associated metrics and alerts
     const enrichedHives = hives.map((hive) => {
       // Get this hive's metrics and limit to most recent 24
-      const hiveMetrics = metricsByHiveId[hive.id] || [];
+      const hiveMetrics = metricsByHiveId[hive.hive_id] || [];
       const limitedMetrics = hiveMetrics.slice(0, 24);
 
       // Transform time series data to the format expected by components
@@ -157,7 +198,7 @@ export const getAllHives = async (): Promise<HiveWithDetails[]> => {
         ...hive,
         apiaryName: hive.apiaries?.name || 'Unknown Apiary',
         metrics: formattedMetrics,
-        alerts: alertsByHiveId[hive.id] || []
+        alerts: alertsByHiveId[hive.hive_id] || []
       };
     });
 
@@ -171,7 +212,7 @@ export const getAllHives = async (): Promise<HiveWithDetails[]> => {
 /**
  * Get hives for a specific apiary with optimized batch querying
  */
-export const getHivesByApiary = async (apiaryId: string): Promise<HiveWithDetails[]> => {
+export const getHivesByApiary = async (apiaryId: string): Promise<HiveWithFullDetails[]> => {
   try {
     // Get hives for this apiary
     const { data: hives, error } = await supabase
@@ -193,8 +234,8 @@ export const getHivesByApiary = async (apiaryId: string): Promise<HiveWithDetail
       return [];
     }
 
-    // Extract all hive IDs for batch queries
-    const hiveIds = hives.map(hive => hive.id);
+    // Extract all hive_ids for batch queries - they're now the primary keys
+    const hiveIds = hives.map(hive => hive.hive_id);
 
     // Batch query for time series data - get all metrics in a single query
     const { data: timeSeriesData, error: metricsError } = await supabase
@@ -207,7 +248,7 @@ export const getHivesByApiary = async (apiaryId: string): Promise<HiveWithDetail
       console.error('Error fetching metrics data:', metricsError);
     }
 
-    // Group metrics by hive ID for faster access
+    // Group metrics by hive_id for faster access
     const metricsByHiveId = timeSeriesData?.reduce((acc, metric) => {
       if (!acc[metric.hive_id]) {
         acc[metric.hive_id] = [];
@@ -240,7 +281,7 @@ export const getHivesByApiary = async (apiaryId: string): Promise<HiveWithDetail
     // Process all hives with their associated metrics and alerts
     const enrichedHives = hives.map((hive) => {
       // Get this hive's metrics and limit to most recent 24
-      const hiveMetrics = metricsByHiveId[hive.id] || [];
+      const hiveMetrics = metricsByHiveId[hive.hive_id] || [];
       const limitedMetrics = hiveMetrics.slice(0, 24);
 
       // Format metrics
@@ -284,7 +325,7 @@ export const getHivesByApiary = async (apiaryId: string): Promise<HiveWithDetail
         ...hive,
         apiaryName: hive.apiaries?.name || 'Unknown Apiary',
         metrics: formattedMetrics,
-        alerts: alertsByHiveId[hive.id] || []
+        alerts: alertsByHiveId[hive.hive_id] || []
       };
     });
 
@@ -298,9 +339,10 @@ export const getHivesByApiary = async (apiaryId: string): Promise<HiveWithDetail
 /**
  * Get a single hive by ID
  */
-export const getHiveById = async (hiveId: string): Promise<HiveWithDetails | null> => {
+export const getHiveById = async (hiveId: string): Promise<HiveWithFullDetails | null> => {
   try {
-    const { data: hive, error } = await supabase
+    // Query by 'hive_id' (the device ID)
+    const hiveQuery = await supabase
       .from('hives')
       .select(`
         *,
@@ -308,22 +350,26 @@ export const getHiveById = async (hiveId: string): Promise<HiveWithDetails | nul
           name
         )
       `)
-      .eq('id', hiveId)
-      .single();
+      .eq('hive_id', hiveId)
+      .maybeSingle();
 
-    if (error) {
-      throw error;
+    if (hiveQuery.error) {
+      console.error('Error fetching hive:', hiveQuery.error);
+      throw hiveQuery.error;
     }
 
-    if (!hive) {
+    if (!hiveQuery.data) {
+      console.log(`No hive found with hive_id=${hiveId}`);
       return null;
     }
 
-    // Get latest metrics
+    const hive = hiveQuery.data;
+
+    // Get latest metrics - use the hive_id string directly
     const { data: timeSeriesData, error: metricsError } = await supabase
       .from('metrics_time_series_data')
       .select('*')
-      .eq('hive_id', hiveId)
+      .eq('hive_id', hive.hive_id)
       .order('timestamp', { ascending: false })
       .limit(24);
 
@@ -335,7 +381,7 @@ export const getHiveById = async (hiveId: string): Promise<HiveWithDetails | nul
     const { data: alerts, error: alertsError } = await supabase
       .from('alerts')
       .select('*')
-      .eq('hive_id', hiveId)
+      .eq('hive_id', hive.hive_id) // Use hive_id for consistency
       .is('resolved_at', null)
       .order('created_at', { ascending: false });
 
@@ -409,25 +455,50 @@ export const addHive = async (hiveData: {
   notes?: string;
 }): Promise<any> => {
   try {
-    // Validate that the hive ID exists in metrics_time_series_data
+    console.log('Adding hive with ID:', hiveData.hive_id);
+    
+    // Clean the hive ID
+    const cleanHiveId = hiveData.hive_id.trim();
+
+    // Use the RPC function to check if hive exists
     const { data: metricsData, error: metricsError } = await supabase
-      .from('metrics_time_series_data')
-      .select('hive_id')
-      .eq('hive_id', hiveData.hive_id)
-      .limit(1);
+      .rpc('check_hive_exists', { hive_id_param: cleanHiveId });
     
-    if (metricsError) throw metricsError;
-    
-    if (!metricsData || metricsData.length === 0) {
-      throw new Error('This hive ID does not exist in our system');
+    if (metricsError) {
+      console.log('RPC error, falling back to direct query:', metricsError);
+      
+      // Fall back to direct query
+      const { data: directData, error: directError } = await supabase
+        .from('metrics_time_series_data')
+        .select('hive_id')
+        .eq('hive_id', cleanHiveId)
+        .limit(1);
+      
+      console.log('Direct query result:', directData, 'Error:', directError);
+      
+      if (directError) throw directError;
+      
+      if (!directData || directData.length === 0) {
+        console.log('No metrics data found for hive ID:', cleanHiveId);
+        throw new Error('This hive ID does not exist in our system');
+      }
+    } else {
+      console.log('RPC result:', metricsData);
+      
+      if (!metricsData || !metricsData.exists) {
+        console.log('RPC reports no metrics data found for hive ID:', cleanHiveId);
+        throw new Error('This hive ID does not exist in our system');
+      }
     }
     
     // Check if hive ID is already registered to another user
     const { data: existingHive, error: existingHiveError } = await supabase
       .from('hives')
-      .select('id')
-      .eq('hive_id', hiveData.hive_id)
+      .select('hive_id')
+      .eq('hive_id', cleanHiveId)
       .limit(1);
+    
+    console.log('Existing hive query result:', existingHive, 'Error:', existingHiveError);
     
     if (existingHiveError) throw existingHiveError;
     
@@ -439,22 +510,26 @@ export const addHive = async (hiveData: {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError) throw authError;
     if (!user) throw new Error('User not authenticated');
+
+    // Process date fields to handle empty strings
+    const installation_date = hiveData.installation_date?.trim() || null;
+    const queen_introduced_date = hiveData.queen_introduced_date?.trim() || null;
     
     const { data, error } = await supabase
       .from('hives')
       .insert([
         {
           name: hiveData.name,
-          hive_id: hiveData.hive_id,
+          hive_id: cleanHiveId, // Use the cleaned hive ID
           apiary_id: hiveData.apiaryId,
           type: hiveData.type,
           status: hiveData.status,
-          installation_date: hiveData.installation_date,
-          queen_type: hiveData.queen_type,
-          queen_introduced_date: hiveData.queen_introduced_date,
-          queen_marked: hiveData.queen_marked,
-          queen_marking_color: hiveData.queen_marking_color,
-          notes: hiveData.notes,
+          installation_date: installation_date,
+          queen_type: hiveData.queen_type || null,
+          queen_introduced_date: queen_introduced_date,
+          queen_marked: hiveData.queen_marked || false,
+          queen_marking_color: hiveData.queen_marking_color || null,
+          notes: hiveData.notes || null,
           user_id: user.id,
         },
       ])
@@ -474,22 +549,110 @@ export const addHive = async (hiveData: {
 /**
  * Update an existing hive
  */
-export const updateHive = async (id: string, hiveData: Partial<Omit<Hive, 'id' | 'created_at' | 'updated_at' | 'user_id'>>): Promise<Hive> => {
+export const updateHive = async (
+  hiveId: string, 
+  updates: Partial<HiveCreateInput>
+): Promise<HiveWithFullDetails> => {
   try {
+    // Process date fields to handle empty strings
+    if (updates.installation_date !== undefined) {
+      updates.installation_date = updates.installation_date?.trim() || null;
+    }
+    if (updates.queen_introduced_date !== undefined) {
+      updates.queen_introduced_date = updates.queen_introduced_date?.trim() || null;
+    }
+    
     const { data, error } = await supabase
       .from('hives')
-      .update(hiveData)
-      .eq('id', id)
+      .update(updates)
+      .eq('hive_id', hiveId)
       .select()
       .single();
-
+    
     if (error) {
       throw error;
     }
-
-    return data;
+    
+    // Get the apiary name for the updated hive
+    const { data: apiary, error: apiaryError } = await supabase
+      .from('apiaries')
+      .select('name')
+      .eq('id', data.apiary_id)
+      .single();
+    
+    if (apiaryError) {
+      console.error('Error fetching apiary name:', apiaryError);
+    }
+    
+    // Get latest metrics
+    const { data: metricsData, error: metricsError } = await supabase
+      .from('metrics_time_series_data')
+      .select('*')
+      .eq('hive_id', hiveId)
+      .order('timestamp', { ascending: false })
+      .limit(24);
+    
+    if (metricsError) {
+      console.error('Error fetching metrics:', metricsError);
+    }
+    
+    // Get active alerts
+    const { data: alertsData, error: alertsError } = await supabase
+      .from('alerts')
+      .select('*')
+      .eq('hive_id', hiveId)
+      .is('resolved_at', null)
+      .order('created_at', { ascending: false });
+    
+    if (alertsError) {
+      console.error('Error fetching alerts:', alertsError);
+    }
+    
+    // Format metrics
+    const formattedMetrics = {
+      temperature: [],
+      humidity: [],
+      sound: [],
+      weight: []
+    };
+    
+    if (metricsData && metricsData.length > 0) {
+      metricsData.reverse().forEach(metric => {
+        if (metric.temp_value !== null) {
+          formattedMetrics.temperature.push({
+            time: metric.time,
+            value: metric.temp_value
+          });
+        }
+        if (metric.hum_value !== null) {
+          formattedMetrics.humidity.push({
+            time: metric.time,
+            value: metric.hum_value
+          });
+        }
+        if (metric.sound_value !== null) {
+          formattedMetrics.sound.push({
+            time: metric.time,
+            value: metric.sound_value
+          });
+        }
+        if (metric.weight_value !== null) {
+          formattedMetrics.weight.push({
+            time: metric.time,
+            value: metric.weight_value
+          });
+        }
+      });
+    }
+    
+    return {
+      ...data,
+      apiaryName: apiary?.name || 'Unknown Apiary',
+      metrics: formattedMetrics,
+      alerts: alertsData || []
+    };
   } catch (error) {
-    console.error('Error in updateHive:', error);
+    console.error('Error updating hive:', error);
     throw error;
   }
 };
@@ -497,18 +660,18 @@ export const updateHive = async (id: string, hiveData: Partial<Omit<Hive, 'id' |
 /**
  * Delete a hive
  */
-export const deleteHive = async (id: string): Promise<void> => {
+export const deleteHive = async (hiveId: string): Promise<void> => {
   try {
     const { error } = await supabase
       .from('hives')
       .delete()
-      .eq('id', id);
+      .eq('hive_id', hiveId);
 
     if (error) {
       throw error;
     }
   } catch (error) {
-    console.error('Error in deleteHive:', error);
+    console.error('Error deleting hive:', error);
     throw error;
   }
 };
@@ -518,21 +681,53 @@ export const deleteHive = async (id: string): Promise<void> => {
  */
 export const checkHiveAvailability = async (hiveId: string): Promise<{ exists: boolean; available: boolean; error?: string }> => {
   try {
-    // First, check if the hive exists in the database
-    const { data: hive, error: hiveError } = await supabase
+    console.log('Checking availability for hive ID:', hiveId);
+    
+    // Use a raw SQL query to directly check if the hive ID exists
+    const { data: metricsData, error: metricsError } = await supabase
+      .rpc('check_hive_exists', { hive_id_param: hiveId.trim() });
+    
+    if (metricsError) {
+      console.log('RPC error, falling back to direct query:', metricsError);
+      
+      // Fall back to a direct query using eq instead of ilike
+      const { data: metrics, error: directError } = await supabase
+        .from('metrics_time_series_data')
+        .select('hive_id')
+        .eq('hive_id', hiveId.trim())
+        .limit(1);
+      
+      console.log('Direct query result (eq):', metrics, 'Error:', directError);
+      
+      if (directError) throw directError;
+      
+      // If the hive doesn't exist in the metrics table, return false
+      if (!metrics || metrics.length === 0) {
+        console.log('No metrics data found for hive ID:', hiveId);
+        return { exists: false, available: false, error: 'This hive ID does not exist in our system' };
+      }
+    } else {
+      console.log('RPC result:', metricsData);
+      
+      if (!metricsData || !metricsData.exists) {
+        console.log('RPC reports no metrics data found for hive ID:', hiveId);
+        return { exists: false, available: false, error: 'This hive ID does not exist in our system' };
+      }
+    }
+    
+    // If we get here, the hive exists in metrics_time_series_data
+    console.log('Hive ID found in metrics_time_series_data');
+    
+    // Then check if the hive is already registered in the hives table
+    const { data: existingHive, error: hiveError } = await supabase
       .from('hives')
-      .select('id, is_registered, user_id')
-      .eq('id', hiveId)
-      .single();
+      .select('hive_id, is_registered, user_id')
+      .eq('hive_id', hiveId.trim())
+      .maybeSingle();
     
-    if (hiveError && hiveError.code !== 'PGRST116') { // PGRST116 is "not found" error
-      throw hiveError;
-    }
+    console.log('Existing hive query result:', existingHive, 'Error:', hiveError);
     
-    // If the hive doesn't exist at all, return false
-    if (!hive) {
-      return { exists: false, available: false, error: 'This hive ID does not exist in our system' };
-    }
+    if (hiveError) throw hiveError;
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -541,17 +736,21 @@ export const checkHiveAvailability = async (hiveId: string): Promise<{ exists: b
       return { exists: true, available: false, error: 'You must be logged in to register a hive' };
     }
     
-    // Check if the hive is already registered
-    if (hive.is_registered && hive.user_id && hive.user_id !== user.id) {
-      return { exists: true, available: false, error: 'This hive is already registered to another user' };
+    // If hive already exists in the hives table
+    if (existingHive) {
+      // Check if the hive is already registered
+      if (existingHive.is_registered && existingHive.user_id && existingHive.user_id !== user.id) {
+        return { exists: true, available: false, error: 'This hive is already registered to another user' };
+      }
+      
+      // Check if the hive belongs to the current user
+      if (existingHive.user_id === user.id) {
+        return { exists: true, available: false, error: 'You have already registered this hive' };
+      }
     }
     
-    // Check if the hive belongs to the current user
-    if (hive.user_id === user.id) {
-      return { exists: true, available: false, error: 'You have already registered this hive' };
-    }
-    
-    // The hive exists and is available to register
+    // The hive exists in metrics_time_series_data and is available to register
+    console.log('Hive is available for registration');
     return { exists: true, available: true };
   } catch (error) {
     console.error('Error checking hive availability:', error);
@@ -561,16 +760,18 @@ export const checkHiveAvailability = async (hiveId: string): Promise<{ exists: b
 
 /**
  * Fetches detailed metrics and alerts for a specific hive
- * @param hiveId The UUID primary key of the hive in the hives table
+ * @param hiveId The hive_id primary key of the hive
  */
 export const fetchHiveDetails = async (hiveId: string): Promise<HiveDetails> => {
   try {
-    // Fetch metrics from the metrics_time_series_data table
-    // hive_id in metrics_time_series_data is a foreign key to hives.id (the UUID), not hives.hive_id (the string identifier)
+    // Use the hive_id directly for querying
+    const hiveIdToUse = hiveId;
+    
+    // Fetch metrics from the metrics_time_series_data table using hive_id directly
     const { data: metricsData, error: metricsError } = await supabase
       .from('metrics_time_series_data')
       .select('*')
-      .eq('hive_id', hiveId)
+      .eq('hive_id', hiveIdToUse)
       .order('timestamp', { ascending: false })
       .limit(200);
 
@@ -630,7 +831,7 @@ export const fetchHiveDetails = async (hiveId: string): Promise<HiveDetails> => 
     const { data: alertsData, error: alertsError } = await supabase
       .from('alerts')
       .select('*')
-      .eq('hive_id', hiveId)
+      .eq('hive_id', hiveIdToUse)
       .order('created_at', { ascending: false })
       .limit(10);
 
@@ -658,4 +859,4 @@ export const fetchHiveDetails = async (hiveId: string): Promise<HiveDetails> => 
       alerts: []
     };
   }
-}; 
+};

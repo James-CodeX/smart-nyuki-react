@@ -1,676 +1,319 @@
-# Database Setup Documentation
+# Smart Nyuki Database Schema Documentation
 
-This document outlines the data structure used in the Smart-Nyuki React application. It provides a comprehensive guide for migrating from the current mock data implementation to a proper database in the future.
+This document provides a comprehensive overview of the database structure for the Smart Nyuki beekeeping application. The database is built on PostgreSQL with Supabase as the backend service.
 
-## Tables Overview
+## Schemas Overview
 
-The application uses the following core data models:
+| Schema Name | Size | Table Count | Description |
+|-------------|------|-------------|-------------|
+| public | 1376 kB | 18 | Main application data |
+| auth | 952 kB | 16 | Authentication and user management |
+| storage | 144 kB | 5 | File storage system |
+| realtime | 56 kB | 3 | Real-time data handling |
+| vault | 24 kB | 1 | Secure information storage |
+| supabase_migrations | 112 kB | 1 | Database migration tracking |
+| extensions | 0 bytes | 0 | PostgreSQL extensions |
+| graphql | 0 bytes | 0 | GraphQL API support |
+| graphql_public | 0 bytes | 0 | Public GraphQL interface |
 
-1. **Apiaries** - Beekeeping locations that contain multiple hives
-2. **Hives** - Individual beehives within apiaries
-3. **Metrics** - Time-series data for hive measurements (temperature, humidity, etc.)
-4. **Alerts** - Notifications about hive conditions requiring attention
-5. **Inspections** - Records of hive inspections, both scheduled and completed
-6. **Users** - System users who manage apiaries and hives
-7. **HiveMetrics** - Specific time-series data for various metric types
-8. **HiveProductionData** - Records of honey production and harvests
-9. **ApiarySharing** - Manages access permissions between users for collaborative work
+## Public Schema (Application Data)
 
-## Table Definitions
+### Profiles Table
 
-### 1. Users
+Primary user profile information linked to authentication.
 
-Stores information about system users.
+| Column Name | Data Type | Nullable | Default | Description |
+|-------------|-----------|----------|---------|-------------|
+| id | uuid | NO | | Primary Key, Foreign Key to auth.users |
+| username | character varying | YES | | User's chosen username |
+| first_name | character varying | YES | | User's first name |
+| last_name | character varying | YES | | User's last name |
+| avatar_url | text | YES | | URL to user's profile picture |
+| company | character varying | YES | | Company or organization name |
+| experience_level | character varying | YES | | Level of beekeeping experience |
+| bio | text | YES | | User biography |
+| location | character varying | YES | | User's location |
+| website | character varying | YES | | User's website URL |
+| social_links | jsonb | YES | | JSON object of social media links |
+| preferences | jsonb | YES | | User preferences as JSON |
+| role | character varying | YES | 'beekeeper' | User role in the system |
+| created_at | timestamp with time zone | NO | now() | Creation timestamp |
+| updated_at | timestamp with time zone | NO | now() | Last update timestamp |
 
-| Column       | Type         | Constraints       | Description                           |
-|--------------|--------------|-------------------|---------------------------------------|
-| id           | VARCHAR(36)  | PRIMARY KEY       | Unique identifier for the user (UUID) |
-| username     | VARCHAR(50)  | UNIQUE, NOT NULL  | User's login name                     |
-| email        | VARCHAR(100) | UNIQUE, NOT NULL  | User's email address                  |
-| password_hash| VARCHAR(255) | NOT NULL          | Hashed password                       |
-| first_name   | VARCHAR(50)  | NOT NULL          | User's first name                     |
-| last_name    | VARCHAR(50)  | NOT NULL          | User's last name                      |
-| created_at   | TIMESTAMP    | NOT NULL          | When the user account was created     |
-| updated_at   | TIMESTAMP    | NOT NULL          | When the user account was last updated|
-| role         | VARCHAR(20)  | NOT NULL          | User role (admin, beekeeper, etc.)    |
+### Apiaries Table
 
-### 2. Apiaries
+Represents beekeeping locations containing multiple hives.
 
-Stores information about beekeeping locations.
+| Column Name | Data Type | Nullable | Default | Description |
+|-------------|-----------|----------|---------|-------------|
+| id | uuid | NO | gen_random_uuid() | Primary Key |
+| name | character varying | NO | | Apiary name |
+| location | character varying | YES | | Physical location description |
+| latitude | numeric | YES | | GPS latitude coordinate |
+| longitude | numeric | YES | | GPS longitude coordinate |
+| elevation | numeric | YES | | Elevation in meters |
+| notes | text | YES | | General notes about the apiary |
+| image_url | text | YES | | URL to apiary image |
+| user_id | uuid | NO | | Foreign Key to auth.users |
+| created_at | timestamp with time zone | NO | now() | Creation timestamp |
+| updated_at | timestamp with time zone | NO | now() | Last update timestamp |
 
-| Column          | Type         | Constraints                 | Description                               |
-|-----------------|--------------|----------------------------|-------------------------------------------|
-| id              | VARCHAR(36)  | PRIMARY KEY                | Unique identifier for the apiary (UUID)   |
-| name            | VARCHAR(100) | NOT NULL                   | Name of the apiary                        |
-| location        | VARCHAR(255) | NOT NULL                   | Physical location of the apiary           |
-| user_id         | VARCHAR(36)  | FOREIGN KEY, NOT NULL      | Owner/creator of the apiary              |
-| created_at      | TIMESTAMP    | NOT NULL                   | When the apiary was added to the system   |
-| updated_at      | TIMESTAMP    | NOT NULL                   | When the apiary was last updated          |
-| latitude        | DECIMAL(10,8)| NULL                       | GPS latitude coordinate                   |
-| longitude       | DECIMAL(11,8)| NULL                       | GPS longitude coordinate                  |
-| notes           | TEXT         | NULL                       | Additional notes about the apiary         |
-| hive_count      | INTEGER      | NOT NULL                   | Number of hives in the apiary             |
-| avg_temperature | DECIMAL(5,2) | NULL                       | Average temperature across all hives      |
-| avg_humidity    | DECIMAL(5,2) | NULL                       | Average humidity across all hives         |
-| avg_sound       | DECIMAL(5,2) | NULL                       | Average sound level across all hives      |
-| avg_weight      | DECIMAL(5,2) | NULL                       | Average weight across all hives           |
+### Hives Table
 
-**Foreign Keys:**
-- `user_id` references `Users(id)`
+Individual beehives within apiaries.
 
-### 3. Hives
+| Column Name | Data Type | Nullable | Default | Description |
+|-------------|-----------|----------|---------|-------------|
+| hive_id | text | NO | | Primary Key, unique identifier |
+| name | character varying | NO | | Hive name |
+| apiary_id | uuid | NO | | Foreign Key to apiaries |
+| type | character varying | YES | | Hive type (Langstroth, etc.) |
+| status | character varying | NO | 'active' | Hive status |
+| installation_date | date | YES | | When the hive was installed |
+| queen_introduced_date | date | YES | | When the queen was introduced |
+| queen_type | character varying | YES | | Type of queen |
+| queen_marked | boolean | YES | false | Whether queen is marked |
+| queen_marking_color | character varying | YES | | Color used to mark queen |
+| notes | text | YES | | General notes |
+| image_url | text | YES | | URL to hive image |
+| user_id | uuid | NO | | Foreign Key to auth.users |
+| created_at | timestamp with time zone | NO | now() | Creation timestamp |
+| updated_at | timestamp with time zone | NO | now() | Last update timestamp |
+| is_registered | boolean | YES | true | Registration status |
 
-Stores information about individual beehives.
+### Inspections Table
 
-| Column           | Type         | Constraints                  | Description                             |
-|------------------|--------------|------------------------------|-----------------------------------------|
-| id               | VARCHAR(36)  | PRIMARY KEY                 | Unique identifier for the hive (UUID)   |
-| name             | VARCHAR(100) | NOT NULL                    | Name or identifier of the hive          |
-| apiary_id        | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | Apiary where the hive is located        |
-| node_id          | VARCHAR(100) | NULL                        | Hardware node ID for IoT integration    |
-| hive_type        | VARCHAR(50)  | NOT NULL                    | Type of hive (Langstroth, etc.)         |
-| queen_age        | VARCHAR(50)  | NULL                        | Age of the queen bee                    |
-| installation_date| DATE         | NULL                        | When the hive was installed             |
-| created_at       | TIMESTAMP    | NOT NULL                    | When the hive was added to the system   |
-| updated_at       | TIMESTAMP    | NOT NULL                    | When the hive was last updated          |
-| notes            | TEXT         | NULL                        | Additional notes about the hive         |
-| status           | VARCHAR(20)  | NOT NULL                    | Current status of the hive              |
+Records of hive inspections.
 
-**Foreign Keys:**
-- `apiary_id` references `Apiaries(id)`
+| Column Name | Data Type | Nullable | Default | Description |
+|-------------|-----------|----------|---------|-------------|
+| id | uuid | NO | gen_random_uuid() | Primary Key |
+| hive_id | text | NO | | Foreign Key to hives |
+| inspection_date | timestamp with time zone | NO | now() | When inspection occurred |
+| weight | numeric | YES | | Hive weight measurement |
+| temperature | numeric | YES | | Temperature during inspection |
+| humidity | numeric | YES | | Humidity during inspection |
+| weather_conditions | character varying | YES | | Weather conditions |
+| hive_strength | integer | YES | | Strength rating (1-10) |
+| queen_seen | boolean | YES | false | Whether queen was spotted |
+| eggs_seen | boolean | YES | false | Whether eggs were spotted |
+| larvae_seen | boolean | YES | false | Whether larvae were spotted |
+| queen_cells_seen | boolean | YES | false | Whether queen cells were spotted |
+| disease_signs | boolean | YES | false | Signs of disease present |
+| disease_details | text | YES | | Disease details if present |
+| varroa_check | boolean | YES | false | Whether varroa mites were checked |
+| varroa_count | integer | YES | | Count of varroa mites |
+| honey_stores | integer | YES | | Honey stores rating |
+| pollen_stores | integer | YES | | Pollen stores rating |
+| added_supers | integer | YES | 0 | Number of supers added |
+| removed_supers | integer | YES | 0 | Number of supers removed |
+| feed_added | boolean | YES | false | Whether feed was added |
+| feed_type | character varying | YES | | Type of feed added |
+| feed_amount | character varying | YES | | Amount of feed added |
+| medications_added | boolean | YES | false | Whether medications were added |
+| medication_details | text | YES | | Details of medications |
+| notes | text | YES | | General inspection notes |
+| images | jsonb | YES | | JSON array of image URLs |
+| user_id | uuid | NO | | Foreign Key to auth.users |
+| created_at | timestamp with time zone | NO | now() | Creation timestamp |
+| updated_at | timestamp with time zone | NO | now() | Last update timestamp |
 
-### 4. HiveMetrics
+### Metrics Table
 
-Stores time-series data for various hive measurements separately by type.
+Core metrics data for hives.
 
-| Column     | Type         | Constraints                  | Description                             |
-|------------|--------------|------------------------------|-----------------------------------------|
-| id         | VARCHAR(36)  | PRIMARY KEY                 | Unique identifier for the metric record |
-| hive_id    | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | Hive the metric belongs to              |
-| type       | VARCHAR(20)  | NOT NULL                    | Type (temperature, humidity, sound, weight)|
-| value      | DECIMAL(8,2) | NOT NULL                    | Measured value                          |
-| timestamp  | TIMESTAMP    | NOT NULL                    | When the measurement was taken          |
-| unit       | VARCHAR(10)  | NOT NULL                    | Unit of measurement (°C, %, kg, etc.)   |
+| Column Name | Data Type | Nullable | Default | Description |
+|-------------|-----------|----------|---------|-------------|
+| id | uuid | NO | gen_random_uuid() | Primary Key |
+| hive_id | text | NO | | Foreign Key to hives |
+| type | character varying | NO | | Metric type |
+| value | numeric | NO | | Metric value |
+| timestamp | timestamp with time zone | NO | | When metric was recorded |
+| unit | character varying | NO | | Unit of measurement |
+| user_id | uuid | NO | | Foreign Key to auth.users |
+| created_at | timestamp with time zone | NO | now() | Creation timestamp |
 
-**Foreign Keys:**
-- `hive_id` references `Hives(id)`
+### Metrics Time Series Data Table
 
-**Indexes:**
-- Composite index on (`hive_id`, `type`, `timestamp`) for efficient time-series queries
-- Index on `timestamp` for date range queries
-- Index on `type` for filtering by metric type
+Time-series data for hive monitoring.
 
-### 5. Alerts
+| Column Name | Data Type | Nullable | Default | Description |
+|-------------|-----------|----------|---------|-------------|
+| id | uuid | NO | gen_random_uuid() | Primary Key |
+| hive_id | text | NO | | Foreign Key to hives |
+| time | character varying | NO | | Time representation |
+| timestamp | timestamp with time zone | NO | | Precise timestamp |
+| temp_value | numeric | YES | | Temperature value |
+| hum_value | numeric | YES | | Humidity value |
+| sound_value | numeric | YES | | Sound level value |
+| weight_value | numeric | YES | | Weight value |
+| created_at | timestamp with time zone | NO | now() | Creation timestamp |
 
-Stores notifications about hive conditions requiring attention.
+### Alerts Table
 
-| Column      | Type         | Constraints                  | Description                             |
-|-------------|--------------|------------------------------|-----------------------------------------|
-| id          | VARCHAR(36)  | PRIMARY KEY                 | Unique identifier for the alert         |
-| hive_id     | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | Hive the alert is for                   |
-| type        | VARCHAR(20)  | NOT NULL                    | Alert type (temperature, humidity, etc.)|
-| message     | VARCHAR(255) | NOT NULL                    | Alert description                       |
-| created_at  | TIMESTAMP    | NOT NULL                    | When the alert was generated            |
-| is_read     | BOOLEAN      | NOT NULL, DEFAULT FALSE     | Whether the alert has been read         |
-| severity    | VARCHAR(20)  | NOT NULL                    | Alert severity (warning, critical, etc.)|
-| resolved_at | TIMESTAMP    | NULL                        | When the alert was resolved             |
+System-generated alerts for hives.
 
-**Foreign Keys:**
-- `hive_id` references `Hives(id)`
+| Column Name | Data Type | Nullable | Default | Description |
+|-------------|-----------|----------|---------|-------------|
+| id | uuid | NO | gen_random_uuid() | Primary Key |
+| hive_id | text | NO | | Foreign Key to hives |
+| type | character varying | NO | | Alert type |
+| message | character varying | NO | | Alert message |
+| created_at | timestamp with time zone | NO | now() | Creation timestamp |
+| is_read | boolean | NO | false | Whether alert was read |
+| severity | character varying | NO | | Alert severity level |
+| resolved_at | timestamp with time zone | YES | | When alert was resolved |
+| user_id | uuid | NO | | Foreign Key to auth.users |
 
-### 6. Inspections
+### Hive Production Data Table
 
-Stores records of hive inspections.
+Records of honey and other hive products.
 
-| Column      | Type         | Constraints                  | Description                             |
-|-------------|--------------|------------------------------|-----------------------------------------|
-| id          | VARCHAR(36)  | PRIMARY KEY                 | Unique identifier for the inspection    |
-| hive_id     | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | Hive being inspected                    |
-| apiary_id   | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | Apiary where the hive is located        |
-| user_id     | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | User who performed the inspection       |
-| date        | DATE         | NOT NULL                    | Date of the inspection                  |
-| type        | ENUM         | NOT NULL                    | Inspection type (see ENUM definition)   |
-| status      | ENUM         | NOT NULL                    | Status of the inspection (see ENUM def) |
-| notes       | TEXT         | NULL                        | Additional notes about the inspection   |
-| created_at  | TIMESTAMP    | NOT NULL                    | When the inspection record was created  |
-| updated_at  | TIMESTAMP    | NOT NULL                    | When the inspection was last updated    |
+| Column Name | Data Type | Nullable | Default | Description |
+|-------------|-----------|----------|---------|-------------|
+| id | uuid | NO | gen_random_uuid() | Primary Key |
+| hive_id | text | NO | | Foreign Key to hives |
+| apiary_id | uuid | NO | | Foreign Key to apiaries |
+| date | date | NO | | Production date |
+| amount | numeric | NO | | Amount produced |
+| quality | character varying | YES | | Quality rating |
+| type | character varying | NO | | Product type (honey, wax, etc.) |
+| notes | text | YES | | Production notes |
+| created_by | uuid | NO | | User who created record |
+| created_at | timestamp with time zone | NO | now() | Creation timestamp |
+| updated_at | timestamp with time zone | NO | now() | Last update timestamp |
+| projected_harvest | numeric | YES | | Projected future harvest |
+| weight_change | numeric | YES | | Weight change since last measurement |
+| user_id | uuid | NO | | Foreign Key to auth.users |
 
-**Foreign Keys:**
-- `hive_id` references `Hives(id)`
-- `apiary_id` references `Apiaries(id)`
-- `user_id` references `Users(id)`
+### Production Summary Table
 
-**ENUM Definitions:**
-- `type`: 'regular', 'health-check', 'winter-prep', 'varroa-check', 'disease-treatment', 'harvest-evaluation'
-- `status`: 'scheduled', 'completed', 'overdue', 'cancelled'
+Aggregated production data by apiary.
 
-### 7. InspectionFindings
+| Column Name | Data Type | Nullable | Default | Description |
+|-------------|-----------|----------|---------|-------------|
+| id | uuid | NO | gen_random_uuid() | Primary Key |
+| apiary_id | uuid | NO | | Foreign Key to apiaries |
+| year | integer | NO | | Year of summary |
+| month | integer | YES | | Month of summary |
+| month_number | integer | YES | | Numerical month (1-12) |
+| total_production | numeric | NO | | Total production amount |
+| change_percent | numeric | YES | | Percent change from previous period |
+| avg_production | numeric | YES | | Average production per hive |
+| created_at | timestamp with time zone | NO | now() | Creation timestamp |
+| user_id | uuid | NO | | Foreign Key to auth.users |
 
-Detailed findings from completed inspections.
+### User Preferences Table
 
-| Column              | Type         | Constraints                  | Description                             |
-|---------------------|--------------|------------------------------|-----------------------------------------|
-| id                  | VARCHAR(36)  | PRIMARY KEY                 | Unique identifier for the findings      |
-| inspection_id       | VARCHAR(36)  | FOREIGN KEY, UNIQUE, NOT NULL | Associated inspection                 |
-| queen_sighted       | BOOLEAN      | NOT NULL                    | Whether the queen was seen              |
-| brood_pattern       | INTEGER      | NOT NULL                    | Brood pattern score (0-5)               |
-| honey_stores        | INTEGER      | NOT NULL                    | Honey stores score (0-5)                |
-| population_strength | INTEGER      | NOT NULL                    | Population strength score (0-5)         |
-| temperament         | INTEGER      | NOT NULL                    | Bee temperament score (0-5)             |
-| diseases_sighted    | BOOLEAN      | NOT NULL                    | Whether diseases were observed          |
-| varroa_count        | INTEGER      | NULL                        | Count of varroa mites (if measured)     |
-| notes               | TEXT         | NULL                        | Additional notes about findings         |
+Individual user preferences.
 
-**Foreign Keys:**
-- `inspection_id` references `Inspections(id)` ON DELETE CASCADE
+| Column Name | Data Type | Nullable | Default | Description |
+|-------------|-----------|----------|---------|-------------|
+| user_id | uuid | NO | | Primary Key, Foreign Key to auth.users |
+| theme | character varying | YES | | UI theme preference |
+| language | character varying | YES | | Preferred language |
+| temperature_unit | character varying | YES | | Preferred temperature unit |
+| weight_unit | character varying | YES | | Preferred weight unit |
+| time_format | character varying | YES | | Preferred time format |
+| date_format | character varying | YES | | Preferred date format |
+| notification_enabled | boolean | YES | | Whether notifications are enabled |
+| email_notifications | boolean | YES | | Whether email notifications are enabled |
+| push_notifications | boolean | YES | | Whether push notifications are enabled |
+| created_at | timestamp with time zone | NO | now() | Creation timestamp |
+| updated_at | timestamp with time zone | NO | now() | Last update timestamp |
 
-### 8. HiveProductionData
+### Alert Thresholds Table
 
-Stores honey production data for hives.
+User-defined alert thresholds.
 
-| Column      | Type         | Constraints                  | Description                             |
-|-------------|--------------|------------------------------|-----------------------------------------|
-| id          | VARCHAR(36)  | PRIMARY KEY                 | Unique identifier                        |
-| hive_id     | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | Hive the production is for              |
-| apiary_id   | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | Apiary the hive belongs to              |
-| date        | DATE         | NOT NULL                    | Production/harvest date                  |
-| amount      | DECIMAL(8,2) | NOT NULL                    | Amount of honey harvested (kg)           |
-| quality     | VARCHAR(20)  | NULL                        | Quality assessment of the honey          |
-| type        | VARCHAR(50)  | NOT NULL                    | Type of honey produced                   |
-| notes       | TEXT         | NULL                        | Additional notes about the harvest       |
-| created_by  | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | User who recorded the production         |
-| created_at  | TIMESTAMP    | NOT NULL                    | When the record was created              |
-| projected_harvest | DECIMAL(8,2) | NULL                  | Estimated future harvest amount          |
-| weight_change     | DECIMAL(5,2) | NULL                  | Daily weight change rate                 |
+| Column Name | Data Type | Nullable | Default | Description |
+|-------------|-----------|----------|---------|-------------|
+| user_id | uuid | NO | | Primary Key, Foreign Key to auth.users |
+| temp_min | numeric | YES | | Minimum temperature threshold |
+| temp_max | numeric | YES | | Maximum temperature threshold |
+| humidity_min | numeric | YES | | Minimum humidity threshold |
+| humidity_max | numeric | YES | | Maximum humidity threshold |
+| weight_change_min | numeric | YES | | Minimum weight change threshold |
+| weight_change_max | numeric | YES | | Maximum weight change threshold |
+| sound_level_min | numeric | YES | | Minimum sound level threshold |
+| sound_level_max | numeric | YES | | Maximum sound level threshold |
+| varroa_threshold | integer | YES | | Varroa mite count threshold |
+| created_at | timestamp with time zone | NO | now() | Creation timestamp |
+| updated_at | timestamp with time zone | NO | now() | Last update timestamp |
 
-**Foreign Keys:**
-- `hive_id` references `Hives(id)`
-- `apiary_id` references `Apiaries(id)`
-- `created_by` references `Users(id)`
+### Notification Preferences Table
 
-### 9. MetricsTimeSeriesData
+Controls how users receive notifications.
 
-For efficient storage of time-series data, particularly useful for displaying charts and trends. This table is populated by ESP32 sensor nodes that send measurements directly to the database.
+| Column Name | Data Type | Nullable | Default | Description |
+|-------------|-----------|----------|---------|-------------|
+| user_id | uuid | NO | | Primary Key, Foreign Key to auth.users |
+| inspection_reminders | boolean | YES | | Receive inspection reminders |
+| production_alerts | boolean | YES | | Receive production alerts |
+| disease_alerts | boolean | YES | | Receive disease alerts |
+| weather_alerts | boolean | YES | | Receive weather alerts |
+| system_notifications | boolean | YES | | Receive system notifications |
+| email_frequency | character varying | YES | | Email notification frequency |
+| created_at | timestamp with time zone | NO | now() | Creation timestamp |
+| updated_at | timestamp with time zone | NO | now() | Last update timestamp |
 
-| Column     | Type         | Constraints                  | Description                              |
-|------------|--------------|------------------------------|------------------------------------------|
-| id         | VARCHAR(36)  | PRIMARY KEY                 | Unique identifier                         |
-| hive_id    | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | Hive the metric data belongs to           |
-| time       | VARCHAR(5)   | NOT NULL                    | Time in HH:MM format                      |
-| timestamp  | TIMESTAMP    | NOT NULL                    | Full timestamp for the data point         |
-| temp_value | DECIMAL(5,2) | NULL                        | Temperature value at this time            |
-| hum_value  | DECIMAL(5,2) | NULL                        | Humidity value at this time               |
-| sound_value| DECIMAL(5,2) | NULL                        | Sound level value at this time            |
-| weight_value| DECIMAL(5,2)| NULL                        | Weight value at this time                 |
-| created_at | TIMESTAMP    | NOT NULL DEFAULT NOW()      | When the record was created               |
+### Views
 
-**Foreign Keys:**
-- `hive_id` references `Hives(id)`
+- **metrics_time_series_view**: Provides a consolidated view of time series metrics data
+- **apiary_production_summary**: Aggregates production data by apiary
 
-**Indexes:**
-- Index on `hive_id` for quick lookups
-- Index on `timestamp` for time-range queries
+## Auth Schema (Authentication)
 
-**Integration with IoT Sensors:**
-- ESP32 nodes send data directly to this table using the hive_id they've been configured with
-- When a user adds a new hive to the system, they associate it with a specific ESP32 node ID
-- The ESP32 nodes authenticate using a service role and are authorized to insert data
-- No user_id is stored with the metrics as the data belongs to the hive itself, and access control is handled through the hive's relationship to apiaries and users
+The auth schema manages user authentication, session tracking, and identity management.
 
-### 10. ProductionSummary
+### Key Tables
 
-Aggregated production data for apiaries and time periods, useful for reporting and dashboards.
+- **users**: Core user authentication data (emails, passwords, etc.)
+- **sessions**: Active user sessions
+- **refresh_tokens**: Tokens used for JWT refresh
+- **identities**: External identity providers linked to users
+- **mfa_factors**: Multi-factor authentication methods
+- **audit_log_entries**: Security audit trail
 
-| Column          | Type         | Constraints                  | Description                             |
-|-----------------|--------------|------------------------------|-----------------------------------------|
-| id              | VARCHAR(36)  | PRIMARY KEY                 | Unique identifier                        |
-| apiary_id       | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | Associated apiary                        |
-| year            | INTEGER      | NOT NULL                    | Year of production summary               |
-| month           | INTEGER      | NULL                        | Month of production (NULL for yearly)    |
-| total_production| DECIMAL(10,2)| NOT NULL                    | Total honey production for period        |
-| change_percent  | DECIMAL(5,2) | NULL                        | Percent change from previous period      |
-| avg_production  | DECIMAL(8,2) | NULL                        | Average production per hive              |
-| created_at      | TIMESTAMP    | NOT NULL                    | When the summary was generated           |
+## Storage Schema
 
-**Foreign Keys:**
-- `apiary_id` references `Apiaries(id)`
+The storage schema manages file uploads and storage, including:
 
-**Indexes:**
-- Composite index on (`apiary_id`, `year`, `month`) for efficient period lookups
+- **buckets**: Storage buckets for organizing files
+- **objects**: Stored files with metadata
+- **migrations**: Storage system migrations
 
-### 11. ApiarySharing
+## Realtime Schema
 
-Manages access permissions between users for collaborative work on apiaries.
+The realtime schema supports real-time data features:
 
-| Column      | Type         | Constraints                  | Description                             |
-|-------------|--------------|------------------------------|-----------------------------------------|
-| id          | VARCHAR(36)  | PRIMARY KEY                 | Unique identifier                        |
-| apiary_id   | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | Apiary being shared                      |
-| owner_id    | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | User who owns the apiary                 |
-| user_id     | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | User receiving access                    |
-| permission  | ENUM         | NOT NULL                    | Permission level (see ENUM definition)   |
-| created_at  | TIMESTAMP    | NOT NULL                    | When sharing was created                 |
-| updated_at  | TIMESTAMP    | NOT NULL                    | When sharing was last updated            |
-| invitation_status | ENUM   | NOT NULL                    | Status of the invitation                 |
-| invitation_token | VARCHAR(100) | NULL                   | Token for invitation verification        |
-| expires_at  | TIMESTAMP    | NULL                        | When the sharing expires (if temporary)  |
+- **subscription**: Tracks client subscriptions to real-time updates
+- **messages**: Stores messages for real-time delivery
 
-**Foreign Keys:**
-- `apiary_id` references `Apiaries(id)` ON DELETE CASCADE
-- `owner_id` references `Users(id)`
-- `user_id` references `Users(id)`
+## Vault Schema
 
-**ENUM Definitions:**
-- `permission`: 'view', 'edit', 'manage'
-- `invitation_status`: 'pending', 'accepted', 'rejected', 'expired'
+The vault schema provides secure storage for sensitive information:
 
-**Indexes:**
-- Composite index on (`apiary_id`, `user_id`) for efficient permission checks
-- Index on `user_id` for finding all shared apiaries for a user
-- Index on `invitation_status` to filter by invitation state
+- **secrets**: Encrypted storage for sensitive data
+- **decrypted_secrets**: View for accessing decrypted secrets
 
 ## Relationships
 
-1. **One-to-Many Relationships:**
-   - A User can have many Apiaries
-   - An Apiary can have many Hives
-   - A Hive can have many HiveMetrics
-   - A Hive can have many MetricsTimeSeriesData
-   - A Hive can have many Alerts
-   - A Hive can have many Inspections
-   - A Hive can have many HiveProductionData records
-   - An Inspection has one InspectionFindings (1:1 relationship)
-   - An Apiary can have many ProductionSummary records
-   - An Apiary can have many ApiarySharing records
+Key relationships between tables include:
 
-2. **Many-to-One Relationships:**
-   - Many Hives belong to one Apiary
-   - Many Apiaries belong to one User (owner)
-   - Many Inspections are performed by one User
-   - Many HiveProductionData records are associated with one Hive
+1. **Users to Profiles**: One-to-one relationship via the `id` field
+2. **Users to Apiaries**: One-to-many relationship
+3. **Apiaries to Hives**: One-to-many relationship
+4. **Hives to Inspections**: One-to-many relationship
+5. **Hives to Metrics**: One-to-many relationship
+6. **Hives to Alerts**: One-to-many relationship
+7. **Hives to Production Data**: One-to-many relationship
+8. **Users to Preferences**: One-to-one relationship
 
-3. **Many-to-Many Relationships:**
-   - Users and Apiaries have a many-to-many relationship through ApiarySharing
+## Row-Level Security (RLS)
 
-## Mock Data Patterns
+The database implements row-level security to ensure users can only access data they own or that has been explicitly shared with them. This is controlled through the `user_id` field in most tables and through the sharing tables for collaborative features.
 
-The application uses several patterns for generating mock data that should be considered when migrating to a real database:
+## Database Migrations
 
-1. **Time-Series Data Patterns:**
-   - Temperature data follows a daily cycle (higher during day, lower at night)
-   - Humidity is typically inverse to temperature (higher at night, lower during day)
-   - Sound data is higher during active bee hours (8am-6pm)
-   - Weight data shows gradual increase over time as nectar is collected
-
-2. **Alert Generation:**
-   - Alerts are generated when metrics exceed defined thresholds:
-     - Temperature: < 31°C or > 37°C
-     - Humidity: < 35% or > 70%
-
-3. **Production Data:**
-   - Yearly production ranges from 100-300kg per apiary
-   - Monthly production ranges from 5-35kg per apiary
-   - Individual hive production ranges from 5-35kg
-   - Weight change rate is between -0.5 to 1.5 kg/day
-
-4. **Inspection Types and Schedules:**
-   - Regular inspections are typically every 7-14 days
-   - Health checks are more frequent during active seasons
-   - Winter prep inspections occur before cold weather
-   - Harvest evaluations occur when honey is ready for collection
-   - Varroa checks and disease treatments are scheduled as needed
-
-## Indexes
-
-To optimize query performance, consider the following indexes:
-
-1. **Apiaries:**
-   - Index on `user_id` for fast filtering of a user's apiaries
-   - Spatial index on `(latitude, longitude)` for proximity searches
-
-2. **Hives:**
-   - Index on `apiary_id` for fast filtering of hives by apiary
-   - Index on `status` for filtering hives by status
-
-3. **HiveMetrics:**
-   - Composite index on `(hive_id, type, timestamp)` for time-series queries
-   - Index on `timestamp` for date range queries
-
-4. **MetricsTimeSeriesData:**
-   - Composite index on `(hive_id, timestamp)` for efficient retrieval of time series
-   - Index on `timestamp` for time-range filtering
-
-5. **Inspections:**
-   - Index on `hive_id` for filtering inspections by hive
-   - Index on `date` for date range queries
-   - Index on `status` for filtering inspections by status
-   - Index on `user_id` for filtering inspections by user
-
-6. **HiveProductionData:**
-   - Index on `hive_id` for filtering production by hive
-   - Index on `apiary_id` for filtering production by apiary
-   - Index on `date` for filtering by production date
-   - Composite index on `(hive_id, date)` for time-series production queries
-
-7. **ProductionSummary:**
-   - Composite index on (`apiary_id`, `year`, `month`) for period-based reports
-
-8. **ApiarySharing:**
-   - Composite index on (`user_id`, `apiary_id`) for quick permission lookups
-   - Index on `invitation_status` for filtering pending invitations
-
-## Security and Access Control
-
-To ensure data is accessed only by authenticated users and prevent data leakage, implement the following security measures:
-
-### 1. Authentication System
-
-| Table       | Type         | Description                              |
-|-------------|--------------|------------------------------------------|
-| Sessions    | Table        | Stores active user sessions              |
-| RefreshTokens | Table      | Stores tokens for session renewal        |
-| LoginAttempts | Table      | Tracks login attempts for rate limiting  |
-| TwoFactorAuth | Table      | Stores 2FA settings and backup codes     |
-
-#### Sessions Table
-
-| Column      | Type         | Constraints                  | Description                             |
-|-------------|--------------|------------------------------|-----------------------------------------|
-| id          | VARCHAR(36)  | PRIMARY KEY                 | Unique identifier for the session       |
-| user_id     | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | Associated user                         |
-| token       | VARCHAR(255) | UNIQUE, NOT NULL            | Session token (JWT or similar)          |
-| ip_address  | VARCHAR(45)  | NOT NULL                    | IP address used for session             |
-| user_agent  | TEXT         | NOT NULL                    | Browser/client identification           |
-| expires_at  | TIMESTAMP    | NOT NULL                    | Session expiration time                 |
-| created_at  | TIMESTAMP    | NOT NULL                    | When the session was created            |
-| last_active | TIMESTAMP    | NOT NULL                    | Last activity timestamp                 |
-
-**Foreign Keys:**
-- `user_id` references `Users(id)` ON DELETE CASCADE
-
-### 2. Authorization Rules
-
-1. **Multi-tenancy Enforcement:**
-   - All data access must be filtered by user ownership
-   - Direct object references should be avoided in APIs
-   - Use parameterized queries with user context
-
-2. **Role-Based Access Control:**
-   - Implement the following roles with appropriate permissions:
-     - **Admin**: Full access to all data
-     - **Beekeeper**: Access to owned apiaries and associated data
-     - **Viewer**: Read-only access to specific apiaries (for collaboration)
-
-3. **Row-Level Security:**
-   - Database queries must include user_id filters
-   - Implement database-level row security policies where supported
-
-### 3. API Security Measures
-
-1. **API Authentication:**
-   - All API endpoints must require authentication
-   - Use JWT tokens with appropriate expiration
-   - Implement token refresh mechanism
-   - Add CSRF protection for browser clients
-
-2. **API Request Flow:**
-   ```
-   Client Request → Auth Middleware → Validate Token → Check Permissions → Access Data
-   ```
-
-3. **Data Access Policies:**
-   - Users can only access apiaries they own or have been granted access to
-   - Metrics and production data inherit access rules from parent hives/apiaries
-   - Implement a permission check helper function in all API controllers
-
-### 4. Sample Database Queries with Security Context
-
-```sql
--- Example: Retrieving apiaries with user context
-SELECT * FROM Apiaries WHERE user_id = ?; -- user_id from authenticated session
-
--- Example: Retrieving shared apiaries 
-SELECT a.* FROM Apiaries a
-JOIN ApiarySharing s ON a.id = s.apiary_id
-WHERE s.user_id = ? AND s.invitation_status = 'accepted';
-
--- Example: Retrieving hives with security check (including shared apiaries)
-SELECT h.* FROM Hives h
-JOIN Apiaries a ON h.apiary_id = a.id
-WHERE a.user_id = ? -- user is owner
-   OR EXISTS (
-      SELECT 1 FROM ApiarySharing s 
-      WHERE s.apiary_id = a.id 
-      AND s.user_id = ? 
-      AND s.invitation_status = 'accepted'
-   );
-
--- Example: Retrieving metrics with security check
-SELECT m.* FROM HiveMetrics m
-JOIN Hives h ON m.hive_id = h.id
-JOIN Apiaries a ON h.apiary_id = a.id
-WHERE a.user_id = ? -- user is owner
-   OR EXISTS (
-      SELECT 1 FROM ApiarySharing s 
-      WHERE s.apiary_id = a.id 
-      AND s.user_id = ? 
-      AND s.invitation_status = 'accepted'
-   );
-
--- Example: Check if user has edit permission for an apiary
-SELECT EXISTS (
-   SELECT 1 FROM Apiaries a
-   WHERE a.id = ? AND a.user_id = ?
-   UNION
-   SELECT 1 FROM ApiarySharing s
-   WHERE s.apiary_id = ? AND s.user_id = ? 
-   AND s.permission IN ('edit', 'manage')
-   AND s.invitation_status = 'accepted'
-) AS has_permission;
-```
-
-### 5. Audit and Monitoring
-
-| Table       | Type         | Description                              |
-|-------------|--------------|------------------------------------------|
-| AuditLogs   | Table        | Records all significant data operations  |
-
-#### AuditLogs Table
-
-| Column      | Type         | Constraints                  | Description                             |
-|-------------|--------------|------------------------------|-----------------------------------------|
-| id          | VARCHAR(36)  | PRIMARY KEY                 | Unique identifier for the log entry     |
-| user_id     | VARCHAR(36)  | FOREIGN KEY, NOT NULL       | User who performed the action           |
-| action      | VARCHAR(50)  | NOT NULL                    | Action type (create, read, update, delete) |
-| entity_type | VARCHAR(50)  | NOT NULL                    | Type of affected entity (Apiary, Hive, etc.) |
-| entity_id   | VARCHAR(36)  | NOT NULL                    | ID of the affected entity               |
-| details     | JSON         | NULL                        | Additional action details               |
-| ip_address  | VARCHAR(45)  | NOT NULL                    | IP address of the user                  |
-| timestamp   | TIMESTAMP    | NOT NULL                    | When the action occurred                |
-
-**Foreign Keys:**
-- `user_id` references `Users(id)`
-
-**Indexes:**
-- Index on `user_id` for filtering by user
-- Index on `entity_type` and `entity_id` for filtering by entity
-- Index on `timestamp` for time-based queries
-
-### 6. Implementing Access Control in the Application Layer
-
-1. **Authentication Flow:**
-   - Implement a login page that's required before accessing any app content
-   - Store JWTs in HTTP-only cookies to prevent client-side access
-   - Include CSRF tokens in all state-changing requests
-   - Use short expiration times with automatic token refresh
-   - Implement separate service role authentication for ESP32 nodes
-
-2. **Permission Verification Middleware:**
-   - Create middleware that verifies user permissions before processing requests:
-
-   ```typescript
-   // Example middleware that checks for apiary access
-   const verifyApiaryAccess = async (req, res, next) => {
-     const { apiaryId } = req.params;
-     const userId = req.user.id;
-     const requiredPermission = req.method === 'GET' ? 'view' : 'edit';
-     
-     // Check if user is owner or has appropriate shared access
-     const hasAccess = await db.checkApiaryAccess(apiaryId, userId, requiredPermission);
-     
-     if (!hasAccess) {
-       return res.status(403).json({ message: 'Access denied' });
-     }
-     
-     next();
-   };
-   ```
-
-3. **Frontend Access Controls:**
-   - Implement UI-level permissions to hide actions that aren't allowed
-   - Show clear visual indications of shared resources
-   - Add permission checks to sensitive operations:
-
-   ```typescript
-   const OwnershipBadge = ({ apiary }) => {
-     const { user } = useAuth();
-     const isOwner = apiary.user_id === user.id;
-     
-     if (isOwner) {
-       return <Badge variant="primary">Owner</Badge>;
-     }
-     
-     return (
-       <Badge variant="secondary">
-         {apiary.permission === 'edit' ? 'Can Edit' : 'Viewer'}
-       </Badge>
-     );
-   };
-   ```
-
-4. **Handling Shared Resources:**
-   - Create a clear invitation and acceptance workflow
-   - Allow owners to revoke access at any time
-   - Provide visibility into who has access to what resources
-   - Ensure all child resources inherit parent permissions
-
-5. **IoT Device Authentication and Access Control:**
-   - ESP32 nodes use a dedicated service role for authentication
-   - Nodes are associated with hives during the hive setup process
-   - The row-level security policies for metrics data are based on hive ownership
-   - Users can view metrics data for hives they own or have been granted access to
-   - Implement a secure provisioning process for ESP32 nodes:
-
-   ```typescript
-   // Example of associating an ESP32 node with a hive
-   const associateNodeWithHive = async (req, res) => {
-     const { hiveId, nodeId } = req.body;
-     const userId = req.user.id;
-     
-     // Verify the user owns the hive
-     const hiveOwnership = await db.verifyHiveOwnership(hiveId, userId);
-     
-     if (!hiveOwnership) {
-       return res.status(403).json({ message: 'Not authorized to configure this hive' });
-     }
-     
-     // Register the node ID with the hive
-     await db.updateHive(hiveId, { node_id: nodeId });
-     
-     // Generate and store node-specific credentials if needed
-     // ...
-     
-     return res.status(200).json({ message: 'Node successfully associated with hive' });
-   };
-   ```
-
-## Data Migration Considerations
-
-When migrating from mock data to a real database:
-
-1. **Primary Keys:**
-   - The mock data uses string IDs (like "apiary-1" and "hive-{apiaryId}-{number}"). Consider UUID approach or auto-incremented integers.
-
-2. **Date/Time Handling:**
-   - The mock data stores dates as ISO strings. Ensure proper conversion to database date types.
-   - Time-series data is stored with time points in "HH:mm" format - consider standardizing to timestamps.
-
-3. **Enum Types:**
-   - Use proper database-specific ENUM types or reference tables for status and type fields.
-
-4. **Initial Data:**
-   - Create scripts to convert mock data to database seed data.
-   - Generate initial data based on patterns found in the mock data (daily cycles for temperature, etc.)
-
-5. **Metrics Storage:**
-   - Consider time-series database options for metrics data if volume grows significantly.
-   - Potential time-series partitioning for metrics table.
-   - The current implementation generates metrics with natural patterns (temperature higher during day, etc.) - maintain these patterns when migrating.
-
-6. **Soft Deletes:**
-   - Add `deleted_at` timestamp fields to implement soft deletes if needed.
-
-7. **API Authentication:**
-   - Implement proper user authentication with JWT or session-based auth.
-
-8. **Data Validation:**
-   - Implement validation rules based on current business logic (e.g., inspection findings using 0-5 scales)
-
-## Backend API Structure
-
-Implement REST API endpoints for each entity:
-
-- `/api/auth` - Authentication endpoints (login, logout, refresh)
-- `/api/users` - User management
-- `/api/apiaries` - Apiary management
-- `/api/apiaries/{id}/hives` - Hive management within an apiary
-- `/api/hives/{id}/metrics` - Metrics for a specific hive
-- `/api/hives/{id}/alerts` - Alerts for a specific hive
-- `/api/hives/{id}/inspections` - Inspections for a specific hive
-- `/api/inspections/{id}/findings` - Findings for a specific inspection
-- `/api/hives/{id}/production` - Production data for a specific hive
-- `/api/inspections/scheduled` - Get all scheduled inspections
-- `/api/inspections/overdue` - Get all overdue inspections
-- `/api/inspections/upcoming?days=7` - Get upcoming inspections for next N days
-- `/api/production/summary?period=year` - Get production summaries by period
-- `/api/metrics/aggregate?type=temperature&period=day` - Get aggregated metrics
-- `/api/apiaries/{id}/sharing` - Manage access permissions for an apiary
-- `/api/sharing/invitations` - List and respond to sharing invitations
-
-## Future Enhancements
-
-Consider these enhancements after initial migration:
-
-1. **Permissions System:**
-   - Implement role-based access control
-   - Allow sharing apiaries between users
-
-2. **Automated Alerts:**
-   - Implement background jobs to analyze metrics and create alerts
-   - Set up threshold configuration for different alert types
-
-3. **Data Retention Policy:**
-   - Implement data aggregation for older metrics data
-   - Consider archiving or pruning old data
-
-4. **API Versioning:**
-   - Implement API versioning for future compatibility
-
-5. **File Storage:**
-   - Add support for storing inspection photos, documents, etc.
-
-6. **Audit Trail:**
-   - Implement detailed audit logging for data changes
-
-7. **Predictive Analytics:**
-   - Build on the time-series data to implement predictive analytics
-   - Forecast honey production based on historical data
-   - Predict maintenance needs based on hive conditions
-
-8. **Mobile Integration:**
-   - Design database schema with mobile synchronization in mind
-   - Implement offline-first capability for field inspections
-
-9. **Weather Data Integration:**
-   - Add support for correlating hive metrics with local weather data
-   - Create schema for storing weather forecasts and historical conditions 
+Database schema changes are tracked in the `supabase_migrations.schema_migrations` table. There are currently 75 migrations that have been applied to evolve the schema to its current state.

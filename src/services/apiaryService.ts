@@ -57,7 +57,7 @@ export const getAllApiaries = async (): Promise<ApiaryWithStats[]> => {
         // Get the hive IDs first
         const { data: hives, error: hivesError } = await supabase
           .from('hives')
-          .select('id')
+          .select('hive_id')
           .eq('apiary_id', apiary.id);
         
         if (hivesError) {
@@ -65,22 +65,31 @@ export const getAllApiaries = async (): Promise<ApiaryWithStats[]> => {
         }
         
         // Then get the metrics for those hive IDs
-        const hiveIds = hives?.map(hive => hive.id) || [];
+        const hiveIds = hives?.map(hive => hive.hive_id) || [];
         
         let metrics: any[] = [];
         if (hiveIds.length > 0) {
-          const { data: metricsData, error: metricsError } = await supabase
-            .from('metrics_time_series_data')
-            .select('*')
-            .in('hive_id', hiveIds)
-            .order('timestamp', { ascending: false })
-            .limit(100);
+          // Fix: Get metrics one hive at a time to avoid issues with 'in' query parameter
+          const allMetrics = await Promise.all(
+            hiveIds.map(async (hiveId) => {
+              const { data, error } = await supabase
+                .from('metrics_time_series_data')
+                .select('*')
+                .eq('hive_id', hiveId)
+                .order('timestamp', { ascending: false })
+                .limit(25);  // Reduced from 100 to 25 per hive to avoid large payload
+              
+              if (error) {
+                console.error(`Error fetching metrics for hive ${hiveId}:`, error);
+                return [];
+              }
+              
+              return data || [];
+            })
+          );
           
-          if (metricsError) {
-            console.error('Error fetching metrics:', metricsError);
-          } else {
-            metrics = metricsData || [];
-          }
+          // Combine all metrics
+          metrics = allMetrics.flat();
         }
 
         // Calculate averages if metrics are available
@@ -157,7 +166,7 @@ export const getApiaryById = async (id: string): Promise<ApiaryWithStats | null>
     // Get the hive IDs first
     const { data: hives, error: hivesError } = await supabase
       .from('hives')
-      .select('id')
+      .select('hive_id')
       .eq('apiary_id', id);
     
     if (hivesError) {
@@ -165,22 +174,31 @@ export const getApiaryById = async (id: string): Promise<ApiaryWithStats | null>
     }
     
     // Then get the metrics for those hive IDs
-    const hiveIds = hives?.map(hive => hive.id) || [];
+    const hiveIds = hives?.map(hive => hive.hive_id) || [];
     
     let metrics: any[] = [];
     if (hiveIds.length > 0) {
-      const { data: metricsData, error: metricsError } = await supabase
-        .from('metrics_time_series_data')
-        .select('*')
-        .in('hive_id', hiveIds)
-        .order('timestamp', { ascending: false })
-        .limit(100);
+      // Fix: Get metrics one hive at a time to avoid issues with 'in' query parameter
+      const allMetrics = await Promise.all(
+        hiveIds.map(async (hiveId) => {
+          const { data, error } = await supabase
+            .from('metrics_time_series_data')
+            .select('*')
+            .eq('hive_id', hiveId)
+            .order('timestamp', { ascending: false })
+            .limit(25);  // Reduced from 100 to 25 per hive to avoid large payload
+          
+          if (error) {
+            console.error(`Error fetching metrics for hive ${hiveId}:`, error);
+            return [];
+          }
+          
+          return data || [];
+        })
+      );
       
-      if (metricsError) {
-        console.error('Error fetching metrics:', metricsError);
-      } else {
-        metrics = metricsData || [];
-      }
+      // Combine all metrics
+      metrics = allMetrics.flat();
     }
 
     // Calculate averages if metrics are available
@@ -226,9 +244,21 @@ export const getApiaryById = async (id: string): Promise<ApiaryWithStats | null>
  */
 export const addApiary = async (apiaryData: Omit<Apiary, 'id' | 'created_at' | 'updated_at' | 'user_id'>): Promise<Apiary> => {
   try {
+    // Get the current user's ID
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user) {
+      throw new Error('User is not authenticated');
+    }
+
+    // Add user_id to the data
+    const dataWithUserId = {
+      ...apiaryData,
+      user_id: userData.user.id
+    };
+
     const { data, error } = await supabase
       .from('apiaries')
-      .insert(apiaryData)
+      .insert(dataWithUserId)
       .select()
       .single();
 

@@ -360,9 +360,9 @@ const Hives = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredAndSortedHives.map((hive) => (
               <HiveCard 
-                key={hive.id} 
+                key={hive.hive_id} 
                 hive={hive} 
-                onClick={() => handleHiveClick(hive.apiary_id, hive.id)} 
+                onClick={() => handleHiveClick(hive.apiary_id, hive.hive_id)} 
               />
             ))}
           </div>

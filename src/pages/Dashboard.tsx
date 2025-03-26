@@ -287,7 +287,7 @@ const Dashboard = () => {
 
   const handleViewHive = (hiveId: string) => {
     // Find the apiary ID for this hive
-    const hive = hives.find(h => h.id === hiveId);
+    const hive = hives.find(h => h.hive_id === hiveId);
     if (hive) {
       navigate(`/apiaries/${hive.apiary_id}/hives/${hiveId}`, {
         state: { from: 'dashboard' }
@@ -468,7 +468,7 @@ const Dashboard = () => {
               />
               <HiveStatusOverview 
                 hives={isLoadingHives ? [] : hives.map(hive => ({
-                  id: hive.id,
+                  id: hive.hive_id,
                   name: hive.name,
                   apiaryName: hive.apiaryName || '',
                   alerts: hive.alerts || [],

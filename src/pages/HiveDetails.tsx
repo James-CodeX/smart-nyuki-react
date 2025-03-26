@@ -315,7 +315,7 @@ const HiveDetails = () => {
     try {
       setLoading(true);
       // Update the hive alerts state in the database
-      await updateHive(hive.id, { alerts_enabled: newAlertsState });
+      await updateHive(hive.hive_id, { alerts_enabled: newAlertsState });
       
       // Update local state
       setAlertsEnabled(newAlertsState);
@@ -345,10 +345,10 @@ const HiveDetails = () => {
     try {
       setLoading(true);
       // Update the hive in the database
-      await updateHive(hive.id, data);
+      await updateHive(hive.hive_id, data);
       
       // Get updated hive data
-      const updatedHive = await getHiveById(hive.id);
+      const updatedHive = await getHiveById(hive.hive_id);
       setHive(updatedHive);
       
       toast({
@@ -375,7 +375,7 @@ const HiveDetails = () => {
     try {
       setLoading(true);
       // Delete the hive from the database
-      await deleteHive(hive.id);
+      await deleteHive(hive.hive_id);
       
       toast({
         title: 'Success',

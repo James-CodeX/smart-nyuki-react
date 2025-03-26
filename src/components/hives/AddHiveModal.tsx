@@ -86,28 +86,43 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
   // Function to check if hive ID exists in metrics_time_series_data
   const validateHiveId = async (hiveId: string) => {
     try {
+      const cleanHiveId = hiveId.trim();
+      
       // First check if this hive ID is already registered to a user
       const { data: existingHive, error: existingError } = await supabase
         .from('hives')
-        .select('id')
-        .eq('hive_id', hiveId)
+        .select('hive_id')
+        .eq('hive_id', cleanHiveId)
         .single();
 
       if (existingHive) {
         return { valid: false, message: 'This hive ID is already registered by another user' };
       }
 
-      // Then check if the hive ID exists in the metrics table
-      const { data, error } = await supabase
-        .from('metrics_time_series_data')
-        .select('id')
-        .eq('hive_id', hiveId)
-        .limit(1);
+      // Try to use the RPC function first
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('check_hive_exists', { hive_id_param: cleanHiveId });
+      
+      if (rpcError) {
+        console.error("RPC error, falling back to direct query:", rpcError);
+        
+        // If RPC fails, fall back to direct query
+        const { data, error } = await supabase
+          .from('metrics_time_series_data')
+          .select('hive_id')
+          .eq('hive_id', cleanHiveId)
+          .limit(1);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      if (!data || data.length === 0) {
-        return { valid: false, message: 'Hive ID not found in our system. Please check the ID and try again.' };
+        if (!data || data.length === 0) {
+          return { valid: false, message: 'Hive ID not found in our system. Please check the ID and try again.' };
+        }
+      } else {
+        // Check RPC result
+        if (!rpcData || !rpcData.exists) {
+          return { valid: false, message: 'Hive ID not found in our system. Please check the ID and try again.' };
+        }
       }
 
       return { valid: true };

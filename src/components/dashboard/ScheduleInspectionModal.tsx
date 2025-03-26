@@ -95,7 +95,7 @@ const ScheduleInspectionModal: React.FC<ScheduleInspectionModalProps> = ({
       setIsSubmitting(true);
       
       // Get details for the selected hive
-      const selectedHive = hives.find(hive => hive.id === data.hiveId);
+      const selectedHive = hives.find(hive => hive.hive_id === data.hiveId);
       
       if (!selectedHive) {
         throw new Error('Selected hive not found');
@@ -165,7 +165,7 @@ const ScheduleInspectionModal: React.FC<ScheduleInspectionModalProps> = ({
                     </FormControl>
                     <SelectContent>
                       {hives.map((hive) => (
-                        <SelectItem key={hive.id} value={hive.id}>
+                        <SelectItem key={hive.hive_id} value={hive.hive_id}>
                           {hive.name} ({hive.apiaryName})
                         </SelectItem>
                       ))}
