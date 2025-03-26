@@ -242,7 +242,7 @@ export const getInspectionById = async (inspectionId: string): Promise<Inspectio
       ...inspection,
       hive_name: hive?.name || 'Unknown',
       apiary_id: hive?.apiary_id || '',
-      apiary_name: hive?.apiaries?.name || 'Unknown',
+      apiary_name: hive?.apiaries && hive.apiaries[0]?.name || 'Unknown',
     };
 
     return transformedInspection;

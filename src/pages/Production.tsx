@@ -87,6 +87,7 @@ import {
 } from '@/services/productionService';
 import { getAllApiaries } from '@/services/apiaryService';
 import { getAllHives } from '@/services/hiveService';
+import { supabase } from '@/lib/supabase';
 
 const ProductionStatCard = ({ title, value, change, unit, icon: Icon }) => {
   const isPositive = parseFloat(change) >= 0;
@@ -146,6 +147,12 @@ const AddProductionRecordDialog = ({ open, setOpen, apiaries, hives, onAddSucces
     setIsSubmitting(true);
     
     try {
+      // Get current user
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        throw new Error('User is not authenticated');
+      }
+
       await addProductionRecord({
         hive_id: selectedHiveId,
         apiary_id: selectedApiaryId,
@@ -154,7 +161,8 @@ const AddProductionRecordDialog = ({ open, setOpen, apiaries, hives, onAddSucces
         quality: quality || undefined,
         type,
         notes: notes || undefined,
-        created_by: '', // Will be set by RLS
+        created_by: userData.user.id, // Use actual user ID from auth
+        user_id: userData.user.id // Add user_id field as well
       });
       
       toast({

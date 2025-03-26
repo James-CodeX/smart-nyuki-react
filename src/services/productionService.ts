@@ -13,6 +13,7 @@ export interface HiveProductionData {
   created_by?: string;
   projected_harvest?: number;
   weight_change?: number;
+  user_id?: string;
 }
 
 export interface ProductionSummary {
@@ -394,6 +395,17 @@ const updateProductionSummary = async (apiaryId: string) => {
  */
 const updateYearlySummary = async (apiaryId: string, year: number) => {
   try {
+    // Get user ID from the apiary
+    const { data: apiaryData, error: apiaryError } = await supabase
+      .from('apiaries')
+      .select('user_id')
+      .eq('id', apiaryId)
+      .single();
+
+    if (apiaryError) throw apiaryError;
+    
+    const userId = apiaryData.user_id;
+
     // Get all production for this apiary for the specified year
     const startDate = `${year}-01-01`;
     const endDate = `${year}-12-31`;
@@ -433,7 +445,7 @@ const updateYearlySummary = async (apiaryId: string, year: number) => {
     // Get hive count for calculating average production
     const { data: hives, error: hivesError } = await supabase
       .from('hives')
-      .select('id')
+      .select('hive_id')  // Changed from 'id' to 'hive_id'
       .eq('apiary_id', apiaryId);
 
     if (hivesError) throw hivesError;
@@ -473,7 +485,8 @@ const updateYearlySummary = async (apiaryId: string, year: number) => {
           month: null,
           total_production: totalProduction,
           change_percent: changePercent,
-          avg_production: avgProduction
+          avg_production: avgProduction,
+          user_id: userId
         });
     }
 
@@ -489,6 +502,17 @@ const updateYearlySummary = async (apiaryId: string, year: number) => {
  */
 const updateMonthlySummary = async (apiaryId: string, year: number, month: number) => {
   try {
+    // Get user ID from the apiary
+    const { data: apiaryData, error: apiaryError } = await supabase
+      .from('apiaries')
+      .select('user_id')
+      .eq('id', apiaryId)
+      .single();
+
+    if (apiaryError) throw apiaryError;
+    
+    const userId = apiaryData.user_id;
+
     // Get all production for this apiary for the specified month
     const daysInMonth = new Date(year, month, 0).getDate();
     const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
@@ -541,7 +565,9 @@ const updateMonthlySummary = async (apiaryId: string, year: number, month: numbe
           apiary_id: apiaryId,
           year,
           month,
-          total_production: totalProduction
+          total_production: totalProduction,
+          user_id: userId,
+          month_number: month // Add month_number field
         });
     }
 

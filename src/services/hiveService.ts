@@ -67,6 +67,7 @@ export interface HiveWithFullDetails extends Omit<HiveCreateInput, 'apiary_id'> 
   created_at: string;
   updated_at: string;
   is_registered: boolean;
+  alerts_enabled?: boolean;
   metrics: {
     temperature: { time: string; value: number }[];
     humidity: { time: string; value: number }[];

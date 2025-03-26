@@ -1704,7 +1704,7 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');
   
   return (
-    <PageTransition>
+    <PageTransition animate={false}>
       <div className="container px-4 py-4 sm:py-8 mx-auto max-w-7xl">
         <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Settings</h1>
         
