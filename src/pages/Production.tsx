@@ -17,6 +17,8 @@ import {
   Calendar,
   Bug,
   LayoutGrid,
+  Trash2,
+  AlertCircle,
 } from 'lucide-react';
 import PageTransition from '@/components/layout/PageTransition';
 import {
@@ -66,6 +68,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -83,6 +95,8 @@ import {
   getMonthlyProductionData,
   getDailyWeightData,
   addProductionRecord,
+  deleteProductionRecord,
+  getProductionRecords,
   ApiaryProductionSummary,
   getProductionTimeSeries,
   getProductionForecast,
@@ -388,6 +402,179 @@ const ProductionTimeSeriesChart = ({ data, loading, period }) => {
   );
 };
 
+// Add new component for Production Records Table
+const ProductionRecordsTable = ({ selectedApiaryId, onDeleteSuccess }) => {
+  const [records, setRecords] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [deleteRecord, setDeleteRecord] = useState(null);
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const { toast } = useToast();
+
+  // Load production records
+  const loadRecords = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getProductionRecords(selectedApiaryId);
+      setRecords(data);
+    } catch (error) {
+      console.error('Error loading production records:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load production records',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load records on initial render and when selectedApiaryId changes
+  useEffect(() => {
+    loadRecords();
+  }, [selectedApiaryId]);
+
+  // Handle delete confirmation
+  const handleConfirmDelete = async () => {
+    if (!deleteRecord) return;
+    
+    try {
+      await deleteProductionRecord(deleteRecord.id);
+      
+      toast({
+        title: 'Record deleted',
+        description: 'Production record has been deleted successfully',
+      });
+      
+      // Refresh the records
+      loadRecords();
+      
+      // Notify parent component to refresh data
+      if (onDeleteSuccess) onDeleteSuccess();
+    } catch (error) {
+      console.error('Error deleting production record:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete production record',
+        variant: 'destructive',
+      });
+    } finally {
+      setShowDeleteAlert(false);
+      setDeleteRecord(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold tracking-tight">Production Records</h2>
+      </div>
+      
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : records.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Apiary</TableHead>
+                    <TableHead>Hive</TableHead>
+                    <TableHead>Amount (kg)</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Quality</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {records.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell>{format(new Date(record.date), 'MMM d, yyyy')}</TableCell>
+                      <TableCell>{record.apiaryName}</TableCell>
+                      <TableCell>{record.hiveName}</TableCell>
+                      <TableCell>{parseFloat(record.amount).toFixed(1)}</TableCell>
+                      <TableCell>{record.type || '-'}</TableCell>
+                      <TableCell>
+                        {record.quality ? (
+                          <Badge variant={
+                            record.quality === 'Premium' 
+                              ? 'default' 
+                              : record.quality === 'Standard' 
+                                ? 'secondary' 
+                                : 'outline'
+                          }>
+                            {record.quality}
+                          </Badge>
+                        ) : (
+                          '-'
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setDeleteRecord(record);
+                            setShowDeleteAlert(true);
+                          }}
+                          title="Delete record"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <div className="bg-muted/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-medium mb-2">No Production Records</h3>
+              <p className="max-w-md mx-auto">
+                No production records found for the selected filters.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Production Record</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this production record? This action cannot be undone.
+              {deleteRecord && (
+                <div className="mt-2 py-2 px-3 bg-muted rounded-md text-sm">
+                  <p><strong>Date:</strong> {format(new Date(deleteRecord.date), 'MMM d, yyyy')}</p>
+                  <p><strong>Hive:</strong> {deleteRecord.hiveName}</p>
+                  <p><strong>Amount:</strong> {parseFloat(deleteRecord.amount).toFixed(1)} kg</p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};
+
 const Production = () => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [apiaries, setApiaries] = useState([]);
@@ -536,161 +723,191 @@ const Production = () => {
 
   return (
     <PageTransition>
-      <div className="container max-w-7xl pt-16 md:pt-24 pb-16 px-4 sm:px-6 lg:px-8 space-y-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-6">
+      <div className="container py-6 space-y-8">
+        <div className="flex justify-between items-center">
           <div>
-            <div className="flex items-center gap-2">
-              <div className="bg-primary/10 p-2 rounded-full">
-                <Scale className="h-5 w-5 text-primary" />
-              </div>
-              <h1 className="text-3xl font-bold tracking-tight">Honey Production</h1>
-            </div>
-            <p className="text-muted-foreground mt-2 ml-9">
-              Track your honey harvests and hive productivity across all apiaries
+            <h1 className="text-3xl font-bold tracking-tight">Production</h1>
+            <p className="text-muted-foreground mt-1">
+              Track and analyze your honey production
             </p>
           </div>
-          
-          <div className="flex gap-3">
-            <Button 
-              variant="outline" 
-              onClick={() => setAddDialogOpen(true)}
-              className="flex items-center"
-            >
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Record
-            </Button>
-            
-            <Select 
-              value={selectedPeriod} 
-              onValueChange={(value) => setSelectedPeriod(value as 'week' | 'month' | 'year')}>
-              <SelectTrigger className="w-[130px]">
-                <SelectValue placeholder="Period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="week">Week</SelectItem>
-                <SelectItem value="month">Month</SelectItem>
-                <SelectItem value="year">Year</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <Button onClick={() => setAddDialogOpen(true)}>
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Add Record
+          </Button>
         </div>
         
         {isLoading ? (
-          <div className="flex justify-center items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="flex justify-center items-center h-[400px]">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
           <>
-            {/* Use the ProductionAnalytics component */}
-            <ProductionAnalytics
-              timeSeriesData={timeSeriesData}
-              forecastData={forecastData}
-              stats={productionStats}
-              period={selectedPeriod}
-              loading={isLoading}
-            />
-            
-            {/* Apiaries Section */}
-            <div className="space-y-6 mt-6">
-              <div className="flex justify-between items-center border-b pb-4">
-                <h2 className="text-xl font-semibold">Apiary Production</h2>
-                
-                <Select 
-                  value={selectedApiaryId} 
-                  onValueChange={setSelectedApiaryId}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="All Apiaries" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Apiaries</SelectItem>
-                    {apiaries.map(apiary => (
-                      <SelectItem key={apiary.id} value={apiary.id}>
-                        {apiary.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <Tabs defaultValue="analytics" className="w-full">
+              <TabsList className="grid grid-cols-2 w-[400px] mb-6">
+                <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                <TabsTrigger value="records">Records</TabsTrigger>
+              </TabsList>
               
-              {apiarySummaries.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {(selectedApiaryId === 'all' 
-                    ? apiarySummaries 
-                    : apiarySummaries.filter(a => a.id === selectedApiaryId)
-                  ).map(apiary => (
-                    <Card key={apiary.id} className="overflow-hidden border-border hover:shadow-md transition-all duration-200">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-semibold">{apiary.name}</CardTitle>
-                        <CardDescription>{apiary.location}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex justify-between items-center mb-4">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Total Production</p>
-                            <p className="text-2xl font-bold">{apiary.totalProduction.toFixed(1)} <span className="text-base font-normal text-muted-foreground">kg</span></p>
-                          </div>
-                          <div className={`flex items-center text-sm font-medium px-2 py-1 rounded-full ${
-                            parseFloat(apiary.changePercent) >= 0 
-                              ? 'bg-primary/10 text-primary' 
-                              : 'bg-destructive/10 text-destructive'
-                          }`}>
-                            {parseFloat(apiary.changePercent) >= 0 
-                              ? <ArrowUpRight className="h-4 w-4 mr-1" /> 
-                              : <ArrowDownRight className="h-4 w-4 mr-1" />}
-                            {Math.abs(parseFloat(apiary.changePercent)).toFixed(1)}%
-                          </div>
-                        </div>
-                        
-                        {apiary.hives.length > 0 ? (
-                          <div className="space-y-4">
-                            <h4 className="text-sm font-medium">Hives ({apiary.hives.length})</h4>
-                            <div className="space-y-2">
-                              {apiary.hives.map(hive => (
-                                <div key={hive.id} className="flex justify-between items-center py-2 border-b border-border last:border-0">
-                                  <div>
-                                    <p className="font-medium">{hive.name}</p>
-                                    <p className="text-xs text-muted-foreground">Last harvest: {hive.lastHarvest}</p>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="font-semibold">{hive.production.toFixed(1)} kg</p>
-                                    {hive.weightChange !== null && (
-                                      <p className={`text-xs ${hive.weightChange >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                                        {hive.weightChange >= 0 ? '+' : ''}{hive.weightChange.toFixed(1)} kg
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-center py-6 text-muted-foreground">
-                            <p>No hives in this apiary</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 border rounded-lg">
-                  <div className="bg-muted/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Scale className="h-8 w-8 text-muted-foreground" />
+              <TabsContent value="analytics" className="space-y-6">
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-semibold tracking-tight">Production Analytics</h2>
                   </div>
-                  <h3 className="text-xl font-medium mb-2">No Production Records</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                    You haven't added any production records yet. Start tracking your honey harvests by adding your first record.
-                  </p>
-                  <Button
-                    onClick={() => setAddDialogOpen(true)}
-                    className="flex items-center mx-auto"
-                  >
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Add First Record
-                  </Button>
+                  <div className="flex items-center gap-4">
+                    <Select 
+                      value={selectedPeriod} 
+                      onValueChange={(value) => setSelectedPeriod(value as 'week' | 'month' | 'year')}>
+                      <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Select period" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="week">Weekly</SelectItem>
+                        <SelectItem value="month">Monthly</SelectItem>
+                        <SelectItem value="year">Yearly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select 
+                      value={selectedApiaryId} 
+                      onValueChange={setSelectedApiaryId}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="All Apiaries" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Apiaries</SelectItem>
+                        {apiaries.map(apiary => (
+                          <SelectItem key={apiary.id} value={apiary.id}>
+                            {apiary.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              )}
-            </div>
+                
+                <ProductionAnalytics
+                  timeSeriesData={timeSeriesData}
+                  forecastData={forecastData}
+                  stats={productionStats}
+                  period={selectedPeriod}
+                  loading={isLoading}
+                />
+                
+                <div className="mt-6">
+                  <h3 className="text-xl font-semibold tracking-tight mb-4">Apiary Summaries</h3>
+                  
+                  <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6">
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        View production by apiary
+                      </p>
+                    </div>
+                    <Select 
+                      value={selectedApiaryId} 
+                      onValueChange={setSelectedApiaryId}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="All Apiaries" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Apiaries</SelectItem>
+                        {apiaries.map(apiary => (
+                          <SelectItem key={apiary.id} value={apiary.id}>
+                            {apiary.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {apiarySummaries.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {(selectedApiaryId === 'all' 
+                        ? apiarySummaries 
+                        : apiarySummaries.filter(a => a.id === selectedApiaryId)
+                      ).map(apiary => (
+                        <Card key={apiary.id} className="overflow-hidden border-border hover:shadow-md transition-all duration-200">
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-lg font-semibold">{apiary.name}</CardTitle>
+                            <CardDescription>{apiary.location}</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="flex justify-between items-center mb-4">
+                              <div>
+                                <p className="text-sm text-muted-foreground">Total Production</p>
+                                <p className="text-2xl font-bold">{apiary.totalProduction.toFixed(1)} <span className="text-base font-normal text-muted-foreground">kg</span></p>
+                              </div>
+                              <div className={`flex items-center text-sm font-medium px-2 py-1 rounded-full ${
+                                parseFloat(apiary.changePercent) >= 0 
+                                  ? 'bg-primary/10 text-primary' 
+                                  : 'bg-destructive/10 text-destructive'
+                              }`}>
+                                {parseFloat(apiary.changePercent) >= 0 
+                                  ? <ArrowUpRight className="h-4 w-4 mr-1" /> 
+                                  : <ArrowDownRight className="h-4 w-4 mr-1" />}
+                                {Math.abs(parseFloat(apiary.changePercent)).toFixed(1)}%
+                              </div>
+                            </div>
+                            
+                            {apiary.hives.length > 0 ? (
+                              <div className="space-y-4">
+                                <h4 className="text-sm font-medium">Hives ({apiary.hives.length})</h4>
+                                <div className="space-y-2">
+                                  {apiary.hives.map(hive => (
+                                    <div key={hive.id} className="flex justify-between items-center py-2 border-b border-border last:border-0">
+                                      <div>
+                                        <p className="font-medium">{hive.name}</p>
+                                        <p className="text-xs text-muted-foreground">Last harvest: {hive.lastHarvest}</p>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="font-semibold">{hive.production.toFixed(1)} kg</p>
+                                        {hive.weightChange !== null && (
+                                          <p className={`text-xs ${hive.weightChange >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                                            {hive.weightChange >= 0 ? '+' : ''}{hive.weightChange.toFixed(1)} kg
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-center py-6 text-muted-foreground">
+                                <p>No hives in this apiary</p>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 border rounded-lg">
+                      <div className="bg-muted/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Scale className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-xl font-medium mb-2">No Production Records</h3>
+                      <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                        You haven't added any production records yet. Start tracking your honey harvests by adding your first record.
+                      </p>
+                      <Button
+                        onClick={() => setAddDialogOpen(true)}
+                        className="flex items-center mx-auto"
+                      >
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        Add First Record
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="records" className="space-y-6">
+                <ProductionRecordsTable 
+                  selectedApiaryId={selectedApiaryId} 
+                  onDeleteSuccess={handleAddSuccess} // Reuse the same refresh function
+                />
+              </TabsContent>
+            </Tabs>
           </>
         )}
         

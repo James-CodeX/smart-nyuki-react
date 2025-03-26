@@ -965,4 +965,83 @@ export const getProductionSummary = async (
       topApiary: null
     };
   }
+};
+
+/**
+ * Get all production records for a table view
+ * @param apiaryId Optional apiary ID to filter records
+ */
+export const getProductionRecords = async (apiaryId?: string) => {
+  try {
+    // First, get all production records
+    let query = supabase
+      .from('hive_production_data')
+      .select('*')
+      .order('date', { ascending: false });
+    
+    // Filter by apiary if provided
+    if (apiaryId && apiaryId !== 'all') {
+      query = query.eq('apiary_id', apiaryId);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching production records:', error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+    
+    // Get unique hive_ids and apiary_ids from the records
+    const hiveIds = [...new Set(data.map(record => record.hive_id))];
+    const apiaryIds = [...new Set(data.map(record => record.apiary_id))];
+    
+    // Fetch hive names
+    const { data: hiveData, error: hiveError } = await supabase
+      .from('hives')
+      .select('hive_id, name')
+      .in('hive_id', hiveIds);
+    
+    if (hiveError) {
+      console.error('Error fetching hive names:', hiveError);
+    }
+
+    // Fetch apiary names
+    const { data: apiaryData, error: apiaryError } = await supabase
+      .from('apiaries')
+      .select('id, name')
+      .in('id', apiaryIds);
+    
+    if (apiaryError) {
+      console.error('Error fetching apiary names:', apiaryError);
+    }
+    
+    // Create maps for quick lookup
+    const hiveNameMap = {};
+    if (hiveData) {
+      hiveData.forEach(hive => {
+        hiveNameMap[hive.hive_id] = hive.name;
+      });
+    }
+    
+    const apiaryNameMap = {};
+    if (apiaryData) {
+      apiaryData.forEach(apiary => {
+        apiaryNameMap[apiary.id] = apiary.name;
+      });
+    }
+    
+    // Map records with names
+    return data.map(record => ({
+      ...record,
+      hiveName: hiveNameMap[record.hive_id] || record.hive_id,
+      apiaryName: apiaryNameMap[record.apiary_id] || 'Unknown Apiary'
+    }));
+  } catch (error) {
+    console.error('Error in getProductionRecords:', error);
+    return [];
+  }
 }; 
