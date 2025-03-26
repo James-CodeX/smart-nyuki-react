@@ -789,11 +789,11 @@ const Production = () => {
 
   return (
     <PageTransition>
-      <div className="space-y-6">
+      <div className="container mx-auto py-6 px-4 sm:px-6 max-w-7xl space-y-6">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Honey Production</h2>
+            <h1 className="text-2xl font-bold tracking-tight">Honey Production</h1>
             <p className="text-muted-foreground">
               Track and analyze your honey production across all apiaries.
             </p>

@@ -9,7 +9,9 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +54,7 @@ const Inspections = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isCompleteInspectionOpen, setIsCompleteInspectionOpen] = useState(false);
   const [inspectionToComplete, setInspectionToComplete] = useState<inspectionService.InspectionWithHiveDetails | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
   const isMobile = useMediaQuery('(max-width: 640px)');
 
   useEffect(() => {
@@ -234,7 +237,7 @@ const Inspections = () => {
             <Button onClick={() => setIsNewInspectionOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Schedule Inspection
-                  </Button>
+            </Button>
           </div>
         </div>
         
@@ -289,15 +292,16 @@ const Inspections = () => {
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex w-full max-w-sm items-center space-x-2">
-                  <Input
-                    placeholder="Search inspections..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+              <Input
+                placeholder="Search inspections..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full sm:w-[300px]"
               />
             </div>
           </div>
 
+          {/* Inspections Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="mb-2 w-full md:w-auto">
               <TabsTrigger value="all" className="flex gap-2">
@@ -315,10 +319,6 @@ const Inspections = () => {
               <TabsTrigger value="completed" className="flex gap-2">
                 <CheckCircle2 className="h-4 w-4" />
                 Completed
-              </TabsTrigger>
-              <TabsTrigger value="calendar" className="flex gap-2">
-                <Calendar className="h-4 w-4" />
-                Calendar
               </TabsTrigger>
             </TabsList>
 
@@ -437,25 +437,40 @@ const Inspections = () => {
                 )
               )}
             </TabsContent>
+          </Tabs>
 
-            <TabsContent value="calendar" className="pt-4">
-              {loading ? (
-                <div className="flex justify-center items-center h-48">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                </div>
-              ) : (
-                <div className={isMobile ? "w-full -mx-4 sm:mx-0 sm:overflow-x-auto" : "overflow-x-auto"}>
-                  <div className={isMobile ? "w-full" : "min-w-[800px]"}>
+          {/* Collapsible Calendar Section */}
+          <div className="mt-8 border rounded-lg overflow-hidden">
+            <Button 
+              variant="ghost" 
+              onClick={() => setShowCalendar(!showCalendar)}
+              className="w-full py-2 px-4 flex justify-between items-center rounded-none border-b"
+            >
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                <span className="font-semibold">Inspection Calendar</span>
+              </div>
+              {showCalendar ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+            </Button>
+            
+            {showCalendar && (
+              <div className="p-4">
+                <div className="overflow-x-auto">
+                  {loading ? (
+                    <div className="flex justify-center items-center h-48">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    </div>
+                  ) : (
                     <InspectionCalendar 
                       inspections={calendarInspections}
                       onDayClick={handleDayClick}
                       onAddClick={handleAddClick}
-                          />
-                        </div>
+                    />
+                  )}
                 </div>
-              )}
-            </TabsContent>
-          </Tabs>
+              </div>
+            )}
+          </div>
         </div>
         
         <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -506,14 +521,14 @@ const Inspections = () => {
         {/* Complete Inspection Dialog */}
         <Dialog open={isCompleteInspectionOpen} onOpenChange={setIsCompleteInspectionOpen}>
           <DialogContent className="sm:max-w-[600px]">
-                  <DialogHeader>
+            <DialogHeader>
               <DialogTitle>Complete Inspection</DialogTitle>
-                    <DialogDescription>
+              <DialogDescription>
                 {inspectionToComplete && (
                   <>Record findings for the inspection of {inspectionToComplete.hive_name} on {format(parseISO(inspectionToComplete.inspection_date), 'MMMM d, yyyy')}</>
                 )}
-                    </DialogDescription>
-                  </DialogHeader>
+              </DialogDescription>
+            </DialogHeader>
             
             <div className="space-y-4 py-4">
               <div className="flex justify-between items-center">
@@ -551,8 +566,8 @@ const Inspections = () => {
                 Cancel
               </Button>
             </DialogFooter>
-                </DialogContent>
-              </Dialog>
+          </DialogContent>
+        </Dialog>
       </div>
     </PageTransition>
   );

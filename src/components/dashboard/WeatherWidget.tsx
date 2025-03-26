@@ -14,7 +14,10 @@ import {
   ArrowDown,
   ArrowUp,
   RefreshCw,
-  MapPin
+  MapPin,
+  AlertTriangle,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import {
   Card,
@@ -39,30 +42,7 @@ import { Badge } from '@/components/ui/badge';
 import { getAllApiaries } from '@/services/apiaryService';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
-
-interface WeatherData {
-  condition: string;
-  temperature: number;
-  tempMin: number;
-  tempMax: number;
-  humidity: number;
-  pressure: number;
-  windSpeed: number;
-  windDirection: string;
-  sunrise: string;
-  sunset: string;
-  feelsLike: number;
-  icon: string;
-}
-
-interface Forecast {
-  date: string;
-  day: string;
-  condition: string;
-  tempMin: number;
-  tempMax: number;
-  icon: string;
-}
+import { fetchWeatherData, fetchForecast, WeatherData, Forecast } from '@/services/weatherService';
 
 interface ApiaryLocation {
   id: string;
@@ -80,115 +60,71 @@ interface WeatherWidgetProps {
 const getWeatherIcon = (condition: string, size: number = 5) => {
   const iconClass = `h-${size} w-${size}`;
   
-  switch (condition.toLowerCase()) {
-    case 'clear':
-    case 'sunny':
+  // If it's a numeric code (from WorldWeatherOnline)
+  if (!isNaN(Number(condition))) {
+    const code = Number(condition);
+    
+    // Sunny / Clear
+    if ([113].includes(code)) {
       return <Sun className={iconClass} />;
-    case 'rain':
-    case 'drizzle':
-    case 'shower rain':
-      return <CloudRain className={iconClass} />;
-    case 'clouds':
-    case 'few clouds':
-    case 'scattered clouds':
-    case 'broken clouds':
-    case 'overcast clouds':
-      return <Cloud className={iconClass} />;
-    case 'thunderstorm':
-      return <CloudLightning className={iconClass} />;
-    case 'snow':
-      return <Snowflake className={iconClass} />;
-    case 'mist':
-    case 'fog':
-    case 'haze':
-      return <CloudFog className={iconClass} />;
-    default:
-      return <Cloud className={iconClass} />;
-  }
-};
-
-// Mock data for development - would be replaced by actual API calls
-const mockWeatherData = (latitude: number, longitude: number): WeatherData => {
-  const conditions = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist'];
-  const condition = conditions[Math.floor(Math.random() * conditions.length)];
-  
-  // Generate temperature based on month (northern hemisphere)
-  const month = new Date().getMonth();
-  let baseTemp = 15; // Default base temp
-  
-  if (month >= 5 && month <= 8) { // Summer (Jun-Sep)
-    baseTemp = 25;
-  } else if (month >= 9 && month <= 10) { // Fall (Oct-Nov)
-    baseTemp = 15;
-  } else if (month >= 11 || month <= 1) { // Winter (Dec-Feb)
-    baseTemp = 5;
-  } else { // Spring (Mar-May)
-    baseTemp = 15;
-  }
-  
-  // Adjust for location - simplified
-  baseTemp += (latitude - 40) * -0.5; // Cooler as we go north
-  
-  const temp = baseTemp + (Math.random() * 10 - 5);
-  const minTemp = temp - (2 + Math.random() * 3);
-  const maxTemp = temp + (2 + Math.random() * 3);
-  
-  return {
-    condition,
-    temperature: parseFloat(temp.toFixed(1)),
-    tempMin: parseFloat(minTemp.toFixed(1)),
-    tempMax: parseFloat(maxTemp.toFixed(1)),
-    humidity: Math.floor(50 + Math.random() * 40),
-    pressure: Math.floor(980 + Math.random() * 40),
-    windSpeed: parseFloat((2 + Math.random() * 8).toFixed(1)),
-    windDirection: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.floor(Math.random() * 8)],
-    sunrise: format(new Date(new Date().setHours(6, Math.floor(Math.random() * 30), 0)), 'h:mm a'),
-    sunset: format(new Date(new Date().setHours(19, Math.floor(Math.random() * 30), 0)), 'h:mm a'),
-    feelsLike: parseFloat((temp + (Math.random() * 4 - 2)).toFixed(1)),
-    icon: condition.toLowerCase()
-  };
-};
-
-// Mock forecast data
-const mockForecast = (latitude: number, longitude: number): Forecast[] => {
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const conditions = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist'];
-  const today = new Date();
-  
-  return Array.from({ length: 5 }).map((_, index) => {
-    const forecastDate = new Date();
-    forecastDate.setDate(today.getDate() + index + 1);
-    
-    const condition = conditions[Math.floor(Math.random() * conditions.length)];
-    const month = forecastDate.getMonth();
-    let baseTemp = 15;
-    
-    if (month >= 5 && month <= 8) { // Summer
-      baseTemp = 25;
-    } else if (month >= 9 && month <= 10) { // Fall
-      baseTemp = 15;
-    } else if (month >= 11 || month <= 1) { // Winter
-      baseTemp = 5;
-    } else { // Spring
-      baseTemp = 15;
     }
-    
-    // Adjust for location
-    baseTemp += (latitude - 40) * -0.5;
-    
-    const temp = baseTemp + (Math.random() * 10 - 5);
-    const minTemp = temp - (2 + Math.random() * 3);
-    const maxTemp = temp + (2 + Math.random() * 3);
-    
-    return {
-      date: format(forecastDate, 'MMM dd'),
-      day: days[forecastDate.getDay()],
-      condition,
-      tempMin: parseFloat(minTemp.toFixed(1)),
-      tempMax: parseFloat(maxTemp.toFixed(1)),
-      icon: condition.toLowerCase()
-    };
-  });
+    // Partly cloudy
+    else if ([116, 119].includes(code)) {
+      return <Cloud className={iconClass} />;
+    }
+    // Cloudy / Overcast
+    else if ([122, 143, 248, 260].includes(code)) {
+      return <Cloud className={iconClass} />;
+    }
+    // Rain / Drizzle
+    else if ([176, 185, 263, 266, 281, 284, 293, 296, 299, 302, 305, 308, 311, 314, 353, 356, 359].includes(code)) {
+      return <CloudRain className={iconClass} />;
+    }
+    // Snow
+    else if ([179, 182, 227, 230, 317, 320, 323, 326, 329, 332, 335, 338, 368, 371, 374, 377].includes(code)) {
+      return <Snowflake className={iconClass} />;
+    }
+    // Thunderstorm
+    else if ([200, 386, 389, 392, 395].includes(code)) {
+      return <CloudLightning className={iconClass} />;
+    }
+    // Fog / Mist
+    else if ([143, 248, 260].includes(code)) {
+      return <CloudFog className={iconClass} />;
+    }
+    // Default
+    else {
+      return <Cloud className={iconClass} />;
+    }
+  }
+  // Fallback to text-based condition
+  else {
+    switch (condition.toLowerCase()) {
+      case 'clear':
+      case 'sunny':
+        return <Sun className={iconClass} />;
+      case 'rain':
+      case 'drizzle':
+      case 'shower rain':
+        return <CloudRain className={iconClass} />;
+      case 'clouds':
+      case 'few clouds':
+      case 'scattered clouds':
+      case 'broken clouds':
+      case 'overcast clouds':
+        return <Cloud className={iconClass} />;
+      case 'thunderstorm':
+        return <CloudLightning className={iconClass} />;
+      case 'snow':
+        return <Snowflake className={iconClass} />;
+      case 'mist':
+      case 'fog':
+      case 'haze':
+        return <CloudFog className={iconClass} />;
+      default:
+        return <Cloud className={iconClass} />;
+    }
+  }
 };
 
 const WeatherWidget: React.FC<WeatherWidgetProps> = ({ className }) => {
@@ -198,18 +134,21 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ className }) => {
   const [selectedApiaryId, setSelectedApiaryId] = useState<string>('');
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [forecast, setForecast] = useState<Forecast[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [usingMockData, setUsingMockData] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
     const loadApiaries = async () => {
       try {
+        setError(null);
         const apiaryData = await getAllApiaries();
         
         // Transform to the format we need
         const transformedApiaries = apiaryData.map(apiary => ({
           id: apiary.id,
           name: apiary.name,
-          location: apiary.location,
+          location: apiary.location || 'Unknown location',
           latitude: apiary.latitude || 40.7128, // Default to NYC
           longitude: apiary.longitude || -74.0060
         }));
@@ -225,6 +164,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ className }) => {
         }
       } catch (error) {
         console.error('Error loading apiaries:', error);
+        setError('Failed to load apiaries. Please try again later.');
         toast({
           variant: "destructive",
           title: "Error loading apiaries",
@@ -239,21 +179,32 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ className }) => {
   
   const loadWeatherData = async (apiary: ApiaryLocation) => {
     setLoading(true);
+    setError(null);
+    setUsingMockData(false);
     
     try {
-      // In a real implementation, this would be an API call to a weather service
-      // For now, just mock the data
-      const weather = mockWeatherData(apiary.latitude, apiary.longitude);
-      const forecastData = mockForecast(apiary.latitude, apiary.longitude);
+      // Fetch real weather data using our weather service
+      const weather = await fetchWeatherData(apiary.latitude, apiary.longitude);
+      const forecastData = await fetchForecast(apiary.latitude, apiary.longitude);
+      
+      // Check if we're using mock data by inspecting certain properties
+      // This is a heuristic - if the condition is a simple string like "Clear", "Rain", etc.
+      // it's likely mock data rather than the detailed descriptions from the API
+      const mockConditions = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist'];
+      if (mockConditions.includes(weather.condition)) {
+        setUsingMockData(true);
+        console.warn('Using mock weather data - check your API key and connectivity');
+      }
       
       setWeatherData(weather);
       setForecast(forecastData);
     } catch (error) {
       console.error('Error loading weather data:', error);
+      setError('Failed to fetch weather data. Please check your API key or network connection.');
       toast({
         variant: "destructive",
         title: "Error loading weather",
-        description: "Could not load the weather data. Please try again later.",
+        description: "Could not load the weather data. Please check your API configuration.",
       });
     } finally {
       setLoading(false);
@@ -343,6 +294,35 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ className }) => {
       </Card>
     );
   }
+
+  if (error) {
+    return (
+      <Card className={className}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Cloud className="h-5 w-5" />
+            <span>Weather Conditions</span>
+          </CardTitle>
+          <CardDescription>Current apiary weather conditions</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <AlertTriangle className="h-10 w-10 text-amber-500 mb-2" />
+            <h3 className="text-lg font-medium">Weather Data Error</h3>
+            <p className="text-muted-foreground max-w-md mb-4">
+              {error}
+            </p>
+            <Button 
+              variant="outline"
+              onClick={handleRefresh}
+            >
+              Try Again
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   
   return (
     <Card className={className}>
@@ -351,6 +331,12 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ className }) => {
           <CardTitle className="flex items-center gap-2">
             <Cloud className="h-5 w-5" />
             <span>Weather Conditions</span>
+            {usingMockData && (
+              <Badge variant="outline" className="ml-2 text-yellow-600 border-yellow-600">
+                <WifiOff className="h-3 w-3 mr-1" /> 
+                Using Mock Data
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription>Current apiary weather conditions</CardDescription>
         </div>
@@ -389,15 +375,12 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ className }) => {
                 </div>
                 <Button 
                   variant="ghost" 
-                  size="sm"
-                  className="h-8 w-8 p-0" 
+                  size="sm" 
+                  className="h-8 w-8 p-0 text-muted-foreground"
                   onClick={handleRefresh}
                   disabled={refreshing}
                 >
-                  <RefreshCw className={cn(
-                    "h-4 w-4",
-                    refreshing && "animate-spin"
-                  )} />
+                  <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
                   <span className="sr-only">Refresh</span>
                 </Button>
               </div>
@@ -405,7 +388,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ className }) => {
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center justify-center h-20 w-20 rounded-full bg-primary/10">
-                    {getWeatherIcon(weatherData.condition, 10)}
+                    {getWeatherIcon(weatherData.icon, 10)}
                   </div>
                   <div>
                     <h3 className="text-4xl font-bold">
@@ -428,7 +411,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ className }) => {
               
               <Separator className="my-4" />
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-4 gap-2">
                 <div className="flex flex-col items-center p-3 bg-muted/50 rounded-lg">
                   <Droplets className="h-5 w-5 mb-1 text-blue-500" />
                   <span className="text-xs text-muted-foreground">Humidity</span>
@@ -480,7 +463,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ className }) => {
                     <span className="text-sm font-medium">{day.day}</span>
                     <span className="text-xs text-muted-foreground mb-1">{day.date}</span>
                     <div className="my-2">
-                      {getWeatherIcon(day.condition, 6)}
+                      {getWeatherIcon(day.icon, 6)}
                     </div>
                     <div className="flex items-center justify-between w-full text-sm">
                       <span>{day.tempMin}°</span>
@@ -510,6 +493,12 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ className }) => {
         >
           View detailed forecast
         </Button>
+        
+        {usingMockData && (
+          <p className="text-xs text-amber-600">
+            To see real weather data, please add your WorldWeatherOnline API key to the .env file.
+          </p>
+        )}
       </CardFooter>
     </Card>
   );

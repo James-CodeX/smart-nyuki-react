@@ -58,6 +58,7 @@ export interface HiveCreateInput {
   queen_marked?: boolean;
   queen_marking_color?: string;
   notes?: string;
+  alerts_enabled?: boolean;
 }
 
 export interface HiveWithFullDetails extends Omit<HiveCreateInput, 'apiary_id'> {
