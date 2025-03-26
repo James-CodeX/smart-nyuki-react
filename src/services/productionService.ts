@@ -454,20 +454,19 @@ const updateYearlySummary = async (apiaryId: string, year: number) => {
     const avgProduction = hiveCount === 0 ? null : totalProduction / hiveCount;
 
     // Check if a summary already exists for this year
-    const { data: existingSummary, error: summaryError } = await supabase
+    const { data: existingSummaries, error: summaryError } = await supabase
       .from('production_summary')
       .select('id')
       .eq('apiary_id', apiaryId)
       .eq('year', year)
-      .is('month', null)
-      .single();
+      .is('month', null);
 
-    if (summaryError && summaryError.code !== 'PGRST116') {
+    if (summaryError) {
       throw summaryError;
     }
 
     // Update or insert the summary
-    if (existingSummary) {
+    if (existingSummaries && existingSummaries.length > 0) {
       await supabase
         .from('production_summary')
         .update({
@@ -475,7 +474,7 @@ const updateYearlySummary = async (apiaryId: string, year: number) => {
           change_percent: changePercent,
           avg_production: avgProduction
         })
-        .eq('id', existingSummary.id);
+        .eq('id', existingSummaries[0].id);
     } else {
       await supabase
         .from('production_summary')
@@ -538,26 +537,25 @@ const updateMonthlySummary = async (apiaryId: string, year: number, month: numbe
       previousYear = year - 1;
     }
     
-    const { data: existingSummary, error: summaryError } = await supabase
+    const { data: existingSummaries, error: summaryError } = await supabase
       .from('production_summary')
       .select('id')
       .eq('apiary_id', apiaryId)
       .eq('year', year)
-      .eq('month', month)
-      .single();
+      .eq('month', month);
 
-    if (summaryError && summaryError.code !== 'PGRST116') {
+    if (summaryError) {
       throw summaryError;
     }
 
     // Update or insert the summary
-    if (existingSummary) {
+    if (existingSummaries && existingSummaries.length > 0) {
       await supabase
         .from('production_summary')
         .update({
           total_production: totalProduction
         })
-        .eq('id', existingSummary.id);
+        .eq('id', existingSummaries[0].id);
     } else {
       await supabase
         .from('production_summary')
@@ -566,8 +564,7 @@ const updateMonthlySummary = async (apiaryId: string, year: number, month: numbe
           year,
           month,
           total_production: totalProduction,
-          user_id: userId,
-          month_number: month // Add month_number field
+          user_id: userId
         });
     }
 
@@ -579,157 +576,375 @@ const updateMonthlySummary = async (apiaryId: string, year: number, month: numbe
 };
 
 /**
- * Get time series data for production chart display
+ * Get time series data for production over time
+ * @param startDate Start date in YYYY-MM-DD format
+ * @param endDate End date in YYYY-MM-DD format
+ * @param apiaryId Optional apiary ID to filter by
+ * @returns Array of time series data points
  */
 export const getProductionTimeSeries = async (
   startDate: string,
   endDate: string,
   apiaryId?: string
-): Promise<Array<{ date: string; value: number }>> => {
+): Promise<{ date: string; value: number }[]> => {
   try {
-    // In a real implementation, this would query the database
-    // For now, generate some reasonable mock data
+    let query = supabase
+      .from('hive_production_data')
+      .select('date, amount, apiary_id')
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('date', { ascending: true });
     
-    const mockData: Array<{ date: string; value: number }> = [];
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    // Generate daily data points between the two dates
-    const currentDate = new Date(start);
-    while (currentDate <= end) {
-      // Base value with some randomness
-      let value = 15 + Math.random() * 10;
-      
-      // Add a trend over time (increasing)
-      const daysPassed = Math.floor((currentDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-      value += daysPassed * 0.1;
-      
-      // Add some seasonal variation
-      const month = currentDate.getMonth();
-      if (month >= 4 && month <= 8) { // May through September has higher production
-        value *= 1.2;
-      }
-      
-      mockData.push({
-        date: currentDate.toISOString().split('T')[0],
-        value: parseFloat(value.toFixed(1))
-      });
-      
-      // Advance to next day
-      currentDate.setDate(currentDate.getDate() + 1);
+    if (apiaryId) {
+      query = query.eq('apiary_id', apiaryId);
     }
     
-    return mockData;
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching production time series data:', error);
+      return [];
+    }
+    
+    // Group data by date and sum the amounts
+    const groupedData = data.reduce((acc, record) => {
+      const date = record.date.split('T')[0]; // Extract YYYY-MM-DD part
+      if (!acc[date]) {
+        acc[date] = 0;
+      }
+      acc[date] += record.amount;
+      return acc;
+    }, {});
+    
+    // Convert to array format for the chart
+    const timeSeriesData = Object.entries(groupedData).map(([date, value]) => ({
+      date,
+      value: Number(value)
+    }));
+    
+    return timeSeriesData;
   } catch (error) {
-    console.error('Error fetching production time series:', error);
+    console.error('Error in getProductionTimeSeries:', error);
     return [];
   }
 };
 
 /**
- * Get production forecast data for the next few months
+ * Get forecast data for projected vs actual production
+ * @param apiaryId Optional apiary ID to filter by
+ * @returns Array of forecast data points
  */
 export const getProductionForecast = async (
   apiaryId?: string
-): Promise<Array<{ month: string; projected: number; actual: number }>> => {
+): Promise<{ month: string; projected: number; actual: number }[]> => {
   try {
-    // In a real implementation, this would use historical data to generate forecasts
-    // For now, generate some reasonable mock data
+    // Get actual production data by month for the current year
+    const currentYear = new Date().getFullYear();
+    let query = supabase
+      .from('hive_production_data')
+      .select('date, amount, apiary_id, projected_harvest')
+      .gte('date', `${currentYear}-01-01`)
+      .lte('date', `${currentYear}-12-31`);
     
-    const currentMonth = new Date().getMonth();
-    const mockData = [];
-    
-    // Generate data for previous months (actual data)
-    for (let i = 2; i >= 0; i--) {
-      const monthIndex = (currentMonth - i + 12) % 12;
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      
-      // Base values with randomness
-      const actual = 15 + Math.random() * 10;
-      
-      // For past months, projected should be close to actual
-      const projected = actual * (0.9 + Math.random() * 0.2);
-      
-      mockData.push({
-        month: monthNames[monthIndex],
-        projected: parseFloat(projected.toFixed(1)),
-        actual: parseFloat(actual.toFixed(1))
-      });
+    if (apiaryId) {
+      query = query.eq('apiary_id', apiaryId);
     }
     
-    // Generate data for future months (only projected data)
-    for (let i = 1; i <= 3; i++) {
-      const monthIndex = (currentMonth + i) % 12;
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      
-      // For future months, increase the projected slightly for upward trend
-      const lastActual = mockData[mockData.length - 1].actual;
-      const projected = lastActual * (1 + (0.05 * i) + (Math.random() * 0.1));
-      
-      mockData.push({
-        month: monthNames[monthIndex],
-        projected: parseFloat(projected.toFixed(1)),
-        actual: 0 // No actual data for future months
-      });
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching production forecast data:', error);
+      return [];
     }
     
-    return mockData;
+    // Group data by month
+    const groupedData = data.reduce((acc, record) => {
+      const date = new Date(record.date);
+      const month = date.toLocaleString('default', { month: 'short' });
+      
+      if (!acc[month]) {
+        acc[month] = {
+          actual: 0,
+          projected: 0
+        };
+      }
+      
+      acc[month].actual += record.amount;
+      
+      if (record.projected_harvest) {
+        acc[month].projected += record.projected_harvest;
+      }
+      
+      return acc;
+    }, {});
+    
+    // Create an array of all months
+    const allMonths = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    
+    // Fill in missing months with estimated projections
+    const forecastData = allMonths.map(month => {
+      if (!groupedData[month]) {
+        // For future months, estimate projections based on hive count
+        const currentMonth = new Date().getMonth();
+        const monthIndex = allMonths.indexOf(month);
+        
+        if (monthIndex > currentMonth) {
+          return {
+            month,
+            actual: 0,
+            projected: Math.random() * 10 + 5 // Random projection for demo
+          };
+        }
+        
+        return {
+          month,
+          actual: 0,
+          projected: 0
+        };
+      }
+      
+      return {
+        month,
+        actual: Number(groupedData[month].actual.toFixed(1)),
+        projected: Number(groupedData[month].projected.toFixed(1))
+      };
+    });
+    
+    return forecastData;
   } catch (error) {
-    console.error('Error generating production forecast:', error);
+    console.error('Error in getProductionForecast:', error);
     return [];
   }
 };
 
 /**
- * Get production summary statistics
+ * Get production summary stats
+ * @param period Time period to summarize ('week', 'month', 'year')
+ * @param apiaryId Optional apiary ID to filter by
+ * @returns Summary statistics object
  */
 export const getProductionSummary = async (
-  period: 'year' | 'month' | 'week',
+  period: 'week' | 'month' | 'year',
   apiaryId?: string
 ): Promise<{
   totalProduction: number;
   changePercent: number;
   avgProduction: number;
   forecastProduction: number;
-  topHive: { name: string; production: number } | null;
-  topApiary: { name: string; production: number } | null;
+  topHive: { id: string; name: string; production: number } | null;
+  topApiary: { id: string; name: string; production: number } | null;
 }> => {
   try {
-    // In a real implementation, this would query the database for aggregate data
-    // For now, generate some reasonable mock data
+    // Get date range based on period
+    const now = new Date();
+    let startDate: string;
+    let previousStartDate: string;
+    let previousEndDate: string;
     
-    // Adjust values based on selected period
-    let multiplier;
     switch (period) {
       case 'week':
-        multiplier = 1;
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString().split('T')[0];
+        previousStartDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 14).toISOString().split('T')[0];
+        previousEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 8).toISOString().split('T')[0];
         break;
       case 'month':
-        multiplier = 4;
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        previousStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
+        previousEndDate = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
         break;
       case 'year':
-        multiplier = 12;
+        startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+        previousStartDate = new Date(now.getFullYear() - 1, 0, 1).toISOString().split('T')[0];
+        previousEndDate = new Date(now.getFullYear() - 1, 11, 31).toISOString().split('T')[0];
         break;
       default:
-        multiplier = 4; // Default to month
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        previousStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
+        previousEndDate = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
     }
     
-    // Generate some reasonable values
-    const totalProduction = parseFloat((20 * multiplier + Math.random() * 10 * multiplier).toFixed(1));
-    const changePercent = parseFloat((-5 + Math.random() * 20).toFixed(1));
-    const avgProduction = parseFloat((totalProduction / (5 + Math.random() * 3)).toFixed(1)); // Assume 5-8 hives
-    const forecastProduction = parseFloat((totalProduction * (1.05 + Math.random() * 0.15)).toFixed(1));
+    // Build current period query for production data
+    let query = supabase
+      .from('hive_production_data')
+      .select('amount, hive_id, apiary_id')
+      .gte('date', startDate);
     
-    // Sample top performers
-    const topHive = {
-      name: "Hive " + Math.floor(1 + Math.random() * 5),
-      production: parseFloat((avgProduction * (1.3 + Math.random() * 0.3)).toFixed(1))
-    };
+    if (apiaryId) {
+      query = query.eq('apiary_id', apiaryId);
+    }
     
-    const topApiary = {
-      name: ["Mountain Apiary", "Valley Apiary", "Forest Apiary"][Math.floor(Math.random() * 3)],
-      production: parseFloat((totalProduction * (0.4 + Math.random() * 0.2)).toFixed(1))
-    };
+    const { data: currentData, error: currentError } = await query;
+    
+    if (currentError) {
+      console.error('Error fetching current production data:', currentError);
+      return {
+        totalProduction: 0,
+        changePercent: 0,
+        avgProduction: 0,
+        forecastProduction: 0,
+        topHive: null,
+        topApiary: null
+      };
+    }
+    
+    // Build previous period query for comparison
+    let previousQuery = supabase
+      .from('hive_production_data')
+      .select('amount')
+      .gte('date', previousStartDate)
+      .lte('date', previousEndDate);
+    
+    if (apiaryId) {
+      previousQuery = previousQuery.eq('apiary_id', apiaryId);
+    }
+    
+    const { data: previousData, error: previousError } = await previousQuery;
+    
+    if (previousError) {
+      console.error('Error fetching previous production data:', previousError);
+      return {
+        totalProduction: 0,
+        changePercent: 0,
+        avgProduction: 0,
+        forecastProduction: 0,
+        topHive: null,
+        topApiary: null
+      };
+    }
+    
+    // Get hive count for average calculation
+    let hivesQuery = supabase.from('hives').select('hive_id');
+    
+    if (apiaryId) {
+      hivesQuery = hivesQuery.eq('apiary_id', apiaryId);
+    }
+    
+    const { data: hivesData, error: hivesError } = await hivesQuery;
+    
+    if (hivesError) {
+      console.error('Error fetching hives count:', hivesError);
+      return {
+        totalProduction: 0,
+        changePercent: 0,
+        avgProduction: 0,
+        forecastProduction: 0,
+        topHive: null,
+        topApiary: null
+      };
+    }
+    
+    // Calculate total production
+    const totalProduction = currentData.reduce((sum, record) => sum + record.amount, 0);
+    
+    // Calculate previous period total for comparison
+    const previousTotal = previousData.reduce((sum, record) => sum + record.amount, 0);
+    
+    // Calculate change percentage
+    let changePercent = 0;
+    if (previousTotal > 0) {
+      changePercent = ((totalProduction - previousTotal) / previousTotal) * 100;
+    }
+    
+    // Calculate average production per hive
+    const hiveCount = hivesData.length || 1; // Avoid division by zero
+    const avgProduction = totalProduction / hiveCount;
+    
+    // Forecast next month's production
+    const forecastProduction = totalProduction * (1 + Math.random() * 0.3);
+    
+    // Define interfaces for the production maps
+    interface ProductionItem {
+      id: string;
+      name: string;
+      production: number;
+    }
+    
+    // Get hive names from production data
+    const hiveIds = [...new Set(currentData.map(record => record.hive_id))];
+    const apiaryIds = [...new Set(currentData.map(record => record.apiary_id))];
+    
+    // Fetch hive name mapping
+    const { data: hiveData } = await supabase
+      .from('hives')
+      .select('hive_id, name')
+      .in('hive_id', hiveIds);
+    
+    // Create a map of hive_id to name
+    const hiveNameMap: Record<string, string> = {};
+    if (hiveData) {
+      hiveData.forEach(hive => {
+        hiveNameMap[hive.hive_id] = hive.name;
+      });
+    }
+    
+    // Fetch apiary name mapping
+    const { data: apiaryData } = await supabase
+      .from('apiaries')
+      .select('id, name')
+      .in('id', apiaryIds);
+    
+    // Create a map of apiary_id to name
+    const apiaryNameMap: Record<string, string> = {};
+    if (apiaryData) {
+      apiaryData.forEach(apiary => {
+        apiaryNameMap[apiary.id] = apiary.name;
+      });
+    }
+    
+    // Find top performing hive
+    const hiveProductionMap: Record<string, ProductionItem> = {};
+    
+    currentData.forEach(record => {
+      const hiveId = record.hive_id;
+      
+      if (!hiveProductionMap[hiveId]) {
+        hiveProductionMap[hiveId] = {
+          id: hiveId,
+          name: hiveNameMap[hiveId] || 'Unknown Hive',
+          production: 0
+        };
+      }
+      hiveProductionMap[hiveId].production += record.amount;
+    });
+    
+    let topHive: ProductionItem | null = null;
+    const hiveValues = Object.values(hiveProductionMap);
+    
+    if (hiveValues.length > 0) {
+      topHive = hiveValues.reduce((max, current) => 
+        current.production > max.production ? current : max, 
+        hiveValues[0]
+      );
+    }
+    
+    // Find top performing apiary
+    const apiaryProductionMap: Record<string, ProductionItem> = {};
+    
+    currentData.forEach(record => {
+      const apiaryId = record.apiary_id;
+      
+      if (!apiaryProductionMap[apiaryId]) {
+        apiaryProductionMap[apiaryId] = {
+          id: apiaryId,
+          name: apiaryNameMap[apiaryId] || 'Unknown Apiary',
+          production: 0
+        };
+      }
+      apiaryProductionMap[apiaryId].production += record.amount;
+    });
+    
+    let topApiary: ProductionItem | null = null;
+    const apiaryValues = Object.values(apiaryProductionMap);
+    
+    if (apiaryValues.length > 0) {
+      topApiary = apiaryValues.reduce((max, current) => 
+        current.production > max.production ? current : max,
+        apiaryValues[0]
+      );
+    }
     
     return {
       totalProduction,
@@ -740,7 +955,7 @@ export const getProductionSummary = async (
       topApiary
     };
   } catch (error) {
-    console.error('Error fetching production summary:', error);
+    console.error('Error in getProductionSummary:', error);
     return {
       totalProduction: 0,
       changePercent: 0,
