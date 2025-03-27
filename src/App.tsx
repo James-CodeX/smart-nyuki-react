@@ -221,13 +221,13 @@ const App = () => {
 
   // Start metrics checker when app mounts
   useEffect(() => {
-    console.log('Starting metrics checker...');
-    // Start checking metrics every 5 minutes (default)
+    console.log('[DEBUG] App mounted - Starting metrics checker ONCE at:', new Date().toISOString());
+    // Start checking metrics every 30 minutes (default)
     const stopChecker = startMetricsChecker();
     
     // Clean up when component unmounts
     return () => {
-      console.log('Stopping metrics checker...');
+      console.log('[DEBUG] App unmounting - Stopping metrics checker at:', new Date().toISOString());
       stopChecker();
     };
   }, []);

@@ -7,6 +7,7 @@ import { checkMetricsAndCreateAlerts } from '@/services/alertService';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Map } from 'lucide-react';
+import { forceMetricsCheck } from '@/utils/metricsChecker';
 
 interface ActionButtonProps {
   icon: React.ReactNode;
@@ -60,8 +61,8 @@ const QuickActions: React.FC<QuickActionsProps> = ({
         description: "Checking all metrics against thresholds...",
       });
       
-      console.log("Manually triggering metrics check...");
-      const alertsCreated = await checkMetricsAndCreateAlerts();
+      console.log("[DEBUG] Manually triggering metrics check...");
+      const alertsCreated = await forceMetricsCheck();
       
       toast({
         title: "Metrics check complete",
@@ -69,7 +70,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({
         variant: alertsCreated > 0 ? "destructive" : "default",
       });
     } catch (error) {
-      console.error("Error during manual metrics check:", error);
+      console.error("[DEBUG] Error during manual metrics check:", error);
       toast({
         title: "Error checking metrics",
         description: "An error occurred while checking metrics",

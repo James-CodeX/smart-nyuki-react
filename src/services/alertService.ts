@@ -239,17 +239,38 @@ export const getAlertsByApiary = async (apiaryId: string): Promise<Alert[]> => {
  */
 export const resolveAlert = async (alertId: string): Promise<void> => {
   try {
+    console.log(`[DEBUG] Resolving alert with ID: ${alertId}`);
+    
+    // Get the alert to be resolved
+    const { data: alert, error: getError } = await supabase
+      .from('alerts')
+      .select('*')
+      .eq('id', alertId)
+      .single();
+      
+    if (getError) {
+      console.error('[DEBUG] Error getting alert for resolution:', getError);
+      throw getError;
+    }
+    
+    const resolved_at = new Date().toISOString();
+    console.log(`[DEBUG] Alert being resolved:`, alert);
+    console.log(`[DEBUG] Resolution timestamp: ${resolved_at}`);
+    
     const { error } = await supabase
       .from('alerts')
       .update({ 
-        resolved_at: new Date().toISOString(),
+        resolved_at: resolved_at,
         is_read: true
       })
       .eq('id', alertId);
 
     if (error) {
+      console.error('[DEBUG] Error resolving alert:', error);
       throw error;
     }
+    
+    console.log(`[DEBUG] Alert ${alertId} successfully resolved`);
   } catch (error) {
     console.error('Error resolving alert:', error);
     throw error;
@@ -446,13 +467,14 @@ const checkWithThresholds = async (userId: string, thresholds: any): Promise<num
     
     for (const hive of hives) {
       console.log(`Checking metrics for hive: ${hive.hive_id} (${hive.name})`);
-      // Get the most recent metrics for this hive
+      // Get ONLY the most recent metrics data point for this hive
+      // This is important: we only check the very latest reading, not all data from the last interval
       const { data: metrics, error: metricsError } = await supabase
         .from('metrics_time_series_data')
         .select('*')
         .eq('hive_id', hive.hive_id)
         .order('timestamp', { ascending: false })
-        .limit(1);
+        .limit(1); // Ensures we only get the single most recent data point
 
       if (metricsError) {
         console.error(`Error fetching metrics for hive ${hive.hive_id}:`, metricsError);
@@ -580,9 +602,10 @@ const createAlertIfNotExists = async (
   severity: string
 ): Promise<void> => {
   try {
-    console.log(`Checking for existing ${type} alerts for hive ${hiveId}`);
-    // Check if a similar unresolved alert already exists - with more specific check for message similarity
-    const { data: existingAlerts, error: queryError } = await supabase
+    console.log(`[DEBUG] Checking for existing/recent ${type} alerts for hive ${hiveId}`);
+    
+    // Check if a similar unresolved alert already exists
+    const { data: activeAlerts, error: activeError } = await supabase
       .from('alerts')
       .select('*')
       .eq('user_id', userId)
@@ -591,31 +614,70 @@ const createAlertIfNotExists = async (
       .is('resolved_at', null)
       .order('created_at', { ascending: false });
       
-    if (queryError) {
-      console.error('Error checking for existing alerts:', queryError);
-      throw queryError;
+    if (activeError) {
+      console.error('[DEBUG] Error checking for existing alerts:', activeError);
+      throw activeError;
     }
     
-    // If a similar alert already exists, don't create a new one
-    if (existingAlerts && existingAlerts.length > 0) {
-      // For additional safety, also check if the message is similar
-      // This helps prevent duplicate alerts that might occur in rapid succession
+    // Also check for recently resolved alerts of the same type (within last hour)
+    // This prevents alerts from reappearing immediately after resolution
+    const oneHourAgo = new Date();
+    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+    const oneHourAgoStr = oneHourAgo.toISOString();
+    
+    console.log(`[DEBUG] Checking for alerts resolved after: ${oneHourAgoStr}`);
+    
+    const { data: recentlyResolvedAlerts, error: resolvedError } = await supabase
+      .from('alerts')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('hive_id', hiveId)
+      .eq('type', type)
+      .not('resolved_at', 'is', null)
+      .gt('resolved_at', oneHourAgoStr)
+      .order('resolved_at', { ascending: false });
+    
+    if (resolvedError) {
+      console.error('[DEBUG] Error checking for recently resolved alerts:', resolvedError);
+      throw resolvedError;
+    }
+    
+    // Log results of both queries
+    console.log(`[DEBUG] Found ${activeAlerts?.length || 0} active alerts and ${recentlyResolvedAlerts?.length || 0} recently resolved alerts`);
+    
+    // Function to check message similarity
+    const isMessageSimilar = (existingMessage: string) => {
       const messageWords = message.toLowerCase().split(' ');
-      const similarAlertExists = existingAlerts.some(alert => {
-        const existingMessageWords = alert.message.toLowerCase().split(' ');
-        // Check if at least 70% of words are the same (simple similarity check)
-        const commonWords = messageWords.filter(word => existingMessageWords.includes(word));
-        return commonWords.length >= Math.min(messageWords.length, existingMessageWords.length) * 0.7;
-      });
+      const existingMessageWords = existingMessage.toLowerCase().split(' ');
+      // Check if at least 70% of words are the same (simple similarity check)
+      const commonWords = messageWords.filter(word => existingMessageWords.includes(word));
+      const similarity = commonWords.length / Math.min(messageWords.length, existingMessageWords.length);
+      console.log(`[DEBUG] Message similarity: ${similarity.toFixed(2)} comparing "${message}" with "${existingMessage}"`);
+      return similarity >= 0.7;
+    };
+    
+    // Check active alerts
+    if (activeAlerts && activeAlerts.length > 0) {
+      const similarAlertExists = activeAlerts.some(alert => isMessageSimilar(alert.message));
       
       if (similarAlertExists) {
-        console.log(`Similar alert already exists for ${type} on hive ${hiveId}, skipping creation`);
+        console.log(`[DEBUG] Similar ACTIVE alert already exists for ${type} on hive ${hiveId}, skipping creation`);
+        return;
+      }
+    }
+    
+    // Check recently resolved alerts
+    if (recentlyResolvedAlerts && recentlyResolvedAlerts.length > 0) {
+      const similarResolvedAlert = recentlyResolvedAlerts.some(alert => isMessageSimilar(alert.message));
+      
+      if (similarResolvedAlert) {
+        console.log(`[DEBUG] Similar alert was RECENTLY RESOLVED for ${type} on hive ${hiveId}, skipping creation`);
         return;
       }
     }
     
     // Create a new alert
-    console.log(`Creating new alert: ${type} (${severity}) - ${message}`);
+    console.log(`[DEBUG] Creating new alert: ${type} (${severity}) - ${message}`);
     const { data, error } = await supabase
       .from('alerts')
       .insert({
@@ -629,12 +691,12 @@ const createAlertIfNotExists = async (
       });
       
     if (error) {
-      console.error('Error creating alert:', error);
+      console.error('[DEBUG] Error creating alert:', error);
       throw error;
     }
     
-    console.log(`Alert created successfully for hive ${hiveId}: ${type} - ${message}`);
+    console.log(`[DEBUG] Alert created successfully for hive ${hiveId}: ${type} - ${message}`);
   } catch (error) {
-    console.error('Error creating alert:', error);
+    console.error('[DEBUG] Error in createAlertIfNotExists:', error);
   }
 }; 

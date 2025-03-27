@@ -194,27 +194,31 @@ const Dashboard = () => {
 
   // Load hives and apiaries when component mounts
   useEffect(() => {
+    console.log('[DEBUG] Dashboard mounted at:', new Date().toISOString());
     const loadData = async () => {
       try {
         setIsLoadingHives(true);
         setIsLoadingApiaries(true);
         
-        const hivesData = await getAllHives();
         const apiariesData = await getAllApiaries();
-        
-        setHives(hivesData);
         setApiaries(apiariesData);
+        setIsLoadingApiaries(false);
+        
+        const hivesData = await getAllHives();
+        setHives(hivesData);
+        setIsLoadingHives(false);
+        
         setLoading(false);
       } catch (error) {
         console.error('Error loading dashboard data:', error);
-        toast({
-          variant: "destructive",
-          title: "Error loading data",
-          description: "There was a problem loading your data. Please try again.",
-        });
-      } finally {
+        setLoading(false);
         setIsLoadingHives(false);
         setIsLoadingApiaries(false);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'There was a problem loading your dashboard data.'
+        });
       }
     };
     
