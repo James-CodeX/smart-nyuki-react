@@ -76,7 +76,7 @@ const AppRoutes = () => {
         <Sidebar onCollapsedChange={handleSidebarStateChange} />
         <div className={contentClass}>
           <Suspense fallback={<PageLoader />}>
-            <div className="pb-20 md:pb-6">
+            <div className="pb-20 md:pb-6 relative overflow-hidden">
               {children}
             </div>
           </Suspense>

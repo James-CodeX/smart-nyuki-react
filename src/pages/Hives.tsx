@@ -194,15 +194,15 @@ const Hives = () => {
   
   return (
     <PageTransition>
-      <div className="container max-w-7xl pt-8 pb-16">
-        <div className="flex justify-between items-center mb-8">
+      <div className="container max-w-full sm:max-w-7xl pt-4 sm:pt-8 pb-8 sm:pb-16 px-3 sm:px-6 mx-auto overflow-x-hidden">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 sm:gap-0 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold">Hives</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">Hives</h1>
             <p className="text-muted-foreground">Manage and monitor your beehives</p>
           </div>
 
-          <div className="flex space-x-2">
-            <div className="w-[200px]">
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+            <div className="w-full sm:w-[200px]">
               <Select 
                 value={selectedApiaryId} 
                 onValueChange={handleApiaryChange}
@@ -227,7 +227,7 @@ const Hives = () => {
             
             <AddHiveModal 
               trigger={
-                <Button>
+                <Button className="w-full sm:w-auto">
                   <Plus className="h-4 w-4 mr-2" /> Add Hive
                 </Button>
               }
@@ -236,21 +236,21 @@ const Hives = () => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="relative">
+        <div className="grid grid-cols-1 gap-4 mb-6 w-full max-w-full overflow-hidden">
+          <div className="relative w-full">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search hives..."
-              className="pl-8"
+              className="pl-8 w-full"
               value={searchQuery}
               onChange={handleSearchChange}
             />
           </div>
           
-          <div className="flex gap-2">
-            <div className="flex-1">
+          <div className="flex gap-2 w-full">
+            <div className="flex-1 max-w-[calc(100%-48px)]">
               <Select value={sortBy} onValueChange={handleSortChange}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -295,9 +295,9 @@ const Hives = () => {
         </div>
         
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full overflow-hidden">
             {Array(6).fill(0).map((_, index) => (
-              <Card key={index} className="overflow-hidden">
+              <Card key={index} className="overflow-hidden w-full">
                 <CardContent className="p-0">
                   <div className="p-6">
                     <Skeleton className="h-5 w-1/2 mb-2" />
@@ -357,7 +357,7 @@ const Hives = () => {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full overflow-hidden">
             {filteredAndSortedHives.map((hive) => (
               <HiveCard 
                 key={hive.hive_id} 

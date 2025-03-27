@@ -100,119 +100,121 @@ const HiveCard: React.FC<HiveCardProps> = ({ hive, onClick }) => {
   const hasAlerts = hive.alerts && hive.alerts.length > 0;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className={cn(
-        "metric-card p-5 cursor-pointer",
-        hasAlerts ? 'border-amber-200' : ''
-      )}
-      onClick={onClick}
-    >
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="text-lg font-medium">{hive.name}</h3>
-          <p className="text-muted-foreground text-sm">{hive.apiaryName}</p>
-        </div>
-        {hasAlerts && (
-          <motion.div
-            initial={{ scale: 0.8 }}
-            animate={{ scale: [1, 1.1, 1] }}
-            transition={{ repeat: Infinity, repeatType: 'reverse', duration: 2 }}
-            className="bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-xs font-medium flex items-center"
-          >
-            <AlertTriangle className="h-3 w-3 mr-1" />
-            {hive.alerts.length} {hive.alerts.length === 1 ? 'Alert' : 'Alerts'}
-          </motion.div>
+    <div className="w-full overflow-hidden">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className={cn(
+          "metric-card p-4 sm:p-5 cursor-pointer w-full",
+          hasAlerts ? 'border-amber-200' : ''
         )}
-      </div>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Temperature</span>
-            <span className={cn("text-sm font-bold", tempColor)}>
-              {currentTemp.toFixed(1)} °C
-            </span>
+        onClick={onClick}
+      >
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="text-lg font-medium">{hive.name}</h3>
+            <p className="text-muted-foreground text-sm">{hive.apiaryName}</p>
           </div>
-          <MetricGraph 
-            data={temperatureData} 
-            color="#ef4444" 
-            gradientId={tempGradientId} 
-            unit="°C"
-            min={25}
-            max={40}
-            className="h-[120px] sm:h-[140px]"
-          />
+          {hasAlerts && (
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ repeat: Infinity, repeatType: 'reverse', duration: 2 }}
+              className="bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-xs font-medium flex items-center"
+            >
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              {hive.alerts.length} {hive.alerts.length === 1 ? 'Alert' : 'Alerts'}
+            </motion.div>
+          )}
         </div>
         
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Humidity</span>
-            <span className={cn("text-sm font-bold", humidityColor)}>
-              {currentHumidity.toFixed(0)} %
-            </span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">Temperature</span>
+              <span className={cn("text-sm font-bold", tempColor)}>
+                {currentTemp.toFixed(1)} °C
+              </span>
+            </div>
+            <MetricGraph 
+              data={temperatureData} 
+              color="#ef4444" 
+              gradientId={tempGradientId} 
+              unit="°C"
+              min={25}
+              max={40}
+              className="h-[100px] sm:h-[120px]"
+            />
           </div>
-          <MetricGraph 
-            data={humidityData} 
-            color="#0ea5e9" 
-            gradientId={humidityGradientId} 
-            unit="%"
-            min={30}
-            max={80}
-            className="h-[120px] sm:h-[140px]"
-          />
+          
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">Humidity</span>
+              <span className={cn("text-sm font-bold", humidityColor)}>
+                {currentHumidity.toFixed(0)} %
+              </span>
+            </div>
+            <MetricGraph 
+              data={humidityData} 
+              color="#0ea5e9" 
+              gradientId={humidityGradientId} 
+              unit="%"
+              min={30}
+              max={80}
+              className="h-[100px] sm:h-[120px]"
+            />
+          </div>
+          
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">Sound Level</span>
+              <span className="text-sm font-bold text-purple-600">
+                {currentSound.toFixed(0)} dB
+              </span>
+            </div>
+            <MetricGraph 
+              data={soundData} 
+              color="#8b5cf6" 
+              gradientId={soundGradientId} 
+              unit="dB"
+              min={20}
+              max={80}
+              className="h-[100px] sm:h-[120px]"
+            />
+          </div>
+          
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">Weight</span>
+              <span className="text-sm font-bold text-amber-600">
+                {currentWeight.toFixed(1)} kg
+              </span>
+            </div>
+            <MetricGraph 
+              data={weightData} 
+              color="#d97706" 
+              gradientId={weightGradientId} 
+              unit="kg"
+              min={5}
+              max={30}
+              className="h-[100px] sm:h-[120px]"
+            />
+          </div>
         </div>
         
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Sound Level</span>
-            <span className="text-sm font-bold text-purple-600">
-              {currentSound.toFixed(0)} dB
-            </span>
+        <div className="mt-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
+          <div className="flex flex-wrap gap-2">
+            <span className="bg-secondary text-xs px-2 py-1 rounded-full">{hive.type}</span>
+            <span className="bg-secondary text-xs px-2 py-1 rounded-full">{hive.status}</span>
           </div>
-          <MetricGraph 
-            data={soundData} 
-            color="#8b5cf6" 
-            gradientId={soundGradientId} 
-            unit="dB"
-            min={20}
-            max={80}
-            className="h-[120px] sm:h-[140px]"
-          />
-        </div>
-        
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Weight</span>
-            <span className="text-sm font-bold text-amber-600">
-              {currentWeight.toFixed(1)} kg
-            </span>
+          <div className="text-primary flex items-center text-sm font-medium hover:underline">
+            Details
+            <ChevronRight className="h-4 w-4 ml-1" />
           </div>
-          <MetricGraph 
-            data={weightData} 
-            color="#d97706" 
-            gradientId={weightGradientId} 
-            unit="kg"
-            min={5}
-            max={30}
-            className="h-[120px] sm:h-[140px]"
-          />
         </div>
-      </div>
-      
-      <div className="mt-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
-        <div className="flex flex-wrap gap-2">
-          <span className="bg-secondary text-xs px-2 py-1 rounded-full">{hive.type}</span>
-          <span className="bg-secondary text-xs px-2 py-1 rounded-full">{hive.status}</span>
-        </div>
-        <div className="text-primary flex items-center text-sm font-medium hover:underline">
-          Details
-          <ChevronRight className="h-4 w-4 ml-1" />
-        </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 };
 

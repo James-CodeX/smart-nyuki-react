@@ -73,9 +73,9 @@ const MetricGraph: React.FC<MetricGraphProps> = ({
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-2 rounded-lg shadow-md border border-border text-sm">
-          <p className="font-medium">{payload[0].payload.time}</p>
-          <p className="text-primary">
+        <div className="bg-white p-2 rounded-lg shadow-md border border-border text-sm" style={{ maxWidth: '150px', touchAction: 'none' }}>
+          <p className="font-medium text-xs sm:text-sm">{payload[0].payload.time}</p>
+          <p className="text-primary text-xs sm:text-sm">
             {payload[0].value.toFixed(1)} {unit}
           </p>
         </div>
@@ -94,7 +94,7 @@ const MetricGraph: React.FC<MetricGraphProps> = ({
   }
 
   return (
-    <div className={cn("w-full h-[140px] relative", className)}>
+    <div className={cn("w-full h-[140px] relative overflow-hidden", className)}>
       {!isLoaded && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="h-12 w-12 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
@@ -107,7 +107,7 @@ const MetricGraph: React.FC<MetricGraphProps> = ({
         transition={{ duration: 0.5 }}
         className="w-full h-full"
       >
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="99%" height="100%">
           <LineChart
             data={data}
             margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
@@ -130,25 +130,29 @@ const MetricGraph: React.FC<MetricGraphProps> = ({
             
             <XAxis 
               dataKey="time" 
-              tick={{ fontSize: 10, fill: '#9CA3AF' }}
+              tick={{ fontSize: 9, fill: '#9CA3AF' }}
               tickLine={false}
               axisLine={false}
-              minTickGap={30}
+              minTickGap={15}
+              height={20}
             />
             <YAxis 
               domain={domain} 
-              tick={{ fontSize: 10, fill: '#9CA3AF' }}
+              tick={{ fontSize: 9, fill: '#9CA3AF' }}
               tickLine={false}
               axisLine={false}
-              width={25}
+              width={20}
               // Add more ticks for better readability
-              tickCount={5}
+              tickCount={4}
               // Format ticks to have at most 1 decimal place
               tickFormatter={(value) => 
                 typeof value === 'number' ? value.toFixed(value % 1 === 0 ? 0 : 1) : value
               }
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip 
+              content={<CustomTooltip />}
+              wrapperStyle={{ zIndex: 10 }} // Ensure tooltip is above other elements
+            />
             <Line
               type="monotone"
               dataKey="value"

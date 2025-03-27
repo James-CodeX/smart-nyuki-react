@@ -445,6 +445,9 @@ const ProductionRecordsTable = ({ selectedApiaryId, onDeleteSuccess }) => {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const { toast } = useToast();
 
+  // Function to check if we're on mobile
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+
   // Load production records
   const loadRecords = async () => {
     setIsLoading(true);
@@ -500,86 +503,144 @@ const ProductionRecordsTable = ({ selectedApiaryId, onDeleteSuccess }) => {
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold tracking-tight">Production Records</h2>
+  // Mobile card view for records
+  const MobileRecordCard = ({ record }) => (
+    <div className="p-4 border-b border-border last:border-0">
+      <div className="flex justify-between items-start mb-2">
+        <div>
+          <div className="font-medium">{record.hiveName}</div>
+          <div className="text-xs text-muted-foreground">{record.apiaryName}</div>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => {
+            setDeleteRecord(record);
+            setShowDeleteAlert(true);
+          }}
+          title="Delete record"
+        >
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
       </div>
-      
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : records.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Apiary</TableHead>
-                    <TableHead>Hive</TableHead>
-                    <TableHead>Amount (kg)</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Quality</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+      <div className="grid grid-cols-2 gap-y-2 text-sm">
+        <div>
+          <span className="text-muted-foreground">Date:</span>
+          <span className="ml-2 font-medium">{format(new Date(record.date), 'MMM d, yyyy')}</span>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Amount:</span>
+          <span className="ml-2 font-medium">{parseFloat(record.amount).toFixed(1)} kg</span>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Type:</span>
+          <span className="ml-2">{record.type || '-'}</span>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Quality:</span>
+          <span className="ml-2">
+            {record.quality ? (
+              <Badge variant={
+                record.quality === 'Premium' 
+                  ? 'default' 
+                  : record.quality === 'Standard' 
+                    ? 'secondary' 
+                    : 'outline'
+              } className="text-xs font-normal">
+                {record.quality}
+              </Badge>
+            ) : (
+              '-'
+            )}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {isLoading ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : records.length > 0 ? (
+        <>
+          {/* Mobile view */}
+          <div className="md:hidden">
+            {records.map((record) => (
+              <MobileRecordCard key={record.id} record={record} />
+            ))}
+          </div>
+          
+          {/* Desktop view */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Apiary</TableHead>
+                  <TableHead>Hive</TableHead>
+                  <TableHead>Amount (kg)</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Quality</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {records.map((record) => (
+                  <TableRow key={record.id}>
+                    <TableCell>{format(new Date(record.date), 'MMM d, yyyy')}</TableCell>
+                    <TableCell>{record.apiaryName}</TableCell>
+                    <TableCell>{record.hiveName}</TableCell>
+                    <TableCell>{parseFloat(record.amount).toFixed(1)}</TableCell>
+                    <TableCell>{record.type || '-'}</TableCell>
+                    <TableCell>
+                      {record.quality ? (
+                        <Badge variant={
+                          record.quality === 'Premium' 
+                            ? 'default' 
+                            : record.quality === 'Standard' 
+                              ? 'secondary' 
+                              : 'outline'
+                        }>
+                          {record.quality}
+                        </Badge>
+                      ) : (
+                        '-'
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setDeleteRecord(record);
+                          setShowDeleteAlert(true);
+                        }}
+                        title="Delete record"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {records.map((record) => (
-                    <TableRow key={record.id}>
-                      <TableCell>{format(new Date(record.date), 'MMM d, yyyy')}</TableCell>
-                      <TableCell>{record.apiaryName}</TableCell>
-                      <TableCell>{record.hiveName}</TableCell>
-                      <TableCell>{parseFloat(record.amount).toFixed(1)}</TableCell>
-                      <TableCell>{record.type || '-'}</TableCell>
-                      <TableCell>
-                        {record.quality ? (
-                          <Badge variant={
-                            record.quality === 'Premium' 
-                              ? 'default' 
-                              : record.quality === 'Standard' 
-                                ? 'secondary' 
-                                : 'outline'
-                          }>
-                            {record.quality}
-                          </Badge>
-                        ) : (
-                          '-'
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setDeleteRecord(record);
-                            setShowDeleteAlert(true);
-                          }}
-                          title="Delete record"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <div className="bg-muted/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertCircle className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-medium mb-2">No Production Records</h3>
-              <p className="max-w-md mx-auto">
-                No production records found for the selected filters.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      ) : (
+        <div className="text-center py-12 text-muted-foreground">
+          <div className="bg-muted/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-xl font-medium mb-2">No Production Records</h3>
+          <p className="max-w-md mx-auto">
+            No production records found for the selected filters.
+          </p>
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
@@ -608,7 +669,7 @@ const ProductionRecordsTable = ({ selectedApiaryId, onDeleteSuccess }) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 };
 
@@ -911,35 +972,58 @@ const Production = () => {
               )}
             </TabsContent>
             
-            <TabsContent value="records" className="m-0">
-              {/* Production Records Table */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Production Records</CardTitle>
-                  <CardDescription>
-                    Manage your production records here.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ProductionRecordsTable 
-                    selectedApiaryId={selectedApiaryId} 
-                    onDeleteSuccess={() => {
-                      // Refresh records data
-                      const fetchProductionRecords = async () => {
-                        try {
-                          const records = await getProductionRecords(
-                            selectedApiaryId !== 'all' ? selectedApiaryId : undefined
-                          );
-                          setProductionRecords(records || []);
-                        } catch (error) {
-                          console.error('Error fetching production records:', error);
-                        }
-                      };
-                      fetchProductionRecords();
-                    }}
-                  />
-                </CardContent>
-              </Card>
+            <TabsContent value="records" className="w-full">
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between gap-4">
+                  <Select 
+                    value={selectedApiaryId} 
+                    onValueChange={setSelectedApiaryId}
+                  >
+                    <SelectTrigger className="h-9 w-full sm:w-[200px]">
+                      <SelectValue placeholder="Filter by apiary" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Apiaries</SelectItem>
+                      {apiaries.map((apiary) => (
+                        <SelectItem key={apiary.id} value={apiary.id}>
+                          {apiary.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Button
+                    onClick={() => setAddDialogOpen(true)}
+                    className="h-9 gap-1"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    <span>Add Record</span>
+                  </Button>
+                </div>
+                
+                <div className="rounded-lg border">
+                  <div className="overflow-x-auto max-h-[calc(100vh-230px)] md:max-h-[calc(100vh-200px)] pb-16 md:pb-0">
+                    <ProductionRecordsTable
+                      selectedApiaryId={selectedApiaryId}
+                      onDeleteSuccess={() => {
+                        // Refetch records when a record is deleted
+                        const fetchProductionRecords = async () => {
+                          try {
+                            const records = await getProductionRecords(
+                              selectedApiaryId !== 'all' ? selectedApiaryId : undefined
+                            );
+                            setProductionRecords(records || []);
+                          } catch (error) {
+                            console.error('Error fetching production records:', error);
+                          }
+                        };
+                        
+                        fetchProductionRecords();
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
