@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Home, Grid, Menu as HiveIcon, Settings, BarChart3, ClipboardCheck, BellRing } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import AlertIndicator from '@/components/common/AlertIndicator';
 
 // SVG Logo component - directly embedded instead of imported
 const Logo = ({ className = "" }) => (
@@ -136,7 +137,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
                     : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                 )}
               >
-                <item.icon className={cn("h-5 w-5", isCollapsed ? "" : "mr-3")} />
+                <div className="relative">
+                  <item.icon className={cn("h-5 w-5", isCollapsed ? "" : "mr-3")} />
+                  {item.name === 'Alerts' && <AlertIndicator className="top-0 right-0 translate-x-1/3 -translate-y-1/3" />}
+                </div>
                 {!isCollapsed && <span>{item.name}</span>}
                 {isActive && (
                   <motion.div

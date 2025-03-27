@@ -56,26 +56,12 @@ const QuickActions: React.FC<QuickActionsProps> = ({
 
   const handleForceMetricsCheck = async () => {
     try {
-      toast({
-        title: "Checking metrics",
-        description: "Checking all metrics against thresholds...",
-      });
-      
       console.log("[DEBUG] Manually triggering metrics check...");
       const alertsCreated = await forceMetricsCheck();
       
-      toast({
-        title: "Metrics check complete",
-        description: `${alertsCreated} alerts created`,
-        variant: alertsCreated > 0 ? "destructive" : "default",
-      });
+      console.log(`[DEBUG] Metrics check complete: ${alertsCreated} alerts created`);
     } catch (error) {
       console.error("[DEBUG] Error during manual metrics check:", error);
-      toast({
-        title: "Error checking metrics",
-        description: "An error occurred while checking metrics",
-        variant: "destructive",
-      });
     }
   };
 

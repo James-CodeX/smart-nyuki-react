@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Home, Grid, Menu as HiveIcon, Settings, BarChart3, ClipboardCheck } from 'lucide-react';
+import { Home, Grid, Menu as HiveIcon, Settings, BarChart3, ClipboardCheck, BellRing } from 'lucide-react';
+import AlertIndicator from '@/components/common/AlertIndicator';
 
 interface NavItem {
   name: string;
@@ -16,7 +17,7 @@ const BottomNavigation: React.FC = () => {
     { name: 'Home', to: '/', icon: Home },
     { name: 'Apiaries', to: '/apiaries', icon: Grid },
     { name: 'Hives', to: '/hives', icon: HiveIcon },
-    { name: 'Inspections', to: '/inspections', icon: ClipboardCheck },
+    { name: 'Alerts', to: '/alerts', icon: BellRing },
     { name: 'Production', to: '/production', icon: BarChart3 },
     { name: 'Settings', to: '/settings', icon: Settings },
   ];
@@ -39,7 +40,10 @@ const BottomNavigation: React.FC = () => {
               )}
               style={{ width: `${100 / navItems.length}%` }}
             >
-              <item.icon className={cn("h-5 w-5 mb-1")} />
+              <div className="relative">
+                <item.icon className={cn("h-5 w-5 mb-1")} />
+                {item.name === 'Alerts' && <AlertIndicator className="top-0 right-0 translate-x-1/3 -translate-y-1/3" />}
+              </div>
               <span className="text-xs font-medium">{item.name}</span>
               {isActive && (
                 <span className="absolute top-0 left-0 right-0 mx-auto h-1 w-6 bg-primary rounded-b-md" />

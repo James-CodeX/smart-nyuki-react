@@ -1,5 +1,4 @@
 import { checkMetricsAndCreateAlerts } from '@/services/alertService';
-import { toast } from '@/components/ui/use-toast';
 
 let checkInterval: NodeJS.Timeout | null = null;
 const DEFAULT_CHECK_INTERVAL = 30 * 60 * 1000; // 30 minutes in milliseconds
@@ -37,12 +36,8 @@ export const startMetricsChecker = (interval = DEFAULT_CHECK_INTERVAL): () => vo
       .then((alertsCreated) => {
         console.log(`[DEBUG] Initial metrics check complete at ${now.toISOString()}: ${alertsCreated} alerts created`);
         if (alertsCreated > 0) {
-          // Show a toast notification for the initial alerts
-          toast({
-            title: "New Alerts Detected",
-            description: `${alertsCreated} new alert${alertsCreated === 1 ? '' : 's'} created based on sensor readings.`,
-            variant: "destructive",
-          });
+          // Remove toast notification, just log to console
+          console.log(`[DEBUG] ${alertsCreated} new alert(s) created based on sensor readings`);
         } else {
           console.log('[DEBUG] No alerts created during initial check');
         }
@@ -64,12 +59,8 @@ export const startMetricsChecker = (interval = DEFAULT_CHECK_INTERVAL): () => vo
       .then((alertsCreated) => {
         console.log(`[DEBUG] Periodic metrics check complete: ${alertsCreated} alerts created`);
         if (alertsCreated > 0) {
-          // Show a toast notification for new alerts
-          toast({
-            title: "New Alerts Detected",
-            description: `${alertsCreated} new alert${alertsCreated === 1 ? '' : 's'} created based on sensor readings.`,
-            variant: "destructive",
-          });
+          // Remove toast notification, just log to console
+          console.log(`[DEBUG] ${alertsCreated} new alert(s) created based on sensor readings`);
         } else {
           console.log('[DEBUG] No alerts created during periodic check');
         }
