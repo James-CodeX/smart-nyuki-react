@@ -372,10 +372,13 @@ export const getActiveAlertCount = async (): Promise<number> => {
  */
 export const checkMetricsAndCreateAlerts = async (): Promise<number> => {
   try {
+    console.log('Starting alert check process...');
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
+      console.error('No authenticated user found');
       throw new Error('User not authenticated');
     }
+    console.log(`Checking metrics for user: ${userData.user.id}`);
 
     // Get the user's alert thresholds
     const { data: thresholds, error: thresholdsError } = await supabase
@@ -398,11 +401,14 @@ export const checkMetricsAndCreateAlerts = async (): Promise<number> => {
           weight_min: 10,
           weight_max: 25,
         };
+        console.log('Using default thresholds:', defaultThresholds);
         return checkWithThresholds(userData.user.id, defaultThresholds);
       }
+      console.error('Error fetching thresholds:', thresholdsError);
       throw thresholdsError;
     }
 
+    console.log('Found user thresholds:', thresholds);
     return checkWithThresholds(userData.user.id, thresholds);
   } catch (error) {
     console.error('Error checking metrics and creating alerts:', error);
@@ -416,19 +422,30 @@ export const checkMetricsAndCreateAlerts = async (): Promise<number> => {
 const checkWithThresholds = async (userId: string, thresholds: any): Promise<number> => {
   try {
     // Get all active hives for this user
+    console.log(`Fetching hives with alerts enabled for user ${userId}`);
     const { data: hives, error: hivesError } = await supabase
       .from('hives')
       .select('*')
       .eq('user_id', userId)
       .eq('alerts_enabled', true);
 
-    if (hivesError) throw hivesError;
-    if (!hives?.length) return 0;
+    if (hivesError) {
+      console.error('Error fetching hives:', hivesError);
+      throw hivesError;
+    }
+    
+    if (!hives?.length) {
+      console.log('No hives found with alerts enabled');
+      return 0;
+    }
+    
+    console.log(`Found ${hives.length} hives with alerts enabled`);
 
     // Get the latest metrics for each hive
     let alertsCreated = 0;
     
     for (const hive of hives) {
+      console.log(`Checking metrics for hive: ${hive.hive_id} (${hive.name})`);
       // Get the most recent metrics for this hive
       const { data: metrics, error: metricsError } = await supabase
         .from('metrics_time_series_data')
@@ -442,76 +459,109 @@ const checkWithThresholds = async (userId: string, thresholds: any): Promise<num
         continue;
       }
 
-      if (!metrics?.length) continue;
+      if (!metrics?.length) {
+        console.log(`No metrics found for hive ${hive.hive_id}`);
+        continue;
+      }
       
       const latestMetric = metrics[0];
-      const now = new Date().toISOString();
+      console.log(`Latest metric for hive ${hive.hive_id}:`, {
+        temp: latestMetric.temp_value,
+        humidity: latestMetric.hum_value, 
+        sound: latestMetric.sound_value,
+        weight: latestMetric.weight_value
+      });
       
       // Check temperature
       if (latestMetric.temp_value !== null) {
         const temp = parseFloat(latestMetric.temp_value);
+        console.log(`Temperature value: ${temp}, thresholds: min=${thresholds.temperature_min}, max=${thresholds.temperature_max}`);
         
         if (temp > thresholds.temperature_max) {
+          console.log(`Temperature above max threshold: ${temp} > ${thresholds.temperature_max}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'temperature', 
             `Temperature is too high (${temp.toFixed(1)}°C)`, 'high');
           alertsCreated++;
         } 
         else if (temp < thresholds.temperature_min) {
+          console.log(`Temperature below min threshold: ${temp} < ${thresholds.temperature_min}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'temperature', 
             `Temperature is too low (${temp.toFixed(1)}°C)`, 'medium');
           alertsCreated++;
+        }
+        else {
+          console.log(`Temperature within normal range: ${thresholds.temperature_min} <= ${temp} <= ${thresholds.temperature_max}`);
         }
       }
       
       // Check humidity
       if (latestMetric.hum_value !== null) {
         const humidity = parseFloat(latestMetric.hum_value);
+        console.log(`Humidity value: ${humidity}, thresholds: min=${thresholds.humidity_min}, max=${thresholds.humidity_max}`);
         
         if (humidity > thresholds.humidity_max) {
+          console.log(`Humidity above max threshold: ${humidity} > ${thresholds.humidity_max}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'humidity', 
             `Humidity is too high (${humidity.toFixed(1)}%)`, 'medium');
           alertsCreated++;
         } 
         else if (humidity < thresholds.humidity_min) {
+          console.log(`Humidity below min threshold: ${humidity} < ${thresholds.humidity_min}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'humidity', 
             `Humidity is too low (${humidity.toFixed(1)}%)`, 'medium');
           alertsCreated++;
+        }
+        else {
+          console.log(`Humidity within normal range: ${thresholds.humidity_min} <= ${humidity} <= ${thresholds.humidity_max}`);
         }
       }
       
       // Check sound
       if (latestMetric.sound_value !== null) {
         const sound = parseFloat(latestMetric.sound_value);
+        console.log(`Sound value: ${sound}, thresholds: min=${thresholds.sound_min}, max=${thresholds.sound_max}`);
         
         if (sound > thresholds.sound_max) {
+          console.log(`Sound above max threshold: ${sound} > ${thresholds.sound_max}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'sound', 
             `Sound level is too high (${sound.toFixed(1)} dB)`, 'medium');
           alertsCreated++;
         } 
         else if (sound < thresholds.sound_min) {
+          console.log(`Sound below min threshold: ${sound} < ${thresholds.sound_min}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'sound', 
             `Sound level is too low (${sound.toFixed(1)} dB)`, 'low');
           alertsCreated++;
+        }
+        else {
+          console.log(`Sound within normal range: ${thresholds.sound_min} <= ${sound} <= ${thresholds.sound_max}`);
         }
       }
       
       // Check weight
       if (latestMetric.weight_value !== null) {
         const weight = parseFloat(latestMetric.weight_value);
+        console.log(`Weight value: ${weight}, thresholds: min=${thresholds.weight_min}, max=${thresholds.weight_max}`);
         
         if (weight > thresholds.weight_max) {
+          console.log(`Weight above max threshold: ${weight} > ${thresholds.weight_max}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'weight', 
             `Weight is too high (${weight.toFixed(1)} kg)`, 'medium');
           alertsCreated++;
         } 
         else if (weight < thresholds.weight_min) {
+          console.log(`Weight below min threshold: ${weight} < ${thresholds.weight_min}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'weight', 
             `Weight is too low (${weight.toFixed(1)} kg)`, 'high');
           alertsCreated++;
         }
+        else {
+          console.log(`Weight within normal range: ${thresholds.weight_min} <= ${weight} <= ${thresholds.weight_max}`);
+        }
       }
     }
     
+    console.log(`Alert check complete, ${alertsCreated} alerts created`);
     return alertsCreated;
   } catch (error) {
     console.error('Error in checkWithThresholds:', error);
@@ -530,24 +580,43 @@ const createAlertIfNotExists = async (
   severity: string
 ): Promise<void> => {
   try {
-    // Check if a similar unresolved alert already exists
+    console.log(`Checking for existing ${type} alerts for hive ${hiveId}`);
+    // Check if a similar unresolved alert already exists - with more specific check for message similarity
     const { data: existingAlerts, error: queryError } = await supabase
       .from('alerts')
       .select('*')
       .eq('user_id', userId)
       .eq('hive_id', hiveId)
       .eq('type', type)
-      .is('resolved_at', null);
+      .is('resolved_at', null)
+      .order('created_at', { ascending: false });
       
-    if (queryError) throw queryError;
+    if (queryError) {
+      console.error('Error checking for existing alerts:', queryError);
+      throw queryError;
+    }
     
     // If a similar alert already exists, don't create a new one
     if (existingAlerts && existingAlerts.length > 0) {
-      return;
+      // For additional safety, also check if the message is similar
+      // This helps prevent duplicate alerts that might occur in rapid succession
+      const messageWords = message.toLowerCase().split(' ');
+      const similarAlertExists = existingAlerts.some(alert => {
+        const existingMessageWords = alert.message.toLowerCase().split(' ');
+        // Check if at least 70% of words are the same (simple similarity check)
+        const commonWords = messageWords.filter(word => existingMessageWords.includes(word));
+        return commonWords.length >= Math.min(messageWords.length, existingMessageWords.length) * 0.7;
+      });
+      
+      if (similarAlertExists) {
+        console.log(`Similar alert already exists for ${type} on hive ${hiveId}, skipping creation`);
+        return;
+      }
     }
     
     // Create a new alert
-    const { error } = await supabase
+    console.log(`Creating new alert: ${type} (${severity}) - ${message}`);
+    const { data, error } = await supabase
       .from('alerts')
       .insert({
         user_id: userId,
@@ -559,7 +628,12 @@ const createAlertIfNotExists = async (
         is_read: false
       });
       
-    if (error) throw error;
+    if (error) {
+      console.error('Error creating alert:', error);
+      throw error;
+    }
+    
+    console.log(`Alert created successfully for hive ${hiveId}: ${type} - ${message}`);
   } catch (error) {
     console.error('Error creating alert:', error);
   }

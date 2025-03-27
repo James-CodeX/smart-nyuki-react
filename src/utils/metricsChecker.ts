@@ -2,7 +2,7 @@ import { checkMetricsAndCreateAlerts } from '@/services/alertService';
 import { toast } from '@/components/ui/use-toast';
 
 let checkInterval: NodeJS.Timeout | null = null;
-const DEFAULT_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
+const DEFAULT_CHECK_INTERVAL = 3 * 60 * 1000; // 3 minutes in milliseconds
 
 /**
  * Start the periodic metrics checking service
@@ -16,10 +16,11 @@ export const startMetricsChecker = (interval = DEFAULT_CHECK_INTERVAL): () => vo
   }
   
   // Run an initial check immediately
+  console.log('Running initial metrics check...');
   checkMetricsAndCreateAlerts()
     .then((alertsCreated) => {
+      console.log(`Initial metrics check complete: ${alertsCreated} alerts created`);
       if (alertsCreated > 0) {
-        console.log(`Initial metrics check complete: ${alertsCreated} alerts created`);
         // Show a toast notification for the initial alerts
         toast({
           title: "New Alerts Detected",
@@ -27,7 +28,7 @@ export const startMetricsChecker = (interval = DEFAULT_CHECK_INTERVAL): () => vo
           variant: "destructive",
         });
       } else {
-        console.log('Initial metrics check complete: no alerts created');
+        console.log('No alerts created during initial check');
       }
     })
     .catch((error) => {
@@ -36,16 +37,19 @@ export const startMetricsChecker = (interval = DEFAULT_CHECK_INTERVAL): () => vo
   
   // Set up periodic checking
   checkInterval = setInterval(() => {
+    console.log('Running periodic metrics check...');
     checkMetricsAndCreateAlerts()
       .then((alertsCreated) => {
+        console.log(`Periodic metrics check complete: ${alertsCreated} alerts created`);
         if (alertsCreated > 0) {
-          console.log(`Periodic metrics check complete: ${alertsCreated} alerts created`);
           // Show a toast notification for new alerts
           toast({
             title: "New Alerts Detected",
             description: `${alertsCreated} new alert${alertsCreated === 1 ? '' : 's'} created based on sensor readings.`,
             variant: "destructive",
           });
+        } else {
+          console.log('No alerts created during periodic check');
         }
       })
       .catch((error) => {

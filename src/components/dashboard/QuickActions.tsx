@@ -1,8 +1,12 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CalendarPlus, Plus, ClipboardPen, FileText, BarChart3, Webhook, Leaf } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { CalendarPlus, Plus, ClipboardPen, FileText, BarChart3, Webhook, Leaf, PlusCircle, Home, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { checkMetricsAndCreateAlerts } from '@/services/alertService';
+import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import { Map } from 'lucide-react';
 
 interface ActionButtonProps {
   icon: React.ReactNode;
@@ -47,6 +51,32 @@ const QuickActions: React.FC<QuickActionsProps> = ({
   onAddNote
 }) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleForceMetricsCheck = async () => {
+    try {
+      toast({
+        title: "Checking metrics",
+        description: "Checking all metrics against thresholds...",
+      });
+      
+      console.log("Manually triggering metrics check...");
+      const alertsCreated = await checkMetricsAndCreateAlerts();
+      
+      toast({
+        title: "Metrics check complete",
+        description: `${alertsCreated} alerts created`,
+        variant: alertsCreated > 0 ? "destructive" : "default",
+      });
+    } catch (error) {
+      console.error("Error during manual metrics check:", error);
+      toast({
+        title: "Error checking metrics",
+        description: "An error occurred while checking metrics",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <Card className={className}>
@@ -91,6 +121,10 @@ const QuickActions: React.FC<QuickActionsProps> = ({
             onClick={() => {}}
             color="blue"
           />
+          <Button onClick={handleForceMetricsCheck} variant="outline" className="w-full justify-start">
+            <Activity className="mr-2 h-4 w-4" />
+            Force Metrics Check
+          </Button>
         </div>
       </CardContent>
     </Card>

@@ -796,3 +796,28 @@ export const fetchHiveDetails = async (hiveId: string): Promise<HiveDetails> => 
     };
   }
 };
+
+/**
+ * Toggle alerts enabled/disabled for a hive
+ */
+export const toggleHiveAlerts = async (hiveId: string, enabled: boolean): Promise<void> => {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      throw new Error('User not authenticated');
+    }
+
+    const { error } = await supabase
+      .from('hives')
+      .update({ alerts_enabled: enabled })
+      .eq('hive_id', hiveId)
+      .eq('user_id', userData.user.id);
+
+    if (error) {
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error toggling hive alerts:', error);
+    throw error;
+  }
+};
