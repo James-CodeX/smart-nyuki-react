@@ -41,7 +41,7 @@ const getWindDirection = (degree: number): string => {
 export const fetchWeatherData = async (latitude: number, longitude: number): Promise<WeatherData> => {
   try {
     // Use mock data for development until API key is set up
-    if (API_KEY === 'YOUR_WORLDWEATHERONLINE_API_KEY') {
+    if (!API_KEY || API_KEY === 'YOUR_WORLDWEATHERONLINE_API_KEY') {
       console.log('Using mock weather data - no API key provided');
       return mockWeatherData(latitude, longitude);
     }
@@ -61,7 +61,11 @@ export const fetchWeatherData = async (latitude: number, longitude: number): Pro
     console.log('WorldWeatherOnline API response:', data);
     
     // Check if the response contains the expected data
-    if (!data.data || !data.data.current_condition || !data.data.current_condition[0]) {
+    if (!data.data || data.data.error) {
+      throw new Error(`API error: ${data.data.error?.[0]?.msg || 'Unknown error'}`);
+    }
+    
+    if (!data.data.current_condition || !data.data.current_condition[0]) {
       throw new Error('Invalid API response format: missing current_condition data');
     }
     
@@ -90,8 +94,8 @@ export const fetchWeatherData = async (latitude: number, longitude: number): Pro
     if (error instanceof Error) {
       console.error('Error message:', error.message);
     }
-    // Fall back to mock data if the API fails
-    return mockWeatherData(latitude, longitude);
+    // Fall back to mock data if the API fails, but indicate it's due to an API error
+    return mockWeatherData(latitude, longitude, true);
   }
 };
 
@@ -101,7 +105,7 @@ export const fetchWeatherData = async (latitude: number, longitude: number): Pro
 export const fetchForecast = async (latitude: number, longitude: number): Promise<Forecast[]> => {
   try {
     // Use mock data for development until API key is set up
-    if (API_KEY === 'YOUR_WORLDWEATHERONLINE_API_KEY') {
+    if (!API_KEY || API_KEY === 'YOUR_WORLDWEATHERONLINE_API_KEY') {
       console.log('Using mock forecast data - no API key provided');
       return mockForecast(latitude, longitude);
     }
@@ -157,13 +161,31 @@ export const fetchForecast = async (latitude: number, longitude: number): Promis
     if (error instanceof Error) {
       console.error('Error message:', error.message);
     }
-    // Fall back to mock data if the API fails
-    return mockForecast(latitude, longitude);
+    // Fall back to mock data if the API fails, but indicate it's due to an API error
+    return mockForecast(latitude, longitude, true);
   }
 };
 
 // Mock data for development - used as fallback if API is not available
-const mockWeatherData = (latitude: number, longitude: number): WeatherData => {
+const mockWeatherData = (latitude: number, longitude: number, isApiError: boolean = false): WeatherData => {
+  // If this is an API error, return a special weather object that indicates the error
+  if (isApiError) {
+    return {
+      condition: 'API Error',
+      temperature: 0,
+      tempMin: 0,
+      tempMax: 0,
+      humidity: 0,
+      pressure: 0,
+      windSpeed: 0,
+      windDirection: 'N',
+      sunrise: '06:00 AM',
+      sunset: '06:00 PM',
+      feelsLike: 0,
+      icon: 'error'
+    };
+  }
+
   const conditions = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist'];
   const condition = conditions[Math.floor(Math.random() * conditions.length)];
   
@@ -205,7 +227,26 @@ const mockWeatherData = (latitude: number, longitude: number): WeatherData => {
 };
 
 // Mock forecast data
-const mockForecast = (latitude: number, longitude: number): Forecast[] => {
+const mockForecast = (latitude: number, longitude: number, isApiError: boolean = false): Forecast[] => {
+  // If this is an API error, return a minimal forecast
+  if (isApiError) {
+    const today = new Date();
+    return Array.from({ length: 5 }).map((_, index) => {
+      const forecastDate = new Date();
+      forecastDate.setDate(today.getDate() + index + 1);
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      
+      return {
+        date: format(forecastDate, 'MMM dd'),
+        day: days[forecastDate.getDay()],
+        condition: 'API Error',
+        tempMin: 0,
+        tempMax: 0,
+        icon: 'error'
+      };
+    });
+  }
+
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const conditions = ['Clear', 'Clouds', 'Rain', 'Snow', 'Mist'];
   const today = new Date();

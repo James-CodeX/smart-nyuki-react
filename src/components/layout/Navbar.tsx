@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { Menu, X, Home, Grid, Menu as HiveIcon, Settings, ChevronLeft, ChevronRight, BarChart3, ClipboardCheck, BellRing } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Home, Grid, Menu as HiveIcon, Settings, BarChart3, ClipboardCheck, BellRing } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 // SVG Logo component - directly embedded instead of imported
@@ -46,15 +46,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
     const savedState = localStorage.getItem('sidebar-collapsed');
     return savedState !== null ? JSON.parse(savedState) : true;
   });
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  
-  // Close mobile sidebar when route changes
-  useEffect(() => {
-    setIsMobileOpen(false);
-  }, [location.pathname]);
   
   // Notify parent component when sidebar state changes
   useEffect(() => {
@@ -95,25 +89,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
     setIsCollapsed(!isCollapsed);
   };
 
-  const toggleMobileMenu = () => {
-    setIsMobileOpen(!isMobileOpen);
-  };
-
   return (
     <>
-      {/* Mobile menu trigger */}
-      <button
-        type="button"
-        className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-md bg-primary/10 backdrop-blur-md shadow-md border border-primary/20 transition-all hover:bg-primary/20"
-        onClick={toggleMobileMenu}
-        aria-label="Toggle mobile navigation"
-      >
-        {isMobileOpen ? 
-          <X className="h-6 w-6 text-primary" /> : 
-          <Menu className="h-6 w-6 text-primary" />
-        }
-      </button>
-      
       {/* Desktop sidebar */}
       <motion.aside 
         className="hidden md:flex flex-col h-screen fixed left-0 top-0 z-40 bg-sidebar backdrop-blur-md border-r border-border shadow-sm transition-colors duration-300 overflow-hidden"
@@ -186,49 +163,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
           }
         </button>
       </motion.aside>
-      
-      {/* Mobile sidebar */}
-      <motion.div
-        className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-        animate={{ opacity: isMobileOpen ? 1 : 0 }}
-        initial={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
-        style={{ pointerEvents: isMobileOpen ? 'auto' : 'none' }}
-      >
-        <motion.div
-          className="fixed inset-y-0 left-0 z-50 w-[85%] max-w-[280px] bg-sidebar shadow-xl overflow-y-auto"
-          animate={{ x: isMobileOpen ? 0 : -320 }}
-          transition={{ ease: "easeOut", duration: 0.3 }}
-        >
-          <div className="flex items-center p-4 border-b border-border h-16">
-            <Link to="/" className="flex items-center" onClick={() => setIsMobileOpen(false)}>
-              <Logo />
-            </Link>
-          </div>
-          
-          <nav className="flex flex-col py-6 px-3 space-y-2">
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.to;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.to}
-                  className={cn(
-                    "flex items-center px-3 py-3 rounded-lg transition-colors",
-                    isActive 
-                      ? "text-primary bg-primary/10" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                  )}
-                  onClick={() => setIsMobileOpen(false)}
-                >
-                  <item.icon className="h-5 w-5 mr-3" />
-                  <span>{item.name}</span>
-                </Link>
-              );
-            })}
-          </nav>
-        </motion.div>
-      </motion.div>
     </>
   );
 };
