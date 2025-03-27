@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, subDays } from 'date-fns';
-import PageTransition from '@/components/layout/PageTransition';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Plus, 
@@ -22,12 +22,17 @@ import {
   ArrowRightCircle,
   ClipboardCheck
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+
+// UI Components
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/components/ui/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+import PageTransition from '@/components/layout/PageTransition';
 
+// Dashboard Components
 import ApiaryCard from '@/components/dashboard/ApiaryCard';
 import HiveMetricsCard from '@/components/dashboard/HiveMetricsCard';
 import StatisticsCard from '@/components/dashboard/StatisticsCard';
@@ -42,6 +47,12 @@ import AlertsManagement from '@/components/dashboard/AlertsManagement';
 import ProductionAnalytics from '@/components/dashboard/ProductionAnalytics';
 import WeatherWidget from '@/components/dashboard/WeatherWidget';
 import ScheduleInspectionModal from '@/components/dashboard/ScheduleInspectionModal';
+
+// Services and Context
+import { addHive, getAllHives, HiveWithDetails } from '@/services/hiveService';
+import { addApiary, getAllApiaries } from '@/services/apiaryService';
+import { useAuth } from '@/context/AuthContext';
+import { getUserProfile } from '@/services/settingsService';
 
 // For now, use simple mock data for inspections since we don't have a real service yet
 interface Inspection {
@@ -70,11 +81,6 @@ const completedInspections: Inspection[] = [
   { id: '5', hiveId: '5', hiveName: 'Hive 5', apiaryId: '3', date: '2023-08-15', status: 'completed', type: 'regular', createdBy: 'user', createdAt: '2023-08-10' }
 ];
 const allInspections = [...upcomingInspections, ...overdueInspections, ...completedInspections];
-
-import { addHive, getAllHives, HiveWithDetails } from '@/services/hiveService';
-import { addApiary, getAllApiaries } from '@/services/apiaryService';
-import { useToast } from '@/components/ui/use-toast';
-import { Skeleton } from '@/components/ui/skeleton';
 
 // Generate some sample data for the production chart
 const generateProductionData = () => {
@@ -138,14 +144,43 @@ const Dashboard = () => {
   const [apiaries, setApiaries] = useState<any[]>([]);
   const [isLoadingHives, setIsLoadingHives] = useState(true);
   const [isLoadingApiaries, setIsLoadingApiaries] = useState(true);
+  const [userFirstName, setUserFirstName] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  // Load user profile to get the first name
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (user) {
+        try {
+          const userProfile = await getUserProfile();
+          if (userProfile) {
+            setUserFirstName(userProfile.first_name || '');
+          }
+        } catch (error) {
+          console.error('Error loading user profile:', error);
+        }
+      }
+    };
+    
+    loadUserProfile();
+  }, [user]);
   
   // Stats
   const apiaryCount = apiaries.length || 0;
   const hiveCount = hives.length || 0;
   const hivesWithAlerts = hives.filter(hive => hive.alerts && hive.alerts.length > 0);
   const alertCount = hivesWithAlerts.length;
+  
+  // Calculate total weight from all hives
+  const totalWeight = hives.reduce((sum, hive) => {
+    if (hive.metrics && hive.metrics.weight && hive.metrics.weight.length > 0) {
+      const latestWeight = hive.metrics.weight[hive.metrics.weight.length - 1].value;
+      return sum + (latestWeight || 0);
+    }
+    return sum;
+  }, 0);
   
   // Sample production data
   const productionData = generateProductionData();
@@ -322,6 +357,19 @@ const Dashboard = () => {
       <div className="container px-4 py-4 sm:py-6 mx-auto max-w-7xl overflow-visible relative">
         <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Dashboard</h1>
         
+        {/* Welcome message - Different versions for desktop and mobile */}
+        <div className="mb-6">
+          {/* Desktop version */}
+          <p className="text-muted-foreground hidden md:block">
+            Welcome {userFirstName ? `${userFirstName}` : 'back'}! Here's an overview of your beekeeping operation.
+          </p>
+          
+          {/* Mobile version */}
+          <p className="text-muted-foreground md:hidden">
+            Welcome {userFirstName ? `${userFirstName}` : 'back'}!
+          </p>
+        </div>
+        
         {/* Dashboard content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="overview">
           <TabsList className="mb-4 hidden md:flex">
@@ -347,10 +395,10 @@ const Dashboard = () => {
                 icon={<Users className="h-4 w-4 text-muted-foreground" />}
               />
               <StatisticsCard
-                title="Alerts"
-                value={alertCount}
-                description="Hives need attention"
-                icon={<AlertCircle className="h-4 w-4 text-muted-foreground" />}
+                title="Total Weight"
+                value={parseFloat(totalWeight.toFixed(1))}
+                description="Combined hive weight"
+                icon={<Weight className="h-4 w-4 text-muted-foreground" />}
               />
               <StatisticsCard
                 title="Inspections"
@@ -475,10 +523,10 @@ const Dashboard = () => {
                 icon={<Users className="h-4 w-4 text-muted-foreground" />}
               />
               <StatisticsCard
-                title="Alerts"
-                value={alertCount}
-                description="Hives need attention"
-                icon={<AlertCircle className="h-4 w-4 text-muted-foreground" />}
+                title="Total Weight"
+                value={parseFloat(totalWeight.toFixed(1))}
+                description="Combined hive weight"
+                icon={<Weight className="h-4 w-4 text-muted-foreground" />}
               />
               <StatisticsCard
                 title="Inspections"
