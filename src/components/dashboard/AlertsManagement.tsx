@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { 
@@ -64,26 +64,45 @@ const AlertsManagement: React.FC<AlertsManagementProps> = ({ className, onResolv
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [resolving, setResolving] = useState<Record<string, boolean>>({});
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchAlerts();
+
+    // Set up an interval to refresh alerts every 30 seconds
+    refreshIntervalRef.current = setInterval(() => {
+      fetchAlerts(false); // Don't set loading to true for periodic refresh
+    }, 30 * 1000);
+
+    // Clean up interval on unmount
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
   }, []);
 
-  const fetchAlerts = async () => {
+  const fetchAlerts = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       const data = await getAllAlerts();
       setAlerts(data);
     } catch (error) {
       console.error('Error fetching alerts:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error loading alerts',
-        description: 'There was a problem loading your alerts. Please try again.',
-      });
+      if (showLoading) { // Only show error toast for manual refreshes or initial load
+        toast({
+          variant: 'destructive',
+          title: 'Error loading alerts',
+          description: 'There was a problem loading your alerts. Please try again.',
+        });
+      }
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -118,6 +137,10 @@ const AlertsManagement: React.FC<AlertsManagementProps> = ({ className, onResolv
 
   const toggleExpand = (alertId: string) => {
     setExpanded(prev => ({ ...prev, [alertId]: !prev[alertId] }));
+  };
+
+  const handleRefresh = () => {
+    fetchAlerts(true);
   };
 
   if (loading) {
@@ -257,7 +280,7 @@ const AlertsManagement: React.FC<AlertsManagementProps> = ({ className, onResolv
         <Button
           variant="ghost"
           size="sm"
-          onClick={fetchAlerts}
+          onClick={handleRefresh}
           disabled={loading}
         >
           Refresh

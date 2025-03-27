@@ -126,13 +126,8 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
     try {
       const result = await checkHiveAvailability(id);
       
-      if (!result.exists) {
-        setHiveIdError('This hive ID does not exist in our system');
-        setHiveIdStatus('invalid');
-        setError('hive_id', { message: 'This hive ID does not exist in our system' });
-        return;
-      }
-      
+      // No longer checking if hive exists in metrics_time_series_data
+      // Only checking if it's already registered
       if (!result.available) {
         setHiveIdError(result.error || 'This hive ID is not available');
         setHiveIdStatus('taken');
@@ -204,7 +199,7 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
           message: hiveIdStatus === 'taken' 
             ? 'This hive ID is already registered' 
             : hiveIdStatus === 'invalid' 
-              ? 'This hive ID does not exist in our system' 
+              ? 'Error validating hive ID' 
               : 'Please verify the hive ID' 
         });
         return;
@@ -318,7 +313,7 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
                         <p className="text-sm text-destructive">{errors.hive_id.message}</p>
                       )}
                       <p className="text-xs text-muted-foreground">
-                        Enter the unique ID from your hive sensor. This will link your physical hive to the app.
+                        Enter a unique ID for your hive. This can be any ID you choose, as long as it hasn't been registered before.
                       </p>
                     </div>
                     

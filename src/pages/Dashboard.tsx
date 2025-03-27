@@ -44,6 +44,7 @@ import { SummaryMetric, MetricsProgressRow } from '@/components/dashboard/Summar
 import AddHiveModal from '@/components/dashboard/AddHiveModal';
 import AddApiaryModal from '@/components/dashboard/AddApiaryModal';
 import AlertsManagement from '@/components/dashboard/AlertsManagement';
+import AlertThresholdsCard from '@/components/dashboard/AlertThresholdsCard';
 import ProductionAnalytics from '@/components/dashboard/ProductionAnalytics';
 import WeatherWidget from '@/components/dashboard/WeatherWidget';
 import ScheduleInspectionModal from '@/components/dashboard/ScheduleInspectionModal';
@@ -355,7 +356,7 @@ const Dashboard = () => {
   return (
     <PageTransition animate={false}>
       <div className="container px-4 py-4 sm:py-6 mx-auto max-w-7xl overflow-visible relative">
-        <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Dashboard</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold mb-4 sm:mb-6 text-[#2D2517]">Dashboard</h1>
         
         {/* Welcome message - Different versions for desktop and mobile */}
         <div className="mb-6">
@@ -456,21 +457,8 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
               
-              {/* Alerts Management */}
-              <AlertsManagement 
-                onResolve={() => {
-                  // Refresh data when an alert is resolved
-                  const loadData = async () => {
-                    try {
-                      const hivesData = await getAllHives();
-                      setHives(hivesData);
-                    } catch (error) {
-                      console.error('Error refreshing hives data:', error);
-                    }
-                  };
-                  loadData();
-                }}
-              />
+              {/* Alert Thresholds for Mobile */}
+              <AlertThresholdsCard />
             </div>
             
             {/* Weather Widget - Mobile */}
@@ -602,16 +590,17 @@ const Dashboard = () => {
               />
             </div>
             
-            {/* Third row: Weather Widget and Quick Actions - Desktop only */}
-            <div className="hidden md:grid gap-4 grid-cols-1 md:grid-cols-2">
-              {/* Weather Widget Component */}
-              <WeatherWidget />
-              
-              <QuickActions 
-                onAddApiary={() => setIsAddApiaryModalOpen(true)}
-                onAddHive={() => setIsAddHiveModalOpen(true)}
-                onScheduleInspection={() => setIsAddInspectionModalOpen(true)}
-              />
+            {/* Third row: Alert Thresholds and Weather */}
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+              <AlertThresholdsCard />
+              <div className="grid gap-4 grid-cols-1">
+                <WeatherWidget />
+                <QuickActions 
+                  onAddApiary={() => setIsAddApiaryModalOpen(true)}
+                  onAddHive={() => setIsAddHiveModalOpen(true)}
+                  onScheduleInspection={() => setIsAddInspectionModalOpen(true)}
+                />
+              </div>
             </div>
             
             {/* Fourth row: Upcoming Inspections and Hive Status */}

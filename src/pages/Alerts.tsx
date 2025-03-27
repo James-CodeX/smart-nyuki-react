@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
 import { 
@@ -94,10 +94,23 @@ const Alerts = () => {
   const [typeFilters, setTypeFilters] = useState<string[]>([]);
   const [severityFilters, setSeverityFilters] = useState<string[]>([]);
   
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     loadAlerts();
+    
+    // Set up an interval to refresh alerts every 30 seconds
+    refreshIntervalRef.current = setInterval(() => {
+      loadAlerts(false); // Don't set loading to true for periodic refresh
+    }, 30 * 1000);
+    
+    // Clean up interval on unmount
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -105,21 +118,29 @@ const Alerts = () => {
     applyFilters();
   }, [alerts, searchTerm, activeTab, sortField, sortDirection, typeFilters, severityFilters]);
 
-  const loadAlerts = async () => {
+  const loadAlerts = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       const data = await getAllAlerts();
       setAlerts(data);
       setFilteredAlerts(data);
+      // After fetching new alerts, we need to re-apply any active filters
+      applyFilters(data);
     } catch (error) {
       console.error('Error loading alerts:', error);
-      toast({
-        variant: "destructive",
-        title: "Error loading alerts",
-        description: "There was a problem loading your alerts. Please try again.",
-      });
+      if (showLoading) { // Only show error toast for manual refreshes or initial load
+        toast({
+          variant: 'destructive',
+          title: 'Error loading alerts',
+          description: 'There was a problem loading your alerts. Please try again.',
+        });
+      }
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -214,8 +235,8 @@ const Alerts = () => {
     setActiveTab('all');
   };
 
-  const applyFilters = () => {
-    let result = [...alerts];
+  const applyFilters = (data: Alert[] = alerts) => {
+    let result = [...data];
     
     // Filter by tab
     if (activeTab === 'unread') {
@@ -265,6 +286,10 @@ const Alerts = () => {
   // Get unique alert types and severities for filters
   const uniqueTypes = [...new Set(alerts.map(alert => alert.type))];
   const uniqueSeverities = [...new Set(alerts.map(alert => alert.severity))];
+
+  const handleRefresh = () => {
+    loadAlerts(true);
+  };
 
   return (
     <PageTransition>

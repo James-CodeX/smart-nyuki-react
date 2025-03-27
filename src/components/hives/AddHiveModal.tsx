@@ -88,7 +88,7 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
     try {
       const cleanHiveId = hiveId.trim();
       
-      // First check if this hive ID is already registered to a user
+      // Check if this hive ID is already registered to a user
       const { data: existingHive, error: existingError } = await supabase
         .from('hives')
         .select('hive_id')
@@ -99,35 +99,14 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
         return { valid: false, message: 'This hive ID is already registered by another user' };
       }
 
-      // Try to use the RPC function first
-      const { data: rpcData, error: rpcError } = await supabase
-        .rpc('check_hive_exists', { hive_id_param: cleanHiveId });
-      
-      if (rpcError) {
-        console.error("RPC error, falling back to direct query:", rpcError);
-        
-        // If RPC fails, fall back to direct query
-        const { data, error } = await supabase
-          .from('metrics_time_series_data')
-          .select('hive_id')
-          .eq('hive_id', cleanHiveId)
-          .limit(1);
-
-        if (error) throw error;
-
-        if (!data || data.length === 0) {
-          return { valid: false, message: 'Hive ID not found in our system. Please check the ID and try again.' };
-        }
-      } else {
-        // Check RPC result
-        if (!rpcData || !rpcData.exists) {
-          return { valid: false, message: 'Hive ID not found in our system. Please check the ID and try again.' };
-        }
-      }
-
+      // No longer checking if hive exists in metrics_time_series_data
       return { valid: true };
     } catch (error) {
       console.error("Error validating hive ID:", error);
+      // If the error is a "not found" error from supabase, it means the hive ID is not registered
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'PGRST116') {
+        return { valid: true };
+      }
       return { valid: false, message: 'Error validating hive ID. Please try again.' };
     }
   };
@@ -182,7 +161,7 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
         <DialogHeader>
           <DialogTitle>Add New Hive</DialogTitle>
           <DialogDescription>
-            Enter the details for your new hive. The Hive ID must match an existing hardware ID in our system.
+            Enter the details for your new hive. You can use any unique ID for your hive.
           </DialogDescription>
         </DialogHeader>
         

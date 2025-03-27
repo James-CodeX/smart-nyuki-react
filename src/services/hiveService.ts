@@ -461,37 +461,6 @@ export const addHive = async (hiveData: {
     
     // Clean the hive ID
     const cleanHiveId = hiveData.hive_id.trim();
-
-    // Use the RPC function to check if hive exists
-    const { data: metricsData, error: metricsError } = await supabase
-      .rpc('check_hive_exists', { hive_id_param: cleanHiveId });
-    
-    if (metricsError) {
-      console.log('RPC error, falling back to direct query:', metricsError);
-      
-      // Fall back to direct query
-      const { data: directData, error: directError } = await supabase
-        .from('metrics_time_series_data')
-        .select('hive_id')
-        .eq('hive_id', cleanHiveId)
-        .limit(1);
-      
-      console.log('Direct query result:', directData, 'Error:', directError);
-      
-      if (directError) throw directError;
-      
-      if (!directData || directData.length === 0) {
-        console.log('No metrics data found for hive ID:', cleanHiveId);
-        throw new Error('This hive ID does not exist in our system');
-      }
-    } else {
-      console.log('RPC result:', metricsData);
-      
-      if (!metricsData || !metricsData.exists) {
-        console.log('RPC reports no metrics data found for hive ID:', cleanHiveId);
-        throw new Error('This hive ID does not exist in our system');
-      }
-    }
     
     // Check if hive ID is already registered to another user
     const { data: existingHive, error: existingHiveError } = await supabase
@@ -685,42 +654,7 @@ export const checkHiveAvailability = async (hiveId: string): Promise<{ exists: b
   try {
     console.log('Checking availability for hive ID:', hiveId);
     
-    // Use a raw SQL query to directly check if the hive ID exists
-    const { data: metricsData, error: metricsError } = await supabase
-      .rpc('check_hive_exists', { hive_id_param: hiveId.trim() });
-    
-    if (metricsError) {
-      console.log('RPC error, falling back to direct query:', metricsError);
-      
-      // Fall back to a direct query using eq instead of ilike
-      const { data: metrics, error: directError } = await supabase
-        .from('metrics_time_series_data')
-        .select('hive_id')
-        .eq('hive_id', hiveId.trim())
-        .limit(1);
-      
-      console.log('Direct query result (eq):', metrics, 'Error:', directError);
-      
-      if (directError) throw directError;
-      
-      // If the hive doesn't exist in the metrics table, return false
-      if (!metrics || metrics.length === 0) {
-        console.log('No metrics data found for hive ID:', hiveId);
-        return { exists: false, available: false, error: 'This hive ID does not exist in our system' };
-      }
-    } else {
-      console.log('RPC result:', metricsData);
-      
-      if (!metricsData || !metricsData.exists) {
-        console.log('RPC reports no metrics data found for hive ID:', hiveId);
-        return { exists: false, available: false, error: 'This hive ID does not exist in our system' };
-      }
-    }
-    
-    // If we get here, the hive exists in metrics_time_series_data
-    console.log('Hive ID found in metrics_time_series_data');
-    
-    // Then check if the hive is already registered in the hives table
+    // Now we just check if the hive is already registered in the hives table
     const { data: existingHive, error: hiveError } = await supabase
       .from('hives')
       .select('hive_id, is_registered, user_id')
@@ -735,23 +669,23 @@ export const checkHiveAvailability = async (hiveId: string): Promise<{ exists: b
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError) throw authError;
     if (!user) {
-      return { exists: true, available: false, error: 'You must be logged in to register a hive' };
+      return { exists: false, available: false, error: 'You must be logged in to register a hive' };
     }
     
     // If hive already exists in the hives table
     if (existingHive) {
       // Check if the hive is already registered
       if (existingHive.is_registered && existingHive.user_id && existingHive.user_id !== user.id) {
-        return { exists: true, available: false, error: 'This hive is already registered to another user' };
+        return { exists: false, available: false, error: 'This hive is already registered to another user' };
       }
       
       // Check if the hive belongs to the current user
       if (existingHive.user_id === user.id) {
-        return { exists: true, available: false, error: 'You have already registered this hive' };
+        return { exists: false, available: false, error: 'You have already registered this hive' };
       }
     }
     
-    // The hive exists in metrics_time_series_data and is available to register
+    // The hive is available to register (either doesn't exist or isn't registered)
     console.log('Hive is available for registration');
     return { exists: true, available: true };
   } catch (error) {

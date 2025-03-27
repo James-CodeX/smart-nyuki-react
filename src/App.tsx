@@ -8,6 +8,8 @@ import {
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { startMetricsChecker, stopMetricsChecker } from "./utils/metricsChecker";
+import ActiveAlertsIndicator from "./components/dashboard/ActiveAlertsIndicator";
 
 // Use React.lazy for code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -217,6 +219,19 @@ const App = () => {
     },
   }), []);
 
+  // Start metrics checker when app mounts
+  useEffect(() => {
+    console.log('Starting metrics checker...');
+    // Start checking metrics every 5 minutes (default)
+    const stopChecker = startMetricsChecker();
+    
+    // Clean up when component unmounts
+    return () => {
+      console.log('Stopping metrics checker...');
+      stopChecker();
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -225,6 +240,7 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <AppRoutes />
+            <ActiveAlertsIndicator />
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
