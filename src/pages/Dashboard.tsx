@@ -122,7 +122,7 @@ const SingleMetricsProgressRow = ({
         <span className="text-sm">{title}</span>
       </div>
       <div className="flex items-center">
-        <span className="font-medium">{value}{unit}</span>
+        <span className="font-medium">{value.toFixed(1)}{unit}</span>
       </div>
     </div>
   );
@@ -323,20 +323,22 @@ const Dashboard = () => {
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground hidden md:block">
               Welcome back! Here's an overview of your beekeeping operation.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
+              className="text-sm md:text-base"
               onClick={() => setIsAddInspectionModalOpen(true)}
               disabled={hives.length === 0}
             >
               <CalendarDays className="mr-2 h-4 w-4" />
-              Schedule Inspection
+              <span className="md:inline hidden">Schedule</span> Inspection
             </Button>
             <Button 
+              className="text-sm md:text-base"
               onClick={() => setIsAddHiveModalOpen(true)}
               disabled={apiaries.length === 0}
             >
@@ -354,7 +356,7 @@ const Dashboard = () => {
           
           <TabsContent value="overview" className="space-y-6">
             {/* First row: Stats */}
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-4">
+            <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
               <StatisticsCard
                 title="Apiaries"
                 value={apiaryCount}
@@ -390,7 +392,7 @@ const Dashboard = () => {
                     <BarChart3 className="h-4 w-4" />
                     <span>Apiary Metrics</span>
                   </CardTitle>
-                  <CardDescription>Average metrics across all apiaries</CardDescription>
+                  <CardDescription className="hidden md:block">Average metrics across all apiaries</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
