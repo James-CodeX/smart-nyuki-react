@@ -54,7 +54,7 @@ const PageTransition: React.FC<PageTransitionProps> = ({ children, animate = fal
       exit="out"
       variants={animate ? pageVariants : noAnimationVariants}
       transition={animate ? pageTransition : noAnimationTransition}
-      className="min-h-screen w-full"
+      className="w-full"
     >
       {children}
     </motion.div>

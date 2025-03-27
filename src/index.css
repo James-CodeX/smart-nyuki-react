@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -108,5 +107,24 @@
   
   .text-gradient {
     @apply bg-clip-text text-transparent;
+  }
+  
+  /* Mobile navigation fixes */
+  .mobile-nav-safe-area {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0));
+  }
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+  /* Ensure content doesn't get hidden behind the fixed mobile navigation */
+  .overflow-y-auto, .overflow-auto {
+    padding-bottom: 5rem;
+  }
+  
+  /* Improve scrolling experience on mobile */
+  html, body {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
   }
 }

@@ -24,7 +24,7 @@ const Alerts = lazy(() => import("./pages/Alerts"));
 const Auth = lazy(() => import("./pages/Auth"));
 
 import Sidebar from "./components/layout/Navbar";
-import MobileNavigation from "./components/layout/MobileNavigation";
+import BottomNavigation from "./components/mobile/BottomNavigation";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // Loading component for suspense fallback
@@ -76,12 +76,12 @@ const AppRoutes = () => {
         <Sidebar onCollapsedChange={handleSidebarStateChange} />
         <div className={contentClass}>
           <Suspense fallback={<PageLoader />}>
-            <div className="pb-20 md:pb-0">
+            <div className="pb-20 md:pb-6">
               {children}
             </div>
           </Suspense>
         </div>
-        <MobileNavigation />
+        <BottomNavigation />
       </div>
     );
   };

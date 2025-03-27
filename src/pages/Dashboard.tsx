@@ -318,43 +318,148 @@ const Dashboard = () => {
   }
   
   return (
-    <PageTransition>
-      <div className="container mx-auto py-6 max-w-7xl">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground hidden md:block">
-              Welcome back! Here's an overview of your beekeeping operation.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              className="text-sm md:text-base"
-              onClick={() => setIsAddInspectionModalOpen(true)}
-              disabled={hives.length === 0}
-            >
-              <CalendarDays className="mr-2 h-4 w-4" />
-              <span className="md:inline hidden">Schedule</span> Inspection
-            </Button>
-            <Button 
-              className="text-sm md:text-base"
-              onClick={() => setIsAddHiveModalOpen(true)}
-              disabled={apiaries.length === 0}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Hive
-            </Button>
-          </div>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
+    <PageTransition animate={false}>
+      <div className="container px-4 py-4 sm:py-6 mx-auto max-w-7xl overflow-visible relative">
+        <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Dashboard</h1>
+        
+        {/* Dashboard content */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="overview">
+          <TabsList className="mb-4 hidden md:flex">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="overview" className="space-y-6">
+          {/* Always visible on mobile, conditional on desktop */}
+          <div className="md:hidden space-y-6">
+            {/* Overview content for mobile */}
+            {/* First row: Stats */}
+            <div className="grid gap-4 grid-cols-2">
+              <StatisticsCard
+                title="Apiaries"
+                value={apiaryCount}
+                description="Total apiaries"
+                icon={<Map className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatisticsCard
+                title="Hives"
+                value={hiveCount}
+                description="Total hives"
+                icon={<Users className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatisticsCard
+                title="Alerts"
+                value={alertCount}
+                description="Hives need attention"
+                icon={<AlertCircle className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatisticsCard
+                title="Inspections"
+                value={upcomingInspections.length + overdueInspections.length}
+                description={overdueInspections.length > 0 ? `${overdueInspections.length} overdue` : 'Upcoming inspections'}
+                icon={<ClipboardCheck className="h-4 w-4 text-muted-foreground" />}
+                change={overdueInspections.length > 0 ? { value: overdueInspections.length, trend: 'up' } : undefined}
+              />
+            </div>
+            
+            {/* Second row: Metrics Summary and Alerts */}
+            <div className="grid gap-4 grid-cols-1">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-medium flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    <span>Apiary Metrics</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <SingleMetricsProgressRow 
+                      title="Temperature"
+                      value={avgTemperature}
+                      unit="°C"
+                      icon={<Thermometer className="h-4 w-4" />}
+                      progress={65}
+                      loading={loading}
+                    />
+                    <SingleMetricsProgressRow 
+                      title="Humidity"
+                      value={avgHumidity}
+                      unit="%"
+                      icon={<Droplets className="h-4 w-4" />}
+                      progress={45}
+                      loading={loading}
+                    />
+                    <SingleMetricsProgressRow 
+                      title="Sound"
+                      value={avgSound}
+                      unit="dB"
+                      icon={<Volume2 className="h-4 w-4" />}
+                      progress={35}
+                      loading={loading}
+                    />
+                    <SingleMetricsProgressRow 
+                      title="Weight"
+                      value={avgWeight}
+                      unit="kg"
+                      icon={<Weight className="h-4 w-4" />}
+                      progress={55}
+                      loading={loading}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Alerts Management */}
+              <AlertsManagement 
+                onResolve={() => {
+                  // Refresh data when an alert is resolved
+                  const loadData = async () => {
+                    try {
+                      const hivesData = await getAllHives();
+                      setHives(hivesData);
+                    } catch (error) {
+                      console.error('Error refreshing hives data:', error);
+                    }
+                  };
+                  loadData();
+                }}
+              />
+            </div>
+            
+            {/* Weather Widget - Mobile */}
+            <WeatherWidget />
+            
+            {/* Quick Actions - Mobile */}
+            <QuickActions 
+              onAddApiary={() => setIsAddApiaryModalOpen(true)}
+              onAddHive={() => setIsAddHiveModalOpen(true)}
+              onScheduleInspection={() => setIsAddInspectionModalOpen(true)}
+            />
+            
+            {/* Upcoming Inspections and Hive Status */}
+            <UpcomingInspections
+              inspections={[...upcomingInspections, ...overdueInspections, ...completedInspections].slice(0, 5)}
+              onViewAll={() => navigate('/inspections')}
+              onViewInspection={(inspection) => console.log('View inspection', inspection)}
+            />
+            <HiveStatusOverview 
+              hives={isLoadingHives ? [] : hives.map(hive => ({
+                id: hive.hive_id,
+                name: hive.name,
+                apiaryName: hive.apiaryName || '',
+                alerts: hive.alerts || [],
+                metrics: hive.metrics || { 
+                  temperature: [], 
+                  humidity: [], 
+                  sound: [], 
+                  weight: [] 
+                }
+              }))}
+              onViewHive={handleViewHive}
+            />
+          </div>
+          
+          {/* Original tab content for desktop */}
+          <TabsContent value="overview" className="space-y-6 hidden md:block">
             {/* First row: Stats */}
             <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
               <StatisticsCard
@@ -449,14 +554,14 @@ const Dashboard = () => {
               />
             </div>
             
-            {/* Third row: Weather Widget and Quick Actions */}
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-              {/* New Weather Widget Component */}
+            {/* Third row: Weather Widget and Quick Actions - Desktop only */}
+            <div className="hidden md:grid gap-4 grid-cols-1 md:grid-cols-2">
+              {/* Weather Widget Component */}
               <WeatherWidget />
               
               <QuickActions 
-                onAddHive={() => setIsAddHiveModalOpen(true)}
                 onAddApiary={() => setIsAddApiaryModalOpen(true)}
+                onAddHive={() => setIsAddHiveModalOpen(true)}
                 onScheduleInspection={() => setIsAddInspectionModalOpen(true)}
               />
             </div>
@@ -486,12 +591,12 @@ const Dashboard = () => {
             </div>
           </TabsContent>
           
-          <TabsContent value="analytics" className="space-y-6">
+          <TabsContent value="analytics" className="space-y-6 overflow-visible hidden md:block">
             {/* Production Analytics */}
-            <ProductionAnalytics />
+            <ProductionAnalytics className="overflow-visible" />
             
             {/* Charts for hive performance */}
-            <Card>
+            <Card className="overflow-visible">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5" />
@@ -499,7 +604,7 @@ const Dashboard = () => {
                 </CardTitle>
                 <CardDescription>Compare metrics across your hives</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-visible">
                 <DashboardChart 
                   title="Temperature Comparison"
                   data={hives.map(hive => ({

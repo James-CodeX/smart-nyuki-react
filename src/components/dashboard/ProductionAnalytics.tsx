@@ -109,8 +109,10 @@ const ProductionAnalytics: React.FC<ProductionAnalyticsProps> = ({ className }) 
         );
         setTimeseriesData(timeseriesDataResult);
         
-        // Load forecast data
+        // Load forecast data - pass period as first parameter, apiaryFilter as second
+        const forecastPeriod = period === 'week' ? 'month' : period;
         const forecastDataResult = await getProductionForecast(
+          forecastPeriod,
           apiaryFilter === 'all' ? undefined : apiaryFilter
         );
         setForecastData(forecastDataResult);
@@ -189,7 +191,7 @@ const ProductionAnalytics: React.FC<ProductionAnalyticsProps> = ({ className }) 
   }
   
   return (
-    <Card className={className}>
+    <Card className={cn("overflow-visible", className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div>
           <CardTitle className="flex items-center gap-2">
@@ -212,265 +214,267 @@ const ProductionAnalytics: React.FC<ProductionAnalyticsProps> = ({ className }) 
         </Select>
       </CardHeader>
       
-      <Tabs defaultValue="production" className="w-full">
-        <div className="px-6 py-2">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="production">Production</TabsTrigger>
-            <TabsTrigger value="forecast">Forecast</TabsTrigger>
-            <TabsTrigger value="trends">Trends</TabsTrigger>
-          </TabsList>
-        </div>
-        
-        <TabsContent value="production" className="space-y-4">
-          <div className="px-6">
-            <div className="flex justify-between items-center mb-4">
-              <div className="grid grid-cols-3 gap-4 w-full">
-                <div className="flex flex-col">
-                  <span className="text-sm text-muted-foreground">Total Production</span>
-                  <div className="text-2xl font-bold">{summaryData.totalProduction} kg</div>
-                  <div className="flex items-center text-xs">
-                    {summaryData.changePercent > 0 ? (
-                      <>
-                        <ArrowUp className="text-green-500 h-3 w-3 mr-1" />
-                        <span className="text-green-500">{Math.abs(summaryData.changePercent)}% increase</span>
-                      </>
-                    ) : summaryData.changePercent < 0 ? (
-                      <>
-                        <ArrowDown className="text-red-500 h-3 w-3 mr-1" />
-                        <span className="text-red-500">{Math.abs(summaryData.changePercent)}% decrease</span>
-                      </>
-                    ) : (
-                      <span>No change</span>
-                    )}
-                    <span className="ml-1 text-muted-foreground">vs. previous</span>
-                  </div>
-                </div>
-                
-                <div className="flex flex-col">
-                  <span className="text-sm text-muted-foreground">Average Per Hive</span>
-                  <div className="text-2xl font-bold">{summaryData.avgProduction} kg</div>
-                </div>
-                
-                <div className="flex flex-col">
-                  <span className="text-sm text-muted-foreground">Forecast Next Month</span>
-                  <div className="text-2xl font-bold">{summaryData.forecastProduction} kg</div>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center text-xs text-muted-foreground cursor-help">
-                          <InfoIcon className="h-3 w-3 mr-1" />
-                          <span>Based on historical data</span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="max-w-xs">Forecast is calculated using historical trends and current hive conditions.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex justify-between mb-2">
-              <div className="space-x-1">
-                <Button 
-                  variant={period === 'week' ? 'default' : 'outline'} 
-                  size="sm"
-                  onClick={() => setPeriod('week')}
-                >
-                  Week
-                </Button>
-                <Button 
-                  variant={period === 'month' ? 'default' : 'outline'} 
-                  size="sm"
-                  onClick={() => setPeriod('month')}
-                >
-                  Month
-                </Button>
-                <Button 
-                  variant={period === 'year' ? 'default' : 'outline'} 
-                  size="sm"
-                  onClick={() => setPeriod('year')}
-                >
-                  Year
-                </Button>
-              </div>
-            </div>
+      <CardContent className="pt-0 px-0 md:px-6 overflow-visible">
+        <Tabs defaultValue="production" className="w-full overflow-visible">
+          <div className="px-6 py-2">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="production">Production</TabsTrigger>
+              <TabsTrigger value="forecast">Forecast</TabsTrigger>
+              <TabsTrigger value="trends">Trends</TabsTrigger>
+            </TabsList>
           </div>
           
-          <CardContent className="pt-0">
-            {chartData.length > 0 ? (
-              <AreaChart
-                className="h-64 mt-4"
-                data={chartData}
-                index="date"
-                categories={["value"]}
-                colors={["amber"]}
-                valueFormatter={valueFormatter}
-                showLegend={false}
-                showGridLines={false}
-                showAnimation
-                curveType="natural"
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                <BarChart3 className="h-10 w-10 text-muted-foreground mb-2" />
-                <h3 className="text-lg font-medium">No Production Data</h3>
-                <p className="text-muted-foreground max-w-md">
-                  There's no production data available for the selected period. Try selecting a different timeframe or add production records.
-                </p>
-              </div>
-            )}
-            
-            {(summaryData.topHive || summaryData.topApiary) && (
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                {summaryData.topHive && (
-                  <div className="border rounded-lg p-3">
-                    <div className="text-sm text-muted-foreground">Top Performing Hive</div>
-                    <div className="font-semibold">{summaryData.topHive.name}</div>
-                    <div className="text-sm">{summaryData.topHive.production} kg</div>
-                  </div>
-                )}
-                
-                {summaryData.topApiary && (
-                  <div className="border rounded-lg p-3">
-                    <div className="text-sm text-muted-foreground">Top Performing Apiary</div>
-                    <div className="font-semibold">{summaryData.topApiary.name}</div>
-                    <div className="text-sm">{summaryData.topApiary.production} kg</div>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </TabsContent>
-        
-        <TabsContent value="forecast" className="space-y-4">
-          <CardContent>
-            <div className="mb-4">
-              <h3 className="text-lg font-medium flex items-center">
-                <TrendingUp className="h-5 w-5 mr-2" />
-                Production Forecast
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Projected honey production for the next 3 months based on historical data and current hive conditions.
-              </p>
-            </div>
-            
-            {forecastData.length > 0 ? (
-              <>
-                <BarChart
-                  className="h-64 mt-6"
-                  data={forecastData}
-                  index="month"
-                  categories={["projected", "actual"]}
-                  colors={["amber", "emerald"]}
-                  valueFormatter={valueFormatter}
-                  showLegend
-                  showAnimation
-                />
-                
-                <div className="flex items-center justify-between mt-6">
-                  <div>
-                    <Badge variant="outline" className="mb-1">Confidence: High</Badge>
-                    <div className="text-sm text-muted-foreground">
-                      Based on {forecastData.length} months of historical data
+          <TabsContent value="production" className="space-y-4">
+            <div className="px-6">
+              <div className="flex justify-between items-center mb-4">
+                <div className="grid grid-cols-3 gap-4 w-full">
+                  <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">Total Production</span>
+                    <div className="text-2xl font-bold">{summaryData.totalProduction} kg</div>
+                    <div className="flex items-center text-xs">
+                      {summaryData.changePercent > 0 ? (
+                        <>
+                          <ArrowUp className="text-green-500 h-3 w-3 mr-1" />
+                          <span className="text-green-500">{Math.abs(summaryData.changePercent)}% increase</span>
+                        </>
+                      ) : summaryData.changePercent < 0 ? (
+                        <>
+                          <ArrowDown className="text-red-500 h-3 w-3 mr-1" />
+                          <span className="text-red-500">{Math.abs(summaryData.changePercent)}% decrease</span>
+                        </>
+                      ) : (
+                        <span>No change</span>
+                      )}
+                      <span className="ml-1 text-muted-foreground">vs. previous</span>
                     </div>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Adjust Parameters
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                <TrendingUp className="h-10 w-10 text-muted-foreground mb-2" />
-                <h3 className="text-lg font-medium">Forecast Unavailable</h3>
-                <p className="text-muted-foreground max-w-md">
-                  There's not enough historical production data to generate a forecast. Add more production records over time.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </TabsContent>
-        
-        <TabsContent value="trends" className="space-y-4">
-          <CardContent>
-            <div className="mb-4">
-              <h3 className="text-lg font-medium flex items-center">
-                <CalendarDays className="h-5 w-5 mr-2" />
-                Seasonal Trends
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Analysis of production patterns across seasons and years
-              </p>
-            </div>
-            
-            {chartData.length > 0 ? (
-              <>
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="border rounded-lg p-4">
-                    <div className="text-sm text-muted-foreground mb-1">Peak Production Month</div>
-                    <div className="font-semibold text-lg">July</div>
-                    <div className="text-sm">Based on historical patterns</div>
                   </div>
                   
-                  <div className="border rounded-lg p-4">
-                    <div className="text-sm text-muted-foreground mb-1">Year-over-Year Change</div>
-                    <div className="font-semibold text-lg flex items-center">
-                      <ArrowUp className="text-green-500 h-4 w-4 mr-1" />
-                      <span>12.5%</span>
-                    </div>
-                    <div className="text-sm">Compared to last year</div>
+                  <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">Average Per Hive</span>
+                    <div className="text-2xl font-bold">{summaryData.avgProduction} kg</div>
+                  </div>
+                  
+                  <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">Forecast Next Month</span>
+                    <div className="text-2xl font-bold">{summaryData.forecastProduction} kg</div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-center text-xs text-muted-foreground cursor-help">
+                            <InfoIcon className="h-3 w-3 mr-1" />
+                            <span>Based on historical data</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-xs">Forecast is calculated using historical trends and current hive conditions.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
-                
-                <LineChart
-                  className="h-64"
-                  data={[
-                    { month: "Jan", thisYear: 8.2, lastYear: 7.5 },
-                    { month: "Feb", thisYear: 9.1, lastYear: 8.2 },
-                    { month: "Mar", thisYear: 10.5, lastYear: 9.3 },
-                    { month: "Apr", thisYear: 12.3, lastYear: 10.8 },
-                    { month: "May", thisYear: 14.8, lastYear: 12.9 },
-                    { month: "Jun", thisYear: 16.5, lastYear: 14.5 },
-                    { month: "Jul", thisYear: 18.2, lastYear: 16.2 },
-                    { month: "Aug", thisYear: 16.9, lastYear: 15.3 },
-                    { month: "Sep", thisYear: 14.2, lastYear: 13.4 },
-                    { month: "Oct", thisYear: 11.5, lastYear: 10.9 },
-                    { month: "Nov", thisYear: 9.8, lastYear: 8.7 },
-                    { month: "Dec", thisYear: 8.5, lastYear: 7.9 },
-                  ]}
-                  index="month"
-                  categories={["thisYear", "lastYear"]}
-                  colors={["amber", "slate"]}
+              </div>
+              
+              <div className="flex justify-between mb-2">
+                <div className="space-x-1">
+                  <Button 
+                    variant={period === 'week' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setPeriod('week')}
+                  >
+                    Week
+                  </Button>
+                  <Button 
+                    variant={period === 'month' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setPeriod('month')}
+                  >
+                    Month
+                  </Button>
+                  <Button 
+                    variant={period === 'year' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setPeriod('year')}
+                  >
+                    Year
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            <CardContent className="pt-0">
+              {chartData.length > 0 ? (
+                <AreaChart
+                  className="h-64 mt-4"
+                  data={chartData}
+                  index="date"
+                  categories={["value"]}
+                  colors={["amber"]}
                   valueFormatter={valueFormatter}
-                  showLegend
+                  showLegend={false}
+                  showGridLines={false}
                   showAnimation
+                  curveType="natural"
                 />
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                <CalendarDays className="h-10 w-10 text-muted-foreground mb-2" />
-                <h3 className="text-lg font-medium">Trend Analysis Unavailable</h3>
-                <p className="text-muted-foreground max-w-md">
-                  There's not enough historical data to analyze production trends. Continue adding records to enable this feature.
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                  <BarChart3 className="h-10 w-10 text-muted-foreground mb-2" />
+                  <h3 className="text-lg font-medium">No Production Data</h3>
+                  <p className="text-muted-foreground max-w-md">
+                    There's no production data available for the selected period. Try selecting a different timeframe or add production records.
+                  </p>
+                </div>
+              )}
+              
+              {(summaryData.topHive || summaryData.topApiary) && (
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  {summaryData.topHive && (
+                    <div className="border rounded-lg p-3">
+                      <div className="text-sm text-muted-foreground">Top Performing Hive</div>
+                      <div className="font-semibold">{summaryData.topHive.name}</div>
+                      <div className="text-sm">{summaryData.topHive.production} kg</div>
+                    </div>
+                  )}
+                  
+                  {summaryData.topApiary && (
+                    <div className="border rounded-lg p-3">
+                      <div className="text-sm text-muted-foreground">Top Performing Apiary</div>
+                      <div className="font-semibold">{summaryData.topApiary.name}</div>
+                      <div className="text-sm">{summaryData.topApiary.production} kg</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </TabsContent>
+          
+          <TabsContent value="forecast" className="space-y-4">
+            <CardContent>
+              <div className="mb-4">
+                <h3 className="text-lg font-medium flex items-center">
+                  <TrendingUp className="h-5 w-5 mr-2" />
+                  Production Forecast
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Projected honey production for the next 3 months based on historical data and current hive conditions.
                 </p>
               </div>
-            )}
-          </CardContent>
-        </TabsContent>
-      </Tabs>
-      
-      <CardFooter className="flex justify-between">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => window.location.href = '/production'}
-        >
-          View Full Production Data
-        </Button>
-      </CardFooter>
+              
+              {forecastData.length > 0 ? (
+                <>
+                  <BarChart
+                    className="h-64 mt-6"
+                    data={forecastData}
+                    index="month"
+                    categories={["projected", "actual"]}
+                    colors={["amber", "emerald"]}
+                    valueFormatter={valueFormatter}
+                    showLegend
+                    showAnimation
+                  />
+                  
+                  <div className="flex items-center justify-between mt-6">
+                    <div>
+                      <Badge variant="outline" className="mb-1">Confidence: High</Badge>
+                      <div className="text-sm text-muted-foreground">
+                        Based on {forecastData.length} months of historical data
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm">
+                      <Filter className="h-4 w-4 mr-2" />
+                      Adjust Parameters
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                  <TrendingUp className="h-10 w-10 text-muted-foreground mb-2" />
+                  <h3 className="text-lg font-medium">Forecast Unavailable</h3>
+                  <p className="text-muted-foreground max-w-md">
+                    There's not enough historical production data to generate a forecast. Add more production records over time.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </TabsContent>
+          
+          <TabsContent value="trends" className="space-y-4">
+            <CardContent>
+              <div className="mb-4">
+                <h3 className="text-lg font-medium flex items-center">
+                  <CalendarDays className="h-5 w-5 mr-2" />
+                  Seasonal Trends
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Analysis of production patterns across seasons and years
+                </p>
+              </div>
+              
+              {chartData.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="border rounded-lg p-4">
+                      <div className="text-sm text-muted-foreground mb-1">Peak Production Month</div>
+                      <div className="font-semibold text-lg">July</div>
+                      <div className="text-sm">Based on historical patterns</div>
+                    </div>
+                    
+                    <div className="border rounded-lg p-4">
+                      <div className="text-sm text-muted-foreground mb-1">Year-over-Year Change</div>
+                      <div className="font-semibold text-lg flex items-center">
+                        <ArrowUp className="text-green-500 h-4 w-4 mr-1" />
+                        <span>12.5%</span>
+                      </div>
+                      <div className="text-sm">Compared to last year</div>
+                    </div>
+                  </div>
+                  
+                  <LineChart
+                    className="h-64"
+                    data={[
+                      { month: "Jan", thisYear: 8.2, lastYear: 7.5 },
+                      { month: "Feb", thisYear: 9.1, lastYear: 8.2 },
+                      { month: "Mar", thisYear: 10.5, lastYear: 9.3 },
+                      { month: "Apr", thisYear: 12.3, lastYear: 10.8 },
+                      { month: "May", thisYear: 14.8, lastYear: 12.9 },
+                      { month: "Jun", thisYear: 16.5, lastYear: 14.5 },
+                      { month: "Jul", thisYear: 18.2, lastYear: 16.2 },
+                      { month: "Aug", thisYear: 16.9, lastYear: 15.3 },
+                      { month: "Sep", thisYear: 14.2, lastYear: 13.4 },
+                      { month: "Oct", thisYear: 11.5, lastYear: 10.9 },
+                      { month: "Nov", thisYear: 9.8, lastYear: 8.7 },
+                      { month: "Dec", thisYear: 8.5, lastYear: 7.9 },
+                    ]}
+                    index="month"
+                    categories={["thisYear", "lastYear"]}
+                    colors={["amber", "slate"]}
+                    valueFormatter={valueFormatter}
+                    showLegend
+                    showAnimation
+                  />
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                  <CalendarDays className="h-10 w-10 text-muted-foreground mb-2" />
+                  <h3 className="text-lg font-medium">Trend Analysis Unavailable</h3>
+                  <p className="text-muted-foreground max-w-md">
+                    There's not enough historical data to analyze production trends. Continue adding records to enable this feature.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </TabsContent>
+        </Tabs>
+        
+        <CardFooter className="flex justify-between">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.location.href = '/production'}
+          >
+            View Full Production Data
+          </Button>
+        </CardFooter>
+      </CardContent>
     </Card>
   );
 };

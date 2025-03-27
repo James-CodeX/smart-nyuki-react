@@ -228,7 +228,7 @@ const DashboardChart: React.FC<DashboardChartProps> = ({
   };
 
   return (
-    <Card className={cn("overflow-hidden", className)}>
+    <Card className={cn("overflow-visible", className)}>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
         <div>
           <CardTitle className="text-base font-medium">{title}</CardTitle>
@@ -249,26 +249,11 @@ const DashboardChart: React.FC<DashboardChartProps> = ({
               {valueChange.trend === 'down' && <ArrowDownRight className="h-3 w-3" />}
               <span>{Math.abs(valueChange.percentage)}%</span>
             </div>
-            <span className="text-sm font-medium text-muted-foreground">{valueChange.value}</span>
           </div>
         )}
       </CardHeader>
-      <CardContent className="pt-0 px-4 pb-4">
+      <CardContent className="overflow-visible">
         {renderChart()}
-        
-        {hasValidData && categories.length > 1 && (
-          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 pt-4">
-            {categories.map((category, index) => (
-              <div key={category} className="flex items-center gap-1">
-                <div 
-                  className="h-3 w-3 rounded-full" 
-                  style={{ backgroundColor: colors[index % colors.length] }}
-                />
-                <span className="text-xs text-muted-foreground">{category}</span>
-              </div>
-            ))}
-          </div>
-        )}
       </CardContent>
     </Card>
   );
