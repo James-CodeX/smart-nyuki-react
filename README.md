@@ -1,6 +1,6 @@
 # Smart Nyuki - Modern Beekeeping Management System
 
-![Smart Nyuki Logo](public/logo.png)
+![Smart Nyuki Logo](src\assets\images\logo.png)
 
 Smart Nyuki is a comprehensive beekeeping management application that empowers beekeepers to efficiently track and optimize their apiaries, hives, and honey production. The name "Nyuki" means "bee" in Swahili, reflecting the application's focus on beekeeping.
 
