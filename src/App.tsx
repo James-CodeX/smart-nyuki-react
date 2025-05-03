@@ -27,7 +27,6 @@ const Alerts = lazy(() => import("./pages/Alerts"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Landing = lazy(() => import("./pages/Landing"));
 
-import Sidebar from "./components/layout/Navbar";
 import BottomNavigation from "./components/mobile/BottomNavigation";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
@@ -59,26 +58,11 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 };
 
 const AppRoutes = () => {
-  const [isCollapsed, setIsCollapsed] = useState(true);
-  
-  // Handle sidebar state changes
-  const handleSidebarStateChange = (collapsed: boolean) => {
-    setIsCollapsed(collapsed);
-  };
-
   // Page wrapper component to avoid repeating the same layout structure
   const PageWrapper = ({ children }: { children: React.ReactNode }) => {
-    // Memoize the content class to prevent unnecessary rerenders
-    const contentClass = useMemo(() => {
-      return `flex-1 transition-all duration-300 ease-in-out relative ${
-        isCollapsed ? 'md:pl-[80px]' : 'md:pl-[250px]'
-      }`;
-    }, [isCollapsed]);
-
     return (
       <div className="flex min-h-screen bg-background">
-        <Sidebar onCollapsedChange={handleSidebarStateChange} />
-        <div className={contentClass}>
+        <div className="flex-1 relative">
           <Suspense fallback={<PageLoader />}>
             <div className="pb-20 md:pb-6 relative overflow-hidden">
               {children}
