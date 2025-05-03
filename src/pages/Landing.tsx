@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform, useInView, useAnimation, AnimatePresen
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import { useTheme } from "@/context/ThemeContext";
 import { Link } from "react-router-dom";
+import Logo from "@/components/ui/Logo";
 
 const features = [
   {
@@ -187,18 +188,7 @@ export default function Landing() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <motion.img 
-              src={logo} 
-              alt="Smart Nyuki Logo" 
-              className="w-10 h-10" 
-              animate={{ rotate: [0, 10, 0] }}
-              transition={{ 
-                repeat: Infinity, 
-                repeatType: "reverse", 
-                duration: 5,
-                ease: "easeInOut"
-              }}
-            />
+            <Logo />
             <span className={`font-bold ${theme === 'dark' ? 'text-amber-400' : 'text-amber-700'} text-xl`}>Smart Nyuki</span>
           </motion.div>
           <div className="hidden md:flex items-center gap-8">
