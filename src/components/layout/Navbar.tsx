@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Home, Grid, Menu as HiveIcon, Settings, BarChart3, ClipboardCheck, BellRing } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Home, Grid, Menu as HiveIcon, Settings, BarChart3, ClipboardCheck, BellRing, Moon, Sun } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import AlertIndicator from '@/components/common/AlertIndicator';
 
 // SVG Logo component - directly embedded instead of imported
@@ -50,6 +51,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   
   // Notify parent component when sidebar state changes
   useEffect(() => {
@@ -72,7 +74,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
   }, [isCollapsed, onCollapsedChange]);
   
   const navigation = [
-    { name: 'Dashboard', to: '/', icon: Home },
+    { name: 'Dashboard', to: '/dashboard', icon: Home },
     { name: 'Apiaries', to: '/apiaries', icon: Grid },
     { name: 'Hives', to: '/hives', icon: HiveIcon },
     { name: 'Production', to: '/production', icon: BarChart3 },
@@ -152,6 +154,26 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
               </Link>
             );
           })}
+          
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className={cn(
+              "flex items-center px-3 py-3 rounded-lg transition-colors",
+              isCollapsed ? "justify-center" : "justify-start",
+              "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+            )}
+            aria-label={theme === 'light' ? "Switch to dark mode" : "Switch to light mode"}
+          >
+            <div className="relative">
+              {theme === 'light' ? (
+                <Moon className={cn("h-5 w-5", isCollapsed ? "" : "mr-3")} />
+              ) : (
+                <Sun className={cn("h-5 w-5", isCollapsed ? "" : "mr-3")} />
+              )}
+            </div>
+            {!isCollapsed && <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>}
+          </button>
         </nav>
         
         {/* Button with updated event handler */}

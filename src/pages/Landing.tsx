@@ -683,8 +683,8 @@ export default function Landing() {
               href="mailto:james.nyakairu@students.jkuat.ac.ke" 
               className={`underline ${theme === 'dark' ? 'text-amber-400' : 'text-amber-700'}`}
               whileHover={{ color: theme === 'dark' ? "#fcd34d" : "#92400e" }}
-              >james.nyakairu@students.jkuat.ac.ke</motion.a></p>
-            <p className="mt-2">&copy; {new Date().getFullYear()} James-CodeX. All rights reserved.</p>
+              >smart-nyuki@gmail.com</motion.a></p>
+            <p className="mt-2">&copy; {new Date().getFullYear()} Smart-Nyuki. All rights reserved.</p>
           </motion.div>
         </div>
       </motion.section>
