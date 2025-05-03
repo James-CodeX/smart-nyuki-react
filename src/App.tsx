@@ -7,10 +7,12 @@ import {
 } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
-import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense, useContext } from "react";
 import { startMetricsChecker, stopMetricsChecker } from "./utils/metricsChecker";
 import ActiveAlertsIndicator from "./components/dashboard/ActiveAlertsIndicator";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
+import { SidebarProvider, useSidebar } from "./context/SidebarContext";
+import { cn } from "@/lib/utils";
 
 // Use React.lazy for code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -76,10 +78,15 @@ const AuthRedirect = ({ children }: ProtectedRouteProps) => {
 const AppRoutes = () => {
   // Page wrapper component to avoid repeating the same layout structure
   const PageWrapper = ({ children }: { children: React.ReactNode }) => {
+    const { collapsed } = useSidebar();
+    
     return (
       <div className="flex min-h-screen bg-background">
         <Sidebar />
-        <div className="flex-1 md:ml-20 lg:ml-64 relative">
+        <div className={cn(
+          "flex-1 relative transition-all duration-200",
+          collapsed ? "md:ml-20" : "md:ml-64"
+        )}>
           <Suspense fallback={<PageLoader />}>
             <div className="pb-20 md:pb-6 relative overflow-hidden">
               {children}
@@ -249,16 +256,18 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider>
-          <AppThemeWrapper>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <AppRoutes />
-                <ActiveAlertsIndicator />
-              </BrowserRouter>
-            </TooltipProvider>
-          </AppThemeWrapper>
+          <SidebarProvider>
+            <AppThemeWrapper>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <AppRoutes />
+                  <ActiveAlertsIndicator />
+                </BrowserRouter>
+              </TooltipProvider>
+            </AppThemeWrapper>
+          </SidebarProvider>
         </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>

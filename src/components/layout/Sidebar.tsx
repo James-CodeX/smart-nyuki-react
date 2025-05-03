@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
@@ -15,6 +15,7 @@ import {
   Sun
 } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
+import { useSidebar } from '@/context/SidebarContext';
 import AlertIndicator from '@/components/common/AlertIndicator';
 import Logo, { BeeIcon } from '@/components/ui/Logo';
 
@@ -23,7 +24,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ className }) => {
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, toggleSidebar } = useSidebar();
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   
@@ -37,10 +38,6 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     { name: 'Settings', to: '/settings', icon: Settings },
   ];
   
-  const toggleSidebar = () => {
-    setCollapsed(!collapsed);
-  };
-
   return (
     <aside 
       className={cn(
