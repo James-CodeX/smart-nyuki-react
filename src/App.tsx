@@ -24,6 +24,7 @@ const Inspections = lazy(() => import("./pages/Inspections"));
 const InspectionDetail = lazy(() => import("./pages/InspectionDetail"));
 const Alerts = lazy(() => import("./pages/Alerts"));
 const Auth = lazy(() => import("./pages/Auth"));
+const Landing = lazy(() => import("./pages/Landing"));
 
 import Sidebar from "./components/layout/Navbar";
 import BottomNavigation from "./components/mobile/BottomNavigation";
@@ -96,6 +97,14 @@ const AppRoutes = () => {
             <Auth />
           </Suspense>
         } />
+        <Route
+          path="/landing"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <Landing />
+            </Suspense>
+          }
+        />
         <Route
           path="/"
           element={
