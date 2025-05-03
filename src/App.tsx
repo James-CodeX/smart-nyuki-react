@@ -110,9 +110,7 @@ const AppRoutes = () => {
           path="/"
           element={
             <Suspense fallback={<PageLoader />}>
-              <AuthRedirect>
-                <Landing />
-              </AuthRedirect>
+              <Landing />
             </Suspense>
           }
         />
