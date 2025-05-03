@@ -28,6 +28,7 @@ const Auth = lazy(() => import("./pages/Auth"));
 const Landing = lazy(() => import("./pages/Landing"));
 
 import BottomNavigation from "./components/mobile/BottomNavigation";
+import Sidebar from "./components/layout/Sidebar";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // Loading component for suspense fallback
@@ -57,12 +58,28 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   return <>{children}</>;
 };
 
+// Redirect authenticated users from landing to dashboard
+const AuthRedirect = ({ children }: ProtectedRouteProps) => {
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 const AppRoutes = () => {
   // Page wrapper component to avoid repeating the same layout structure
   const PageWrapper = ({ children }: { children: React.ReactNode }) => {
     return (
       <div className="flex min-h-screen bg-background">
-        <div className="flex-1 relative">
+        <Sidebar />
+        <div className="flex-1 md:ml-20 lg:ml-64 relative">
           <Suspense fallback={<PageLoader />}>
             <div className="pb-20 md:pb-6 relative overflow-hidden">
               {children}
@@ -86,7 +103,9 @@ const AppRoutes = () => {
           path="/"
           element={
             <Suspense fallback={<PageLoader />}>
-              <Landing />
+              <AuthRedirect>
+                <Landing />
+              </AuthRedirect>
             </Suspense>
           }
         />

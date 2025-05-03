@@ -81,7 +81,7 @@ export default function Auth() {
   const onLoginSubmit = async (data: LoginFormData) => {
     const { success } = await signIn(data.email, data.password);
     if (success) {
-      navigate('/');
+      navigate('/dashboard');
     }
   };
 
