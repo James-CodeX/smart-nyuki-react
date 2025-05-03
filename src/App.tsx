@@ -10,6 +10,7 @@ import { AnimatePresence } from "framer-motion";
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { startMetricsChecker, stopMetricsChecker } from "./utils/metricsChecker";
 import ActiveAlertsIndicator from "./components/dashboard/ActiveAlertsIndicator";
+import { ThemeProvider } from "./context/ThemeContext";
 
 // Use React.lazy for code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -98,7 +99,7 @@ const AppRoutes = () => {
           </Suspense>
         } />
         <Route
-          path="/landing"
+          path="/"
           element={
             <Suspense fallback={<PageLoader />}>
               <Landing />
@@ -106,7 +107,7 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="/"
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <PageWrapper>
@@ -244,14 +245,16 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppRoutes />
-            <ActiveAlertsIndicator />
-          </BrowserRouter>
-        </TooltipProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppRoutes />
+              <ActiveAlertsIndicator />
+            </BrowserRouter>
+          </TooltipProvider>
+        </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
