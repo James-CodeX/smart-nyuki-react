@@ -360,7 +360,7 @@ const Dashboard = () => {
   return (
     <PageTransition animate={false}>
       <div className="container px-4 py-4 sm:py-6 mx-auto max-w-7xl overflow-visible relative">
-        <h1 className="text-3xl sm:text-4xl font-bold mb-4 sm:mb-6 text-[#2D2517]">Dashboard</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold mb-4 sm:mb-6 dark:text-white text-[#2D2517]">Dashboard</h1>
         
         {/* Welcome message - Different versions for desktop and mobile */}
         <div className="mb-6">
