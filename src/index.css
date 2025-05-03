@@ -43,6 +43,45 @@
     --sidebar-border: 34 20% 90%;
     --sidebar-ring: 34 70% 50%;
   }
+
+  .dark {
+    --background: 220 20% 10%;
+    --foreground: 38 10% 90%;
+
+    --card: 220 20% 13%;
+    --card-foreground: 38 10% 90%;
+
+    --popover: 220 20% 13%;
+    --popover-foreground: 38 10% 90%;
+
+    --primary: 34 95% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 20% 18%;
+    --secondary-foreground: 34 40% 80%;
+
+    --muted: 220 20% 16%;
+    --muted-foreground: 34 10% 70%;
+
+    --accent: 220 20% 18%;
+    --accent-foreground: 34 40% 80%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 20% 20%;
+    --input: 220 20% 20%;
+    --ring: 34 70% 50%;
+
+    --sidebar-background: 220 20% 10%;
+    --sidebar-foreground: 34 10% 90%;
+    --sidebar-primary: 34 95% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 20% 18%;
+    --sidebar-accent-foreground: 34 40% 80%;
+    --sidebar-border: 220 20% 20%;
+    --sidebar-ring: 34 70% 50%;
+  }
 }
 
 @layer base {
@@ -56,11 +95,11 @@
   }
 
   .card-glass {
-    @apply bg-white/60 backdrop-blur-md border border-white/50 shadow-sm;
+    @apply bg-white/60 backdrop-blur-md border border-white/50 shadow-sm dark:bg-gray-900/60 dark:border-gray-800/50;
   }
 
   .metric-card {
-    @apply bg-gradient-to-b from-white/90 to-white/60 backdrop-blur-sm shadow-sm border border-white/50 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-md;
+    @apply bg-gradient-to-b from-white/90 to-white/60 backdrop-blur-sm shadow-sm border border-white/50 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-md dark:from-gray-800/90 dark:to-gray-900/60 dark:border-gray-700/50;
   }
 
   .temperature-gradient {
@@ -127,4 +166,49 @@
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
   }
+}
+
+/* Dark mode overrides for specific components */
+.dark .card {
+  @apply bg-gray-800 border-gray-700;
+}
+
+.dark .btn-primary {
+  @apply bg-amber-500 hover:bg-amber-600 text-white;
+}
+
+.dark .btn-secondary {
+  @apply bg-gray-700 hover:bg-gray-600 text-gray-100;
+}
+
+.dark input, .dark textarea, .dark select {
+  @apply bg-gray-800 border-gray-700 text-gray-100;
+}
+
+.dark .table {
+  @apply border-gray-700;
+}
+
+.dark .table th {
+  @apply bg-gray-800 text-gray-100;
+}
+
+.dark .table td {
+  @apply border-gray-700 text-gray-200;
+}
+
+.dark .alert-success {
+  @apply bg-green-900/50 text-green-100 border-green-800;
+}
+
+.dark .alert-warning {
+  @apply bg-amber-900/50 text-amber-100 border-amber-800;
+}
+
+.dark .alert-error {
+  @apply bg-red-900/50 text-red-100 border-red-800;
+}
+
+.dark .alert-info {
+  @apply bg-blue-900/50 text-blue-100 border-blue-800;
 }

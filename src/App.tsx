@@ -10,7 +10,7 @@ import { AnimatePresence } from "framer-motion";
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { startMetricsChecker, stopMetricsChecker } from "./utils/metricsChecker";
 import ActiveAlertsIndicator from "./components/dashboard/ActiveAlertsIndicator";
-import { ThemeProvider } from "./context/ThemeContext";
+import { ThemeProvider, useTheme } from "./context/ThemeContext";
 
 // Use React.lazy for code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -246,17 +246,39 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <AppRoutes />
-              <ActiveAlertsIndicator />
-            </BrowserRouter>
-          </TooltipProvider>
+          <AppThemeWrapper>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <AppRoutes />
+                <ActiveAlertsIndicator />
+              </BrowserRouter>
+            </TooltipProvider>
+          </AppThemeWrapper>
         </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
+  );
+};
+
+// Wrapper component to apply theme to the entire app
+const AppThemeWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { theme } = useTheme();
+  
+  useEffect(() => {
+    // Apply theme class to the document element
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+  
+  return (
+    <div className={`${theme === 'dark' ? 'dark' : ''}`}>
+      {children}
+    </div>
   );
 };
 

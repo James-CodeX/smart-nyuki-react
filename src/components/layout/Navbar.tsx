@@ -96,7 +96,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
     <>
       {/* Desktop sidebar */}
       <motion.aside 
-        className="hidden md:flex flex-col h-screen fixed left-0 top-0 z-40 bg-sidebar backdrop-blur-md border-r border-border shadow-sm transition-colors duration-300 overflow-hidden"
+        className={`hidden md:flex flex-col h-screen fixed left-0 top-0 z-40 border-r shadow-sm transition-colors duration-300 overflow-hidden ${
+          theme === 'dark' 
+            ? 'bg-gray-900 border-gray-700 text-gray-100' 
+            : 'bg-sidebar backdrop-blur-md border-border'
+        }`}
         animate={{ 
           width: isCollapsed ? '80px' : '250px' 
         }}
@@ -109,16 +113,16 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
         }}
         layout // Help maintain layout consistency
       >
-        <div className="flex items-center p-4 border-b border-border h-16">
+        <div className={`flex items-center p-4 h-16 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-border'}`}>
           {!isCollapsed && (
             <Link to="/" className="flex items-center min-w-0">
-              <Logo />
+              <Logo className={theme === 'dark' ? 'filter brightness-110' : ''} />
             </Link>
           )}
           {isCollapsed && (
             <Link to="/" className="flex items-center justify-center w-full">
               <motion.div whileHover={{ rotate: 10 }} className="flex items-center justify-center">
-                <BeeIcon />
+                <BeeIcon className={theme === 'dark' ? 'filter brightness-110' : ''} />
               </motion.div>
             </Link>
           )}
@@ -135,8 +139,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
                   "flex items-center px-3 py-3 rounded-lg transition-colors relative",
                   isCollapsed ? "justify-center" : "justify-start",
                   isActive 
-                    ? "text-primary bg-primary/10" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                    ? theme === 'dark'
+                      ? "text-amber-400 bg-amber-900/20" 
+                      : "text-primary bg-primary/10"
+                    : theme === 'dark'
+                      ? "text-gray-300 hover:text-white hover:bg-gray-800/50"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                 )}
               >
                 <div className="relative">
@@ -147,7 +155,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
                 {isActive && (
                   <motion.div
                     layoutId="activeIndicator"
-                    className={`absolute ${isCollapsed ? 'left-0 top-0 bottom-0 w-1' : 'bottom-0 left-0 right-0 h-0.5'} bg-primary`}
+                    className={`absolute ${isCollapsed ? 'left-0 top-0 bottom-0 w-1' : 'bottom-0 left-0 right-0 h-0.5'} ${
+                      theme === 'dark' ? 'bg-amber-400' : 'bg-primary'
+                    }`}
                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                   />
                 )}
@@ -161,7 +171,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
             className={cn(
               "flex items-center px-3 py-3 rounded-lg transition-colors",
               isCollapsed ? "justify-center" : "justify-start",
-              "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              theme === 'dark'
+                ? "text-gray-300 hover:text-white hover:bg-gray-800/50"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
             )}
             aria-label={theme === 'light' ? "Switch to dark mode" : "Switch to light mode"}
           >
@@ -179,13 +191,17 @@ const Sidebar: React.FC<SidebarProps> = ({ onCollapsedChange }) => {
         {/* Button with updated event handler */}
         <button 
           onClick={toggleSidebar}
-          className="p-3 border-t border-border flex items-center justify-center hover:bg-accent/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className={`p-3 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 border-t ${
+            theme === 'dark' 
+              ? 'border-gray-700 hover:bg-gray-800/50 text-gray-300' 
+              : 'border-border hover:bg-accent/50'
+          }`}
           aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           type="button" // Explicitly set button type to prevent form submission behavior
         >
           {isCollapsed ? 
-            <ChevronRight className="h-5 w-5 text-primary" /> : 
-            <><ChevronLeft className="h-5 w-5 text-primary" /><span className="ml-2">Collapse</span></>
+            <ChevronRight className={`h-5 w-5 ${theme === 'dark' ? 'text-amber-400' : 'text-primary'}`} /> : 
+            <><ChevronLeft className={`h-5 w-5 ${theme === 'dark' ? 'text-amber-400' : 'text-primary'}`} /><span className="ml-2">Collapse</span></>
           }
         </button>
       </motion.aside>
