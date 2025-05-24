@@ -113,16 +113,20 @@ const NewInspectionForm: React.FC<NewInspectionFormProps> = ({
           const { getAllHives } = await import('@/services/hiveService');
           
           const apiaryData = await getAllApiaries();
-          setLoadedApiaries(apiaryData);
+          setLoadedApiaries(Array.isArray(apiaryData.data) ? apiaryData.data : []);
           
           const hiveData = await getAllHives();
-          setLoadedHives(hiveData);
+          setLoadedHives(Array.isArray(hiveData.data) ? hiveData.data : []);
           
           // If we have a preselected apiary, filter hives
           if (preselectedApiaryId) {
-            setFilteredHives(hiveData.filter(hive => hive.apiary_id === preselectedApiaryId));
+            setFilteredHives(
+              Array.isArray(hiveData.data) 
+                ? hiveData.data.filter(hive => hive.apiary_id === preselectedApiaryId)
+                : []
+            );
           } else {
-            setFilteredHives(hiveData);
+            setFilteredHives(Array.isArray(hiveData.data) ? hiveData.data : []);
           }
         } catch (error) {
           console.error('Error fetching data:', error);

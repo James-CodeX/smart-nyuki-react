@@ -15,14 +15,49 @@ export interface Alert {
 }
 
 /**
- * Get all active alerts for the authenticated user
+ * Pagination response interface
  */
-export const getAllAlerts = async (): Promise<Alert[]> => {
+export interface PaginatedResponse<T> {
+  data: T[];
+  count: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/**
+ * Get all active alerts for the authenticated user with pagination
+ * @param page Page number (1-based)
+ * @param pageSize Number of items per page
+ * @returns Paginated response with alerts
+ */
+export const getAllAlerts = async (
+  page: number = 1,
+  pageSize: number = 10
+): Promise<PaginatedResponse<Alert>> => {
   try {
+    // Ensure valid pagination parameters
+    const validPage = Math.max(1, page);
+    const validPageSize = Math.min(50, Math.max(1, pageSize)); // Limit page size between 1 and 50
+    
+    // Calculate offset
+    const offset = (validPage - 1) * validPageSize;
+    
     // Use a direct query instead of relying on nested relations
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
       throw new Error('User not authenticated');
+    }
+
+    // Get total count first
+    const { count, error: countError } = await supabase
+      .from('alerts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userData.user.id)
+      .is('resolved_at', null);
+      
+    if (countError) {
+      throw countError;
     }
 
     const { data: alerts, error } = await supabase
@@ -30,14 +65,21 @@ export const getAllAlerts = async (): Promise<Alert[]> => {
       .select('*')
       .eq('user_id', userData.user.id)
       .is('resolved_at', null)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(offset, offset + validPageSize - 1);
 
     if (error) {
       throw error;
     }
 
     if (!alerts?.length) {
-      return [];
+      return {
+        data: [],
+        count: count || 0,
+        page: validPage,
+        pageSize: validPageSize,
+        totalPages: Math.ceil((count || 0) / validPageSize)
+      };
     }
 
     // Get hives information for all alerts
@@ -83,7 +125,13 @@ export const getAllAlerts = async (): Promise<Alert[]> => {
       };
     });
 
-    return transformedAlerts;
+    return {
+      data: transformedAlerts,
+      count: count || 0,
+      page: validPage,
+      pageSize: validPageSize,
+      totalPages: Math.ceil((count || 0) / validPageSize)
+    };
   } catch (error) {
     console.error('Error fetching alerts:', error);
     throw error;

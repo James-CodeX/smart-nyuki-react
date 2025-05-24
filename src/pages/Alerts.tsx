@@ -123,11 +123,12 @@ const Alerts = () => {
       if (showLoading) {
         setLoading(true);
       }
-      const data = await getAllAlerts();
-      setAlerts(data);
-      setFilteredAlerts(data);
+      const response = await getAllAlerts();
+      const alertsData = Array.isArray(response.data) ? response.data : [];
+      setAlerts(alertsData);
+      setFilteredAlerts(alertsData);
       // After fetching new alerts, we need to re-apply any active filters
-      applyFilters(data);
+      applyFilters(alertsData);
     } catch (error) {
       console.error('Error loading alerts:', error);
       if (showLoading) { // Only show error toast for manual refreshes or initial load
@@ -169,7 +170,7 @@ const Alerts = () => {
   };
 
   const handleBulkResolve = async () => {
-    if (filteredAlerts.length === 0) return;
+    if (!Array.isArray(filteredAlerts) || filteredAlerts.length === 0) return;
     
     try {
       setLoading(true);
@@ -181,7 +182,7 @@ const Alerts = () => {
       
       // Update the local alerts state
       const resolvedIds = new Set(filteredAlerts.map(alert => alert.id));
-      setAlerts(prevAlerts => prevAlerts.filter(alert => !resolvedIds.has(alert.id)));
+      setAlerts(prevAlerts => Array.isArray(prevAlerts) ? prevAlerts.filter(alert => !resolvedIds.has(alert.id)) : []);
       
       toast({
         title: "Alerts resolved",
@@ -236,6 +237,11 @@ const Alerts = () => {
   };
 
   const applyFilters = (data: Alert[] = alerts) => {
+    if (!Array.isArray(data)) {
+      setFilteredAlerts([]);
+      return;
+    }
+    
     let result = [...data];
     
     // Filter by tab
@@ -283,9 +289,9 @@ const Alerts = () => {
     setFilteredAlerts(result);
   };
 
-  // Get unique alert types and severities for filters
-  const uniqueTypes = [...new Set(alerts.map(alert => alert.type))];
-  const uniqueSeverities = [...new Set(alerts.map(alert => alert.severity))];
+  // Get unique alert types and severities for filter dropdowns
+  const uniqueTypes = Array.isArray(alerts) ? [...new Set(alerts.map(alert => alert.type))] : [];
+  const uniqueSeverities = Array.isArray(alerts) ? [...new Set(alerts.map(alert => alert.severity))] : [];
 
   const handleRefresh = () => {
     loadAlerts(true);
@@ -293,241 +299,231 @@ const Alerts = () => {
 
   return (
     <PageTransition>
-      <div className="container max-w-7xl pt-16 md:pt-8 pb-16 px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="container max-w-7xl py-6 space-y-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <motion.h1 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="text-3xl font-bold tracking-tight flex items-center gap-2"
-            >
-              <BellRing className="h-8 w-8 text-primary" />
-              Alerts
-            </motion.h1>
-            <motion.p 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-muted-foreground mt-1"
-            >
-              Monitor and manage all alerts across your apiaries
-            </motion.p>
+            <h1 className="text-3xl font-bold tracking-tight">Alerts</h1>
+            <p className="text-muted-foreground">
+              Manage and respond to alerts from your hives
+            </p>
           </div>
           
-          {alerts.length > 0 && (
+          <div className="flex items-center gap-2">
             <Button 
-              variant="destructive"
-              onClick={handleBulkResolve}
-              disabled={loading || filteredAlerts.length === 0}
-              className="w-full md:w-auto"
+              variant="outline" 
+              onClick={handleRefresh}
+              disabled={loading}
             >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <CheckCircle className="h-4 w-4 mr-2" />
-              )}
-              Resolve All {filteredAlerts.length > 0 ? `(${filteredAlerts.length})` : ''}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Refresh
             </Button>
-          )}
-        </div>
-
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full mb-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="all">All Alerts</TabsTrigger>
-            <TabsTrigger value="unread">Unread Alerts</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search alerts..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 w-full"
-            />
-            {searchTerm && (
-              <button 
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                onClick={() => setSearchTerm('')}
+            
+            {Array.isArray(alerts) && alerts.length > 0 && (
+              <Button 
+                variant="default" 
+                onClick={handleBulkResolve}
+                disabled={loading || !Array.isArray(filteredAlerts) || filteredAlerts.length === 0}
               >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-          
-          <div className="flex flex-wrap gap-2 items-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-10">
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filter Types
-                  {typeFilters.length > 0 && (
-                    <Badge variant="secondary" className="ml-2">{typeFilters.length}</Badge>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-48">
-                {uniqueTypes.map(type => (
-                  <DropdownMenuCheckboxItem
-                    key={type}
-                    checked={typeFilters.includes(type)}
-                    onCheckedChange={() => toggleTypeFilter(type)}
-                  >
-                    <div className="flex items-center">
-                      {getAlertIcon(type)}
-                      <span className="ml-2">{type}</span>
-                    </div>
-                  </DropdownMenuCheckboxItem>
-                ))}
-                {uniqueTypes.length === 0 && (
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                    No alert types available
-                  </div>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-10">
-                  <AlertTriangle className="h-4 w-4 mr-2" />
-                  Filter Severity
-                  {severityFilters.length > 0 && (
-                    <Badge variant="secondary" className="ml-2">{severityFilters.length}</Badge>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-48">
-                {uniqueSeverities.map(severity => (
-                  <DropdownMenuCheckboxItem
-                    key={severity}
-                    checked={severityFilters.includes(severity)}
-                    onCheckedChange={() => toggleSeverityFilter(severity)}
-                  >
-                    {severity}
-                  </DropdownMenuCheckboxItem>
-                ))}
-                {uniqueSeverities.length === 0 && (
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                    No severity levels available
-                  </div>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <Button variant="outline" size="sm" className="h-10" onClick={() => handleSortChange('created_at')}>
-              <ArrowUpDown className="h-4 w-4 mr-2" />
-              Date {sortField === 'created_at' && (sortDirection === 'asc' ? '↑' : '↓')}
-            </Button>
-            
-            <Button variant="outline" size="sm" className="h-10" onClick={() => handleSortChange('severity')}>
-              <ArrowUpDown className="h-4 w-4 mr-2" />
-              Severity {sortField === 'severity' && (sortDirection === 'asc' ? '↑' : '↓')}
-            </Button>
-            
-            {(searchTerm || typeFilters.length > 0 || severityFilters.length > 0 || sortField !== 'created_at' || sortDirection !== 'desc' || activeTab !== 'all') && (
-              <Button variant="ghost" size="sm" onClick={resetFilters} className="h-10">
-                <X className="h-4 w-4 mr-2" />
-                Reset
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Resolve All {Array.isArray(filteredAlerts) && filteredAlerts.length > 0 ? `(${filteredAlerts.length})` : ''}
               </Button>
             )}
           </div>
         </div>
 
-        {loading ? (
-          <div className="grid grid-cols-1 gap-4">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="overflow-hidden">
-                <CardHeader className="pb-2">
-                  <Skeleton className="h-5 w-40" />
-                  <Skeleton className="h-4 w-28" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-4 w-full mb-2" />
-                  <Skeleton className="h-4 w-3/4" />
+        <div className="grid grid-cols-1 md:grid-cols-[250px_1fr] gap-6">
+          {/* Filters sidebar */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-5 w-5" />
+                    <span>Filters</span>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={resetFilters}
+                    className="h-8 px-2 text-xs"
+                  >
+                    Reset
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Alert Type</div>
+                  <div className="space-y-1">
+                    {uniqueTypes.map(type => (
+                      <div key={type} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`type-${type}`}
+                          checked={typeFilters.includes(type)}
+                          onChange={() => toggleTypeFilter(type)}
+                          className="rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <label htmlFor={`type-${type}`} className="text-sm capitalize">
+                          {type}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Severity</div>
+                  <div className="space-y-1">
+                    {uniqueSeverities.map(severity => (
+                      <div key={severity} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`severity-${severity}`}
+                          checked={severityFilters.includes(severity)}
+                          onChange={() => toggleSeverityFilter(severity)}
+                          className="rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <label htmlFor={`severity-${severity}`} className="text-sm capitalize">
+                          {severity}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Sort By</div>
+                  <Select
+                    value={`${sortField}-${sortDirection}`}
+                    onValueChange={(value) => {
+                      const [field, direction] = value.split('-');
+                      setSortField(field as 'created_at' | 'severity');
+                      setSortDirection(direction as 'asc' | 'desc');
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="created_at-desc">Newest first</SelectItem>
+                        <SelectItem value="created_at-asc">Oldest first</SelectItem>
+                        <SelectItem value="severity-desc">Highest severity</SelectItem>
+                        <SelectItem value="severity-asc">Lowest severity</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Main content area */}
+          <div className="space-y-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search alerts..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
+                <TabsList>
+                  <TabsTrigger value="all">All</TabsTrigger>
+                  <TabsTrigger value="unread">Unread</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+            
+            {loading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="overflow-hidden">
+                    <CardContent className="p-0">
+                      <div className="p-6">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-2">
+                            <Skeleton className="h-5 w-40" />
+                            <Skeleton className="h-4 w-60" />
+                          </div>
+                          <Skeleton className="h-8 w-20" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : !Array.isArray(filteredAlerts) || filteredAlerts.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <BellRing className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No alerts found</h3>
+                  <p className="text-muted-foreground text-center max-w-md">
+                    {searchTerm || typeFilters.length > 0 || severityFilters.length > 0
+                      ? "No alerts match your current filters. Try adjusting your search criteria."
+                      : "You don't have any active alerts at the moment. Check back later or adjust your alert thresholds in settings."}
+                  </p>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        ) : filteredAlerts.length === 0 ? (
-          <div className="bg-muted/30 border rounded-lg p-10 text-center">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="flex flex-col items-center"
-            >
-              <div className="bg-primary/10 p-4 rounded-full mb-4">
-                <CheckCircle className="h-10 w-10 text-primary" />
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {Array.isArray(filteredAlerts) && filteredAlerts.map((alert) => (
+                  <motion.div
+                    key={alert.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Card className={`overflow-hidden ${!alert.is_read ? 'border-primary/40 bg-primary/5' : ''}`}>
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between">
+                          <div className="flex items-center gap-2">
+                            {getAlertIcon(alert.type)}
+                            <CardTitle className="text-base font-medium">
+                              {alert.type} Alert • {alert.hive_name}
+                            </CardTitle>
+                            {!alert.is_read && (
+                              <Badge variant="default" className="ml-2">New</Badge>
+                            )}
+                          </div>
+                          <Badge className={`${getSeverityColor(alert.severity)}`}>
+                            {alert.severity}
+                          </Badge>
+                        </div>
+                        <CardDescription>
+                          {format(parseISO(alert.created_at), "MMM d, yyyy 'at' h:mm a")} • {alert.apiary_name}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm">{alert.message}</p>
+                      </CardContent>
+                      <CardFooter className="flex justify-end gap-2 pt-0">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleResolve(alert.id)}
+                          disabled={resolving[alert.id]}
+                        >
+                          {resolving[alert.id] ? 
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : 
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                          }
+                          Resolve
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  </motion.div>
+                ))}
               </div>
-              <h2 className="text-xl font-semibold mb-2">No Alerts Found</h2>
-              <p className="text-muted-foreground max-w-md mb-6">
-                {searchTerm || typeFilters.length > 0 || severityFilters.length > 0 ? 
-                  "No alerts match your current filters. Try adjusting your search or filters." : 
-                  "All your hives are in good condition! There are no active alerts at the moment."}
-              </p>
-              {(searchTerm || typeFilters.length > 0 || severityFilters.length > 0) && (
-                <Button variant="outline" onClick={resetFilters}>
-                  Clear Filters
-                </Button>
-              )}
-            </motion.div>
+            )}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {filteredAlerts.map((alert) => (
-              <motion.div
-                key={alert.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Card className={`overflow-hidden ${!alert.is_read ? 'border-primary/40 bg-primary/5' : ''}`}>
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between">
-                      <div className="flex items-center gap-2">
-                        {getAlertIcon(alert.type)}
-                        <CardTitle className="text-base font-medium">
-                          {alert.type} Alert • {alert.hive_name}
-                        </CardTitle>
-                        {!alert.is_read && (
-                          <Badge variant="default" className="ml-2">New</Badge>
-                        )}
-                      </div>
-                      <Badge className={`${getSeverityColor(alert.severity)}`}>
-                        {alert.severity}
-                      </Badge>
-                    </div>
-                    <CardDescription>
-                      {format(parseISO(alert.created_at), "MMM d, yyyy 'at' h:mm a")} • {alert.apiary_name}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm">{alert.message}</p>
-                  </CardContent>
-                  <CardFooter className="flex justify-end gap-2 pt-0">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleResolve(alert.id)}
-                      disabled={resolving[alert.id]}
-                    >
-                      {resolving[alert.id] ? 
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : 
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                      }
-                      Resolve
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        )}
+        </div>
       </div>
     </PageTransition>
   );

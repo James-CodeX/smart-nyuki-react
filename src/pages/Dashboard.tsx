@@ -171,17 +171,21 @@ const Dashboard = () => {
   // Stats
   const apiaryCount = apiaries.length || 0;
   const hiveCount = hives.length || 0;
-  const hivesWithAlerts = hives.filter(hive => hive.alerts && hive.alerts.length > 0);
+  const hivesWithAlerts = Array.isArray(hives) 
+    ? hives.filter(hive => hive.alerts && hive.alerts.length > 0)
+    : [];
   const alertCount = hivesWithAlerts.length;
   
   // Calculate total weight from all hives
-  const totalWeight = hives.reduce((sum, hive) => {
-    if (hive.metrics && hive.metrics.weight && hive.metrics.weight.length > 0) {
-      const latestWeight = hive.metrics.weight[hive.metrics.weight.length - 1].value;
-      return sum + (latestWeight || 0);
-    }
-    return sum;
-  }, 0);
+  const totalWeight = Array.isArray(hives) 
+    ? hives.reduce((sum, hive) => {
+        if (hive.metrics && hive.metrics.weight && hive.metrics.weight.length > 0) {
+          const latestWeight = hive.metrics.weight[hive.metrics.weight.length - 1].value;
+          return sum + (latestWeight || 0);
+        }
+        return sum;
+      }, 0)
+    : 0;
   
   // Sample production data
   const productionData = generateProductionData();
@@ -200,12 +204,12 @@ const Dashboard = () => {
         setIsLoadingHives(true);
         setIsLoadingApiaries(true);
         
-        const apiariesData = await getAllApiaries();
-        setApiaries(apiariesData);
+        const apiariesResponse = await getAllApiaries();
+        setApiaries(Array.isArray(apiariesResponse.data) ? apiariesResponse.data : []);
         setIsLoadingApiaries(false);
         
-        const hivesData = await getAllHives();
-        setHives(hivesData);
+        const hivesResponse = await getAllHives();
+        setHives(Array.isArray(hivesResponse.data) ? hivesResponse.data : []);
         setIsLoadingHives(false);
         
         setLoading(false);
@@ -246,8 +250,8 @@ const Dashboard = () => {
       await addHive(data);
       
       // Refresh hives list
-      const updatedHives = await getAllHives();
-      setHives(updatedHives);
+      const hivesData = await getAllHives();
+      setHives(Array.isArray(hivesData.data) ? hivesData.data : []);
       
       toast({
         title: "Hive added",
@@ -280,7 +284,7 @@ const Dashboard = () => {
       
       // Refresh apiaries list
       const updatedApiaries = await getAllApiaries();
-      setApiaries(updatedApiaries);
+      setApiaries(Array.isArray(updatedApiaries.data) ? updatedApiaries.data : []);
       
       toast({
         title: "Apiary added",
@@ -584,7 +588,7 @@ const Dashboard = () => {
                   const loadData = async () => {
                     try {
                       const hivesData = await getAllHives();
-                      setHives(hivesData);
+                      setHives(Array.isArray(hivesData.data) ? hivesData.data : []);
                     } catch (error) {
                       console.error('Error refreshing hives data:', error);
                     }

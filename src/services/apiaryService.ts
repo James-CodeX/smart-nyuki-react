@@ -23,22 +23,62 @@ export interface ApiaryWithStats extends Apiary {
 }
 
 /**
- * Fetch all apiaries for the authenticated user
+ * Pagination response interface
  */
-export const getAllApiaries = async (): Promise<ApiaryWithStats[]> => {
+export interface PaginatedResponse<T> {
+  data: T[];
+  count: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/**
+ * Fetch all apiaries for the authenticated user with pagination
+ * @param page Page number (1-based)
+ * @param pageSize Number of items per page
+ * @returns Paginated response with apiaries
+ */
+export const getAllApiaries = async (
+  page: number = 1,
+  pageSize: number = 10
+): Promise<PaginatedResponse<ApiaryWithStats>> => {
   try {
-    // Get all apiaries
+    // Ensure valid pagination parameters
+    const validPage = Math.max(1, page);
+    const validPageSize = Math.min(50, Math.max(1, pageSize)); // Limit page size between 1 and 50
+    
+    // Calculate offset
+    const offset = (validPage - 1) * validPageSize;
+    
+    // Get total count first
+    const { count, error: countError } = await supabase
+      .from('apiaries')
+      .select('*', { count: 'exact', head: true });
+      
+    if (countError) {
+      throw countError;
+    }
+    
+    // Get apiaries with pagination
     const { data: apiaries, error } = await supabase
       .from('apiaries')
       .select('*')
-      .order('name', { ascending: true });
+      .order('name', { ascending: true })
+      .range(offset, offset + validPageSize - 1);
 
     if (error) {
       throw error;
     }
 
     if (!apiaries?.length) {
-      return [];
+      return {
+        data: [],
+        count: count || 0,
+        page: validPage,
+        pageSize: validPageSize,
+        totalPages: Math.ceil((count || 0) / validPageSize)
+      };
     }
 
     // Enrich apiary data with statistics
@@ -127,7 +167,13 @@ export const getAllApiaries = async (): Promise<ApiaryWithStats[]> => {
       })
     );
 
-    return enrichedApiaries;
+    return {
+      data: enrichedApiaries,
+      count: count || 0,
+      page: validPage,
+      pageSize: validPageSize,
+      totalPages: Math.ceil((count || 0) / validPageSize)
+    };
   } catch (error) {
     console.error('Error in getAllApiaries:', error);
     throw error;

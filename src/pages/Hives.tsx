@@ -71,8 +71,8 @@ const Hives = () => {
     const loadApiaries = async () => {
       try {
         setIsLoadingApiaries(true);
-        const apiariesData = await getAllApiaries();
-        setApiaries(apiariesData);
+        const response = await getAllApiaries();
+        setApiaries(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error('Error loading apiaries:', error);
         toast({

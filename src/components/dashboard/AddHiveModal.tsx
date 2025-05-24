@@ -167,8 +167,8 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
     if (isOpen) {
       const loadApiaries = async () => {
         try {
-          const data = await getAllApiaries();
-          setApiaries(data.map(apiary => ({
+          const response = await getAllApiaries();
+          setApiaries((Array.isArray(response.data) ? response.data : []).map(apiary => ({
             id: apiary.id,
             name: apiary.name
           })));

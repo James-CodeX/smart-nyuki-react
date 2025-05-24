@@ -145,13 +145,15 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ className }) => {
         const apiaryData = await getAllApiaries();
         
         // Transform to the format we need
-        const transformedApiaries = apiaryData.map(apiary => ({
-          id: apiary.id,
-          name: apiary.name,
-          location: apiary.location || 'Unknown location',
-          latitude: apiary.latitude || 40.7128, // Default to NYC
-          longitude: apiary.longitude || -74.0060
-        }));
+        const transformedApiaries = Array.isArray(apiaryData.data) 
+          ? apiaryData.data.map(apiary => ({
+              id: apiary.id,
+              name: apiary.name,
+              location: apiary.location || 'Unknown location',
+              latitude: apiary.latitude || 40.7128, // Default to NYC
+              longitude: apiary.longitude || -74.0060
+            }))
+          : [];
         
         setApiaries(transformedApiaries);
         

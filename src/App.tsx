@@ -13,6 +13,8 @@ import ActiveAlertsIndicator from "./components/dashboard/ActiveAlertsIndicator"
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { SidebarProvider, useSidebar } from "./context/SidebarContext";
 import { cn } from "@/lib/utils";
+import ErrorBoundary from "./components/common/ErrorBoundary";
+import LoadingState from "./components/common/LoadingState";
 
 // Use React.lazy for code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -35,9 +37,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // Loading component for suspense fallback
 const PageLoader = () => (
-  <div className="min-h-screen w-full flex items-center justify-center">
-    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-  </div>
+  <LoadingState fullPage size="large" text="Loading..." />
 );
 
 // Protected route component
@@ -88,9 +88,11 @@ const AppRoutes = () => {
           collapsed ? "md:ml-20" : "md:ml-64"
         )}>
           <Suspense fallback={<PageLoader />}>
-            <div className="pb-20 md:pb-6 relative overflow-hidden">
-              {children}
-            </div>
+            <ErrorBoundary>
+              <div className="pb-20 md:pb-6 relative overflow-hidden">
+                {children}
+              </div>
+            </ErrorBoundary>
           </Suspense>
         </div>
         <BottomNavigation />
@@ -103,14 +105,18 @@ const AppRoutes = () => {
       <Routes>
         <Route path="/auth" element={
           <Suspense fallback={<PageLoader />}>
-            <Auth />
+            <ErrorBoundary>
+              <Auth />
+            </ErrorBoundary>
           </Suspense>
         } />
         <Route
           path="/"
           element={
             <Suspense fallback={<PageLoader />}>
-              <Landing />
+              <ErrorBoundary>
+                <Landing />
+              </ErrorBoundary>
             </Suspense>
           }
         />
@@ -214,7 +220,11 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
-        <Route path="*" element={<NotFound />} />
+        <Route path="*" element={
+          <ErrorBoundary>
+            <NotFound />
+          </ErrorBoundary>
+        } />
       </Routes>
     </AnimatePresence>
   );

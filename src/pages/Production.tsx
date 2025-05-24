@@ -781,11 +781,11 @@ const Production = () => {
       try {
         // Load apiaries
         const apiaryData = await getAllApiaries();
-        setApiaries(apiaryData || []);
+        setApiaries(Array.isArray(apiaryData.data) ? apiaryData.data : []);
         
         // Load hives
         const hivesData = await getAllHives();
-        setHives(hivesData || []);
+        setHives(Array.isArray(hivesData.data) ? hivesData.data : []);
         
         // Get production data
         const productionData = await getAllProductionData();
@@ -1107,7 +1107,7 @@ const Production = () => {
                 
                 // Update apiary data
                 const apiaryData = await getAllApiaries();
-                setApiaries(apiaryData || []);
+                setApiaries(Array.isArray(apiaryData.data) ? apiaryData.data : []);
               } catch (error) {
                 console.error('Error fetching analytics data:', error);
               } finally {

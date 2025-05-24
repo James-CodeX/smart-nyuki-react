@@ -56,23 +56,61 @@ export interface InspectionWithHiveDetails extends Inspection {
   apiary_name: string;
 }
 
+// Pagination response interface
+export interface PaginatedResponse<T> {
+  data: T[];
+  count: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 /**
- * Get all inspections for the authenticated user
+ * Get all inspections for the authenticated user with pagination
+ * @param page Page number (1-based)
+ * @param pageSize Number of items per page
+ * @returns Paginated response with inspections
  */
-export const getAllInspections = async (): Promise<InspectionWithHiveDetails[]> => {
+export const getAllInspections = async (
+  page: number = 1, 
+  pageSize: number = 10
+): Promise<PaginatedResponse<InspectionWithHiveDetails>> => {
   try {
-    // First get the inspections
+    // Ensure valid pagination parameters
+    const validPage = Math.max(1, page);
+    const validPageSize = Math.min(50, Math.max(1, pageSize)); // Limit page size between 1 and 50
+    
+    // Calculate offset
+    const offset = (validPage - 1) * validPageSize;
+    
+    // Get total count first
+    const { count, error: countError } = await supabase
+      .from('inspections')
+      .select('*', { count: 'exact', head: true });
+      
+    if (countError) {
+      throw countError;
+    }
+    
+    // Then get the paginated inspections
     const { data: inspections, error } = await supabase
       .from('inspections')
       .select('*')
-      .order('inspection_date', { ascending: false });
+      .order('inspection_date', { ascending: false })
+      .range(offset, offset + validPageSize - 1);
 
     if (error) {
       throw error;
     }
 
     if (!inspections?.length) {
-      return [];
+      return {
+        data: [],
+        count: count || 0,
+        page: validPage,
+        pageSize: validPageSize,
+        totalPages: Math.ceil((count || 0) / validPageSize)
+      };
     }
 
     // Get all the hives for lookup
@@ -105,7 +143,13 @@ export const getAllInspections = async (): Promise<InspectionWithHiveDetails[]> 
       };
     });
 
-    return transformedInspections;
+    return {
+      data: transformedInspections,
+      count: count || 0,
+      page: validPage,
+      pageSize: validPageSize,
+      totalPages: Math.ceil((count || 0) / validPageSize)
+    };
   } catch (error) {
     console.error('Error fetching inspections:', error);
     throw error;

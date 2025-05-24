@@ -64,15 +64,15 @@ const Inspections = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [inspectionsData, apiariesData, hivesData] = await Promise.all([
+      const [inspectionsResponse, apiariesResponse, hivesResponse] = await Promise.all([
         inspectionService.getAllInspections(),
         apiaryService.getAllApiaries(),
         hiveService.getAllHives()
       ]);
       
-      setInspections(inspectionsData);
-      setApiaries(apiariesData);
-      setHives(hivesData);
+      setInspections(Array.isArray(inspectionsResponse.data) ? inspectionsResponse.data : []);
+      setApiaries(Array.isArray(apiariesResponse.data) ? apiariesResponse.data : []);
+      setHives(Array.isArray(hivesResponse.data) ? hivesResponse.data : []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -105,7 +105,9 @@ const Inspections = () => {
 
     try {
       await inspectionService.deleteInspection(inspectionToDelete);
-      setInspections(inspections.filter(i => i.id !== inspectionToDelete));
+      setInspections(Array.isArray(inspections) 
+        ? inspections.filter(i => i.id !== inspectionToDelete)
+        : []);
       toast({
         title: "Success",
         description: "Inspection deleted successfully",
@@ -146,16 +148,18 @@ const Inspections = () => {
   };
 
   // Transform inspections to the format expected by the calendar component
-  const calendarInspections: CalendarInspection[] = inspections.map(inspection => ({
-    id: inspection.id,
-    apiaryId: inspection.apiary_id,
-    apiaryName: inspection.apiary_name,
-    hiveId: inspection.hive_id,
-    hiveName: inspection.hive_name,
-    date: inspection.inspection_date,
-    status: getInspectionStatus(inspection),
-    type: 'inspection'
-  }));
+  const calendarInspections: CalendarInspection[] = Array.isArray(inspections) 
+    ? inspections.map(inspection => ({
+        id: inspection.id,
+        apiaryId: inspection.apiary_id,
+        apiaryName: inspection.apiary_name,
+        hiveId: inspection.hive_id,
+        hiveName: inspection.hive_name,
+        date: inspection.inspection_date,
+        status: getInspectionStatus(inspection),
+        type: 'inspection'
+      }))
+    : [];
 
   const handleDayClick = (date: Date, dayInspections: CalendarInspection[]) => {
     if (dayInspections.length === 1) {
@@ -179,36 +183,40 @@ const Inspections = () => {
   };
 
   // Get upcoming inspections due in the next 7 days
-  const upcomingInspections = inspections.filter(inspection => {
-    const inspectionDate = parseISO(inspection.inspection_date);
-    const nextWeek = addDays(new Date(), 7);
-    const status = getInspectionStatus(inspection);
-    
-    return (status === 'scheduled' || status === 'overdue') && 
-           inspectionDate <= nextWeek;
-  });
+  const upcomingInspections = Array.isArray(inspections) 
+    ? inspections.filter(inspection => {
+        const inspectionDate = parseISO(inspection.inspection_date);
+        const nextWeek = addDays(new Date(), 7);
+        const status = getInspectionStatus(inspection);
+        
+        return (status === 'scheduled' || status === 'overdue') && 
+              inspectionDate <= nextWeek;
+      })
+    : [];
 
-  const filteredInspections = inspections
-    .filter(inspection => {
-      const matchesSearch = inspection.hive_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        inspection.apiary_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        inspection.notes?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        format(parseISO(inspection.inspection_date), 'yyyy-MM-dd').includes(searchQuery);
+  const filteredInspections = Array.isArray(inspections)
+    ? inspections
+        .filter(inspection => {
+          const matchesSearch = inspection.hive_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            inspection.apiary_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            inspection.notes?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            format(parseISO(inspection.inspection_date), 'yyyy-MM-dd').includes(searchQuery);
 
-      const status = getInspectionStatus(inspection);
-      
-      switch (activeTab) {
-        case 'completed':
-          return matchesSearch && status === 'completed';
-        case 'upcoming':
-          return matchesSearch && (status === 'scheduled' || status === 'overdue');
-        case 'overdue':
-          return matchesSearch && status === 'overdue';
-        default:
-          return matchesSearch;
-      }
-    })
-    .sort((a, b) => parseISO(b.inspection_date).getTime() - parseISO(a.inspection_date).getTime());
+          const status = getInspectionStatus(inspection);
+          
+          switch (activeTab) {
+            case 'completed':
+              return matchesSearch && status === 'completed';
+            case 'upcoming':
+              return matchesSearch && (status === 'scheduled' || status === 'overdue');
+            case 'overdue':
+              return matchesSearch && status === 'overdue';
+            default:
+              return matchesSearch;
+          }
+        })
+        .sort((a, b) => parseISO(b.inspection_date).getTime() - parseISO(a.inspection_date).getTime())
+    : [];
 
   const renderEmptyState = (title: string, description: string, icon: React.ReactNode) => (
     <div className="flex flex-col items-center justify-center h-48 text-center">

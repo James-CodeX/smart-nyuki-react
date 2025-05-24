@@ -88,8 +88,8 @@ const AlertsManagement: React.FC<AlertsManagementProps> = ({ className, onResolv
       if (showLoading) {
         setLoading(true);
       }
-      const data = await getAllAlerts();
-      setAlerts(data);
+      const response = await getAllAlerts();
+      setAlerts(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching alerts:', error);
       if (showLoading) { // Only show error toast for manual refreshes or initial load
@@ -174,7 +174,7 @@ const AlertsManagement: React.FC<AlertsManagementProps> = ({ className, onResolv
         <CardTitle className="flex items-center gap-2">
           <AlertCircle className="h-5 w-5" />
           <span>Alerts</span>
-          {alerts.length > 0 && (
+          {Array.isArray(alerts) && alerts.length > 0 && (
             <Badge variant="destructive" className="ml-2">
               {alerts.length}
             </Badge>
@@ -183,7 +183,7 @@ const AlertsManagement: React.FC<AlertsManagementProps> = ({ className, onResolv
         <CardDescription>Manage your apiary and hive alerts</CardDescription>
       </CardHeader>
       <CardContent className="p-0">
-        {alerts.length === 0 ? (
+        {!Array.isArray(alerts) || alerts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
             <Shield className="h-12 w-12 text-green-500 mb-2" />
             <h3 className="text-lg font-medium">All Clear</h3>
@@ -191,7 +191,7 @@ const AlertsManagement: React.FC<AlertsManagementProps> = ({ className, onResolv
           </div>
         ) : (
           <div className="divide-y">
-            {alerts.map((alert) => (
+            {Array.isArray(alerts) && alerts.map((alert) => (
               <motion.div
                 key={alert.id}
                 initial={{ opacity: 0, height: 0 }}

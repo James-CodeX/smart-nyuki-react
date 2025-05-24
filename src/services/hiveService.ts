@@ -85,11 +85,44 @@ export interface HiveWithFullDetails extends Omit<HiveCreateInput, 'apiary_id'> 
 }
 
 /**
- * Fetch all hives for the authenticated user with optimized batch querying
+ * Pagination response interface
  */
-export const getAllHives = async (): Promise<HiveWithFullDetails[]> => {
+export interface PaginatedResponse<T> {
+  data: T[];
+  count: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/**
+ * Fetch all hives for the authenticated user with optimized batch querying and pagination
+ * @param page Page number (1-based)
+ * @param pageSize Number of items per page
+ * @returns Paginated response with hives
+ */
+export const getAllHives = async (
+  page: number = 1,
+  pageSize: number = 10
+): Promise<PaginatedResponse<HiveWithFullDetails>> => {
   try {
-    // Get all hives with apiary name in a single joined query
+    // Ensure valid pagination parameters
+    const validPage = Math.max(1, page);
+    const validPageSize = Math.min(50, Math.max(1, pageSize)); // Limit page size between 1 and 50
+    
+    // Calculate offset
+    const offset = (validPage - 1) * validPageSize;
+    
+    // Get total count first
+    const { count, error: countError } = await supabase
+      .from('hives')
+      .select('*', { count: 'exact', head: true });
+      
+    if (countError) {
+      throw countError;
+    }
+
+    // Get all hives with apiary name in a single joined query with pagination
     const { data: hives, error } = await supabase
       .from('hives')
       .select(`
@@ -98,14 +131,21 @@ export const getAllHives = async (): Promise<HiveWithFullDetails[]> => {
           name
         )
       `)
-      .order('name', { ascending: true });
+      .order('name', { ascending: true })
+      .range(offset, offset + validPageSize - 1);
 
     if (error) {
       throw error;
     }
 
     if (!hives?.length) {
-      return [];
+      return {
+        data: [],
+        count: count || 0,
+        page: validPage,
+        pageSize: validPageSize,
+        totalPages: Math.ceil((count || 0) / validPageSize)
+      };
     }
 
     // Extract all hive_ids for batch queries - they're now the primary keys
@@ -204,7 +244,13 @@ export const getAllHives = async (): Promise<HiveWithFullDetails[]> => {
       };
     });
 
-    return enrichedHives;
+    return {
+      data: enrichedHives,
+      count: count || 0,
+      page: validPage,
+      pageSize: validPageSize,
+      totalPages: Math.ceil((count || 0) / validPageSize)
+    };
   } catch (error) {
     console.error('Error in getAllHives:', error);
     throw error;

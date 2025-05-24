@@ -21,8 +21,8 @@ const Apiaries = () => {
     const loadApiaries = async () => {
       try {
         setIsLoading(true);
-        const data = await getAllApiaries();
-        setApiaries(data);
+        const response = await getAllApiaries();
+        setApiaries(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error('Error loading apiaries:', error);
         toast({
@@ -50,7 +50,7 @@ const Apiaries = () => {
       
       // Refresh the apiaries list
       const updatedApiaries = await getAllApiaries();
-      setApiaries(updatedApiaries);
+      setApiaries(Array.isArray(updatedApiaries.data) ? updatedApiaries.data : []);
       
       toast({
         title: "Apiary added",
