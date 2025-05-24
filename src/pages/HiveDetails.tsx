@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getHiveById, updateHive, deleteHive } from '@/services/hiveService';
 import EditHiveModal from '@/components/dashboard/EditHiveModal';
+import logger from '@/utils/logger';
+
 
 // Components for detailed metric view
 const DetailedMetricCard = ({ title, value, unit, gradient, status, data, className = '' }: {
@@ -293,7 +295,7 @@ const HiveDetails = () => {
           }
         }
       } catch (error) {
-        console.error('Error loading hive details:', error);
+        logger.error('Error loading hive details:', error);
         toast({
           variant: "destructive",
           title: "Error loading data",
@@ -328,7 +330,7 @@ const HiveDetails = () => {
           : 'You will no longer receive notifications for this hive.',
       });
     } catch (error) {
-      console.error('Error toggling alerts:', error);
+      logger.error('Error toggling alerts:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -358,7 +360,7 @@ const HiveDetails = () => {
       
       setEditModalOpen(false);
     } catch (error) {
-      console.error('Error updating hive:', error);
+      logger.error('Error updating hive:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -385,7 +387,7 @@ const HiveDetails = () => {
       // Navigate back to apiary details page
       navigate(`/apiaries/${apiaryId}`);
     } catch (error) {
-      console.error('Error deleting hive:', error);
+      logger.error('Error deleting hive:', error);
       toast({
         variant: "destructive",
         title: "Error",

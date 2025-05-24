@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import AddApiaryModal from '@/components/dashboard/AddApiaryModal';
 import { getAllApiaries, addApiary as addApiaryService, ApiaryWithStats } from '@/services/apiaryService';
 import { toast } from '@/components/ui/use-toast';
+import logger from '@/utils/logger';
+
 
 const Apiaries = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -24,7 +26,7 @@ const Apiaries = () => {
         const response = await getAllApiaries();
         setApiaries(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
-        console.error('Error loading apiaries:', error);
+        logger.error('Error loading apiaries:', error);
         toast({
           variant: "destructive",
           title: "Error loading apiaries",
@@ -59,7 +61,7 @@ const Apiaries = () => {
       
       setIsAddModalOpen(false);
     } catch (error) {
-      console.error('Error adding apiary:', error);
+      logger.error('Error adding apiary:', error);
       toast({
         variant: "destructive",
         title: "Error adding apiary",

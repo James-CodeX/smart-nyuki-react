@@ -39,6 +39,8 @@ import * as inspectionService from '@/services/inspectionService';
 import * as apiaryService from '@/services/apiaryService';
 import * as hiveService from '@/services/hiveService';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import logger from '@/utils/logger';
+
 
 const Inspections = () => {
   const navigate = useNavigate();
@@ -74,7 +76,7 @@ const Inspections = () => {
       setApiaries(Array.isArray(apiariesResponse.data) ? apiariesResponse.data : []);
       setHives(Array.isArray(hivesResponse.data) ? hivesResponse.data : []);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      logger.error('Error fetching data:', error);
       toast({
         title: "Error",
         description: "Failed to load inspections",
@@ -113,7 +115,7 @@ const Inspections = () => {
         description: "Inspection deleted successfully",
       });
     } catch (error) {
-      console.error('Error deleting inspection:', error);
+      logger.error('Error deleting inspection:', error);
       toast({
         title: "Error",
         description: "Failed to delete inspection",

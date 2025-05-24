@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase';
+import logger from '@/utils/logger';
+
 
 export interface Apiary {
   id: string;
@@ -91,7 +93,7 @@ export const getAllApiaries = async (
           .eq('apiary_id', apiary.id);
         
         if (hiveCountError) {
-          console.error('Error fetching hive count:', hiveCountError);
+          logger.error('Error fetching hive count:', hiveCountError);
         }
 
         // Get the hive IDs first
@@ -101,7 +103,7 @@ export const getAllApiaries = async (
           .eq('apiary_id', apiary.id);
         
         if (hivesError) {
-          console.error('Error fetching hives:', hivesError);
+          logger.error('Error fetching hives:', hivesError);
         }
         
         // Then get the metrics for those hive IDs
@@ -120,7 +122,7 @@ export const getAllApiaries = async (
                 .limit(25);  // Reduced from 100 to 25 per hive to avoid large payload
               
               if (error) {
-                console.error(`Error fetching metrics for hive ${hiveId}:`, error);
+                logger.error(`Error fetching metrics for hive ${hiveId}:`, error);
                 return [];
               }
               
@@ -175,7 +177,7 @@ export const getAllApiaries = async (
       totalPages: Math.ceil((count || 0) / validPageSize)
     };
   } catch (error) {
-    console.error('Error in getAllApiaries:', error);
+    logger.error('Error in getAllApiaries:', error);
     throw error;
   }
 };
@@ -206,7 +208,7 @@ export const getApiaryById = async (id: string): Promise<ApiaryWithStats | null>
       .eq('apiary_id', id);
     
     if (hiveCountError) {
-      console.error('Error fetching hive count:', hiveCountError);
+      logger.error('Error fetching hive count:', hiveCountError);
     }
 
     // Get the hive IDs first
@@ -216,7 +218,7 @@ export const getApiaryById = async (id: string): Promise<ApiaryWithStats | null>
       .eq('apiary_id', id);
     
     if (hivesError) {
-      console.error('Error fetching hives:', hivesError);
+      logger.error('Error fetching hives:', hivesError);
     }
     
     // Then get the metrics for those hive IDs
@@ -235,7 +237,7 @@ export const getApiaryById = async (id: string): Promise<ApiaryWithStats | null>
             .limit(25);  // Reduced from 100 to 25 per hive to avoid large payload
           
           if (error) {
-            console.error(`Error fetching metrics for hive ${hiveId}:`, error);
+            logger.error(`Error fetching metrics for hive ${hiveId}:`, error);
             return [];
           }
           
@@ -280,7 +282,7 @@ export const getApiaryById = async (id: string): Promise<ApiaryWithStats | null>
       avgWeight: Math.round(avgWeight * 10) / 10,
     };
   } catch (error) {
-    console.error('Error in getApiaryById:', error);
+    logger.error('Error in getApiaryById:', error);
     throw error;
   }
 };
@@ -314,7 +316,7 @@ export const addApiary = async (apiaryData: Omit<Apiary, 'id' | 'created_at' | '
 
     return data;
   } catch (error) {
-    console.error('Error in addApiary:', error);
+    logger.error('Error in addApiary:', error);
     throw error;
   }
 };
@@ -337,7 +339,7 @@ export const updateApiary = async (id: string, apiaryData: Partial<Omit<Apiary, 
 
     return data;
   } catch (error) {
-    console.error('Error in updateApiary:', error);
+    logger.error('Error in updateApiary:', error);
     throw error;
   }
 };
@@ -356,7 +358,124 @@ export const deleteApiary = async (id: string): Promise<void> => {
       throw error;
     }
   } catch (error) {
-    console.error('Error in deleteApiary:', error);
+    logger.error('Error in deleteApiary:', error);
+    throw error;
+  }
+};
+
+/**
+ * Optimized function to fetch apiaries with basic stats for dashboard
+ * This function reduces database calls by using aggregation and limiting data
+ */
+export const getDashboardApiaries = async (): Promise<ApiaryWithStats[]> => {
+  try {
+    // Get all apiaries first
+    const { data: apiaries, error } = await supabase
+      .from('apiaries')
+      .select('*')
+      .order('name', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    if (!apiaries?.length) {
+      return [];
+    }
+
+    // Get all hives in a single query
+    const { data: hives, error: hivesError } = await supabase
+      .from('hives')
+      .select('hive_id, apiary_id');
+    
+    if (hivesError) {
+      logger.error('Error fetching hives:', hivesError);
+      return apiaries.map(apiary => ({
+        ...apiary,
+        hiveCount: 0,
+        avgTemperature: 0,
+        avgHumidity: 0,
+        avgSound: 0,
+        avgWeight: 0
+      }));
+    }
+
+    // Group hives by apiary_id
+    const hivesByApiary = hives?.reduce((acc, hive) => {
+      if (!acc[hive.apiary_id]) {
+        acc[hive.apiary_id] = [];
+      }
+      acc[hive.apiary_id].push(hive.hive_id);
+      return acc;
+    }, {} as Record<string, string[]>) || {};
+
+    // Get the latest metrics for all hives in a single query
+    // Using a SQL query with DISTINCT ON to get only the latest record per hive
+    const { data: latestMetrics, error: metricsError } = await supabase
+      .rpc('get_latest_metrics_for_dashboard');
+
+    if (metricsError) {
+      logger.error('Error fetching metrics:', metricsError);
+      return apiaries.map(apiary => ({
+        ...apiary,
+        hiveCount: hivesByApiary[apiary.id]?.length || 0,
+        avgTemperature: 0,
+        avgHumidity: 0,
+        avgSound: 0,
+        avgWeight: 0
+      }));
+    }
+
+    // Group metrics by hive_id
+    const metricsByHive = latestMetrics?.reduce((acc, metric) => {
+      acc[metric.hive_id] = metric;
+      return acc;
+    }, {} as Record<string, any>) || {};
+
+    // Calculate stats for each apiary
+    const enrichedApiaries = apiaries.map(apiary => {
+      const apiaryHives = hivesByApiary[apiary.id] || [];
+      const hiveCount = apiaryHives.length;
+      
+      // Calculate averages from the latest metrics
+      let tempSum = 0, humSum = 0, soundSum = 0, weightSum = 0;
+      let tempCount = 0, humCount = 0, soundCount = 0, weightCount = 0;
+      
+      apiaryHives.forEach(hiveId => {
+        const metric = metricsByHive[hiveId];
+        if (metric) {
+          if (metric.temp_value !== null) {
+            tempSum += metric.temp_value;
+            tempCount++;
+          }
+          if (metric.hum_value !== null) {
+            humSum += metric.hum_value;
+            humCount++;
+          }
+          if (metric.sound_value !== null) {
+            soundSum += metric.sound_value;
+            soundCount++;
+          }
+          if (metric.weight_value !== null) {
+            weightSum += metric.weight_value;
+            weightCount++;
+          }
+        }
+      });
+      
+      return {
+        ...apiary,
+        hiveCount,
+        avgTemperature: tempCount > 0 ? Math.round((tempSum / tempCount) * 10) / 10 : 0,
+        avgHumidity: humCount > 0 ? Math.round(humSum / humCount) : 0,
+        avgSound: soundCount > 0 ? Math.round(soundSum / soundCount) : 0,
+        avgWeight: weightCount > 0 ? Math.round((weightSum / weightCount) * 10) / 10 : 0
+      };
+    });
+
+    return enrichedApiaries;
+  } catch (error) {
+    logger.error('Error in getDashboardApiaries:', error);
     throw error;
   }
 }; 

@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { useState, useEffect } from 'react';
 import { format, formatDistance, parseISO, isPast } from 'date-fns';
 import { 
@@ -143,7 +145,7 @@ const InspectionDetailDrawer: React.FC<InspectionDetailDrawerProps> = ({
         const data = await getInspectionFindings(inspection.id);
         setFindings(data);
       } catch (error) {
-        console.error('Error fetching inspection findings:', error);
+        logger.error('Error fetching inspection findings:', error);
       } finally {
         setLoadingFindings(false);
       }

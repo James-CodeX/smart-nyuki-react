@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import logger from '@/utils/logger';
+
 
 interface SidebarContextType {
   collapsed: boolean;
@@ -15,7 +17,7 @@ const getPersistedSidebarState = (): boolean => {
       return JSON.parse(persistedState);
     }
   } catch (error) {
-    console.error('Error loading persisted sidebar state:', error);
+    logger.error('Error loading persisted sidebar state:', error);
   }
   return false; // Default to expanded
 };
@@ -32,7 +34,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem('sidebar-collapsed', JSON.stringify(collapsed));
     } catch (error) {
-      console.error('Error saving sidebar state:', error);
+      logger.error('Error saving sidebar state:', error);
     }
   }, [collapsed]);
 

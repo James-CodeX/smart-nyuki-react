@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Map } from 'lucide-react';
 import { forceMetricsCheck } from '@/utils/metricsChecker';
+import logger from '@/utils/logger';
 
 interface ActionButtonProps {
   icon: React.ReactNode;
@@ -56,12 +57,12 @@ const QuickActions: React.FC<QuickActionsProps> = ({
 
   const handleForceMetricsCheck = async () => {
     try {
-      console.log("[DEBUG] Manually triggering metrics check...");
+      logger.log("[DEBUG] Manually triggering metrics check...");
       const alertsCreated = await forceMetricsCheck();
       
-      console.log(`[DEBUG] Metrics check complete: ${alertsCreated} alerts created`);
+      logger.log(`[DEBUG] Metrics check complete: ${alertsCreated} alerts created`);
     } catch (error) {
-      console.error("[DEBUG] Error during manual metrics check:", error);
+      logger.error("[DEBUG] Error during manual metrics check:", error);
     }
   };
 

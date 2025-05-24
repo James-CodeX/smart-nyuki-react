@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { useState, useEffect } from 'react';
 import { Thermometer, Droplets, Volume2, Weight, ArrowRight, Settings } from 'lucide-react';
 import {
@@ -30,7 +32,7 @@ const AlertThresholdsCard: React.FC<AlertThresholdsCardProps> = ({ className }) 
         const data = await getAlertThresholds();
         setThresholds(data);
       } catch (error) {
-        console.error('Error fetching alert thresholds:', error);
+        logger.error('Error fetching alert thresholds:', error);
         toast({
           variant: 'destructive',
           title: 'Error loading thresholds',

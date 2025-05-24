@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import { supabase } from '@/lib/supabase';
 
 // Types
@@ -151,7 +153,7 @@ export const getAllInspections = async (
       totalPages: Math.ceil((count || 0) / validPageSize)
     };
   } catch (error) {
-    console.error('Error fetching inspections:', error);
+    logger.error('Error fetching inspections:', error);
     throw error;
   }
 };
@@ -173,7 +175,7 @@ export const getInspectionsByHive = async (hiveId: string): Promise<Inspection[]
 
     return inspections || [];
   } catch (error) {
-    console.error('Error fetching hive inspections:', error);
+    logger.error('Error fetching hive inspections:', error);
     throw error;
   }
 };
@@ -238,7 +240,7 @@ export const getInspectionsByApiary = async (apiaryId: string): Promise<Inspecti
 
     return transformedInspections;
   } catch (error) {
-    console.error('Error fetching apiary inspections:', error);
+    logger.error('Error fetching apiary inspections:', error);
     throw error;
   }
 };
@@ -281,7 +283,7 @@ export const getInspectionById = async (inspectionId: string): Promise<Inspectio
       .eq('hive_id', inspection.hive_id)
       .single();
 
-    console.log('Hive data:', hive); // Debug log to see the structure
+    logger.log('Hive data:', hive); // Debug log to see the structure
 
     // Transform the data to match our interface
     const transformedInspection = {
@@ -293,7 +295,7 @@ export const getInspectionById = async (inspectionId: string): Promise<Inspectio
 
     return transformedInspection;
   } catch (error) {
-    console.error('Error fetching inspection:', error);
+    logger.error('Error fetching inspection:', error);
     throw error;
   }
 };
@@ -315,7 +317,7 @@ export const getInspectionFindings = async (inspectionId: string): Promise<Inspe
     
     // If no findings exist, return null immediately
     if (count === 0) {
-      console.log('No findings found for inspection:', inspectionId);
+      logger.log('No findings found for inspection:', inspectionId);
       return null;
     }
     
@@ -332,7 +334,7 @@ export const getInspectionFindings = async (inspectionId: string): Promise<Inspe
 
     return findings;
   } catch (error) {
-    console.error('Error fetching inspection findings:', error);
+    logger.error('Error fetching inspection findings:', error);
     // Return null instead of throwing to prevent UI errors when findings don't exist
     return null;
   }
@@ -395,7 +397,7 @@ export const createInspection = async (
 
     return inspection;
   } catch (error) {
-    console.error('Error creating inspection:', error);
+    logger.error('Error creating inspection:', error);
     throw error;
   }
 };
@@ -413,7 +415,7 @@ export const updateInspection = async (
   findings?: Partial<InspectionFindings>
 ): Promise<Inspection> => {
   try {
-    console.log('Updating inspection with data:', inspection);
+    logger.log('Updating inspection with data:', inspection);
     
     // Extract only valid database fields to prevent errors
     const {
@@ -488,13 +490,13 @@ export const updateInspection = async (
       .single();
 
     if (error) {
-      console.error('Error updating inspection:', error);
+      logger.error('Error updating inspection:', error);
       throw error;
     }
 
     // If findings provided, update or create them
     if (findings) {
-      console.log('Processing findings data:', findings);
+      logger.log('Processing findings data:', findings);
       
       // Check if findings already exist - use count to avoid .single() error
       const { count, error: countError } = await supabase
@@ -503,7 +505,7 @@ export const updateInspection = async (
         .eq('inspection_id', id);
       
       if (countError) {
-        console.error('Error checking existing findings count:', countError);
+        logger.error('Error checking existing findings count:', countError);
         throw countError;
       }
       
@@ -524,7 +526,7 @@ export const updateInspection = async (
 
       if (existingFindings) {
         // Update existing findings
-        console.log('Updating existing findings for inspection:', id);
+        logger.log('Updating existing findings for inspection:', id);
         const { error: findingsError } = await supabase
           .from('inspection_findings')
           .update({
@@ -534,12 +536,12 @@ export const updateInspection = async (
           .eq('inspection_id', id);
 
         if (findingsError) {
-          console.error('Error updating findings:', findingsError);
+          logger.error('Error updating findings:', findingsError);
           throw findingsError;
         }
       } else {
         // Create new findings
-        console.log('Creating new findings for inspection:', id);
+        logger.log('Creating new findings for inspection:', id);
         const { error: findingsError } = await supabase
           .from('inspection_findings')
           .insert({
@@ -548,7 +550,7 @@ export const updateInspection = async (
           });
 
         if (findingsError) {
-          console.error('Error creating findings:', findingsError);
+          logger.error('Error creating findings:', findingsError);
           throw findingsError;
         }
       }
@@ -556,7 +558,7 @@ export const updateInspection = async (
 
     return updatedInspection;
   } catch (error) {
-    console.error('Error updating inspection:', error);
+    logger.error('Error updating inspection:', error);
     throw error;
   }
 };
@@ -582,7 +584,7 @@ export const deleteInspection = async (inspectionId: string): Promise<void> => {
 
     if (inspectionError) throw inspectionError;
   } catch (error) {
-    console.error('Error deleting inspection:', error);
+    logger.error('Error deleting inspection:', error);
     throw error;
   }
 }; 

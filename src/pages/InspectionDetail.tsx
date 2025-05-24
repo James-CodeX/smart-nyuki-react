@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format, formatDistance, parseISO, isPast, addDays } from 'date-fns';
@@ -142,7 +144,7 @@ const InspectionDetail = () => {
           });
         }
       } catch (error) {
-        console.error('Error fetching inspection:', error);
+        logger.error('Error fetching inspection:', error);
         toast({
           title: "Error",
           description: "Failed to load inspection details",
@@ -260,7 +262,7 @@ const InspectionDetail = () => {
       });
       navigate('/inspections');
     } catch (error) {
-      console.error('Error deleting inspection:', error);
+      logger.error('Error deleting inspection:', error);
       toast({
         title: "Error",
         description: "Failed to delete inspection",
@@ -307,15 +309,15 @@ const InspectionDetail = () => {
         user_id: inspection.user_id
       };
       
-      console.log('Updating inspection with:', updateData);
-      console.log('Adding findings:', findingsData);
+      logger.log('Updating inspection with:', updateData);
+      logger.log('Adding findings:', findingsData);
       
       try {
         // Update the inspection
         await updateInspection(id, updateData, findingsData);
-        console.log('Inspection update successful');
+        logger.log('Inspection update successful');
       } catch (updateError) {
-        console.error('Error in updateInspection call:', updateError);
+        logger.error('Error in updateInspection call:', updateError);
         throw updateError;
       }
       
@@ -327,9 +329,9 @@ const InspectionDetail = () => {
           apiary_id,
           apiary_name
         });
-        console.log('Local state update successful');
+        logger.log('Local state update successful');
       } catch (stateError) {
-        console.error('Error updating local state:', stateError);
+        logger.error('Error updating local state:', stateError);
         // Don't throw - we want to continue even if state update fails
       }
       
@@ -342,21 +344,21 @@ const InspectionDetail = () => {
       
       try {
         // Refresh the data
-        console.log('Refreshing inspection data');
+        logger.log('Refreshing inspection data');
         const updatedInspection = await getInspectionById(id);
-        console.log('Retrieved updated inspection:', updatedInspection);
+        logger.log('Retrieved updated inspection:', updatedInspection);
         setInspection(updatedInspection);
         
-        console.log('Refreshing findings data');
+        logger.log('Refreshing findings data');
         const updatedFindings = await getInspectionFindings(id);
-        console.log('Retrieved updated findings:', updatedFindings);
+        logger.log('Retrieved updated findings:', updatedFindings);
         setFindings(updatedFindings);
       } catch (refreshError) {
-        console.error('Error refreshing data after update:', refreshError);
+        logger.error('Error refreshing data after update:', refreshError);
         // Don't throw - we want the user to see success even if refresh fails
       }
     } catch (error) {
-      console.error('Error completing inspection:', error);
+      logger.error('Error completing inspection:', error);
       toast({
         title: "Error",
         description: "Failed to update inspection",

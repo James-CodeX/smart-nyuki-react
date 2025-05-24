@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import { supabase } from '@/lib/supabase';
 import { format, subDays } from 'date-fns';
 
@@ -72,7 +74,7 @@ export const getAllProductionData = async (): Promise<ApiaryProductionSummary[]>
       .select('*');
 
     if (apiaryError) {
-      console.error('Error fetching apiary production data:', apiaryError);
+      logger.error('Error fetching apiary production data:', apiaryError);
       return [];
     }
     if (!apiaryData || apiaryData.length === 0) return [];
@@ -89,7 +91,7 @@ export const getAllProductionData = async (): Promise<ApiaryProductionSummary[]>
         .eq('apiary_id', apiary.id);
 
       if (hivesError) {
-        console.error('Error fetching hives:', hivesError);
+        logger.error('Error fetching hives:', hivesError);
         continue;
       }
 
@@ -103,7 +105,7 @@ export const getAllProductionData = async (): Promise<ApiaryProductionSummary[]>
           .order('date', { ascending: false });
 
         if (hiveProductionError) {
-          console.error('Error fetching hive production:', hiveProductionError);
+          logger.error('Error fetching hive production:', hiveProductionError);
           return {
             id: hive.hive_id,
             name: hive.name,
@@ -169,7 +171,7 @@ export const getAllProductionData = async (): Promise<ApiaryProductionSummary[]>
 
     return apiaryProductionData;
   } catch (error) {
-    console.error('Error fetching production data:', error);
+    logger.error('Error fetching production data:', error);
     return [];
   }
 };
@@ -187,13 +189,13 @@ export const getYearlyProductionData = async () => {
       .order('year', { ascending: true });
     
     if (error) {
-      console.error('Error fetching yearly production data:', error);
+      logger.error('Error fetching yearly production data:', error);
       return []; // Return empty array on error to prevent UI breakage
     }
     
     return data || []; // Ensure we always return an array
   } catch (error) {
-    console.error('Error in getYearlyProductionData:', error);
+    logger.error('Error in getYearlyProductionData:', error);
     return []; // Return empty array on exception
   }
 };
@@ -213,7 +215,7 @@ export const getMonthlyProductionData = async () => {
       .order('month', { ascending: true });
     
     if (error) {
-      console.error('Error fetching monthly production data:', error);
+      logger.error('Error fetching monthly production data:', error);
       return []; // Return empty array on error to prevent UI breakage
     }
     
@@ -240,7 +242,7 @@ export const getMonthlyProductionData = async () => {
       production: record.total_production
     }));
   } catch (error) {
-    console.error('Error in getMonthlyProductionData:', error);
+    logger.error('Error in getMonthlyProductionData:', error);
     return []; // Return empty array on exception
   }
 };
@@ -284,7 +286,7 @@ export const getDailyWeightData = async (hiveId: string, days: number = 30) => {
 
     return dailyData.filter(data => data.weight !== null);
   } catch (error) {
-    console.error('Error fetching daily weight data:', error);
+    logger.error('Error fetching daily weight data:', error);
     throw error;
   }
 };
@@ -308,7 +310,7 @@ export const addProductionRecord = async (record: HiveProductionData) => {
 
     return data;
   } catch (error) {
-    console.error('Error adding production record:', error);
+    logger.error('Error adding production record:', error);
     throw error;
   }
 };
@@ -345,7 +347,7 @@ export const updateProductionRecord = async (id: string, record: Partial<HivePro
 
     return data;
   } catch (error) {
-    console.error('Error updating production record:', error);
+    logger.error('Error updating production record:', error);
     throw error;
   }
 };
@@ -377,7 +379,7 @@ export const deleteProductionRecord = async (id: string) => {
 
     return true;
   } catch (error) {
-    console.error('Error deleting production record:', error);
+    logger.error('Error deleting production record:', error);
     throw error;
   }
 };
@@ -398,7 +400,7 @@ const updateProductionSummary = async (apiaryId: string) => {
 
     return true;
   } catch (error) {
-    console.error('Error updating production summary:', error);
+    logger.error('Error updating production summary:', error);
     throw error;
   }
 };
@@ -504,7 +506,7 @@ const updateYearlySummary = async (apiaryId: string, year: number) => {
 
     return true;
   } catch (error) {
-    console.error('Error updating yearly summary:', error);
+    logger.error('Error updating yearly summary:', error);
     throw error;
   }
 };
@@ -583,7 +585,7 @@ const updateMonthlySummary = async (apiaryId: string, year: number, month: numbe
 
     return true;
   } catch (error) {
-    console.error('Error updating monthly summary:', error);
+    logger.error('Error updating monthly summary:', error);
     throw error;
   }
 };
@@ -615,7 +617,7 @@ export const getProductionTimeSeries = async (
     const { data, error } = await query;
     
     if (error) {
-      console.error('Error fetching production time series data:', error);
+      logger.error('Error fetching production time series data:', error);
       return [];
     }
     
@@ -637,7 +639,7 @@ export const getProductionTimeSeries = async (
     
     return timeSeriesData;
   } catch (error) {
-    console.error('Error in getProductionTimeSeries:', error);
+    logger.error('Error in getProductionTimeSeries:', error);
     return [];
   }
 };
@@ -695,7 +697,7 @@ export const getProductionForecast = async (
     const { data: productionData, error: productionError } = await productionQuery;
     
     if (productionError) {
-      console.error('Error fetching production history data:', productionError);
+      logger.error('Error fetching production history data:', productionError);
       return [];
     }
     
@@ -901,7 +903,7 @@ export const getProductionForecast = async (
     
     return forecastData;
   } catch (error) {
-    console.error('Error in getProductionForecast:', error);
+    logger.error('Error in getProductionForecast:', error);
     return [];
   }
 };
@@ -965,7 +967,7 @@ export const getProductionSummary = async (
     const { data: currentData, error: currentError } = await query;
     
     if (currentError) {
-      console.error('Error fetching current production data:', currentError);
+      logger.error('Error fetching current production data:', currentError);
       return {
         totalProduction: 0,
         changePercent: 0,
@@ -990,7 +992,7 @@ export const getProductionSummary = async (
     const { data: previousData, error: previousError } = await previousQuery;
     
     if (previousError) {
-      console.error('Error fetching previous production data:', previousError);
+      logger.error('Error fetching previous production data:', previousError);
       return {
         totalProduction: 0,
         changePercent: 0,
@@ -1011,7 +1013,7 @@ export const getProductionSummary = async (
     const { data: hivesData, error: hivesError } = await hivesQuery;
     
     if (hivesError) {
-      console.error('Error fetching hives count:', hivesError);
+      logger.error('Error fetching hives count:', hivesError);
       return {
         totalProduction: 0,
         changePercent: 0,
@@ -1141,7 +1143,7 @@ export const getProductionSummary = async (
       topApiary
     };
   } catch (error) {
-    console.error('Error in getProductionSummary:', error);
+    logger.error('Error in getProductionSummary:', error);
     return {
       totalProduction: 0,
       changePercent: 0,
@@ -1173,7 +1175,7 @@ export const getProductionRecords = async (apiaryId?: string) => {
     const { data, error } = await query;
     
     if (error) {
-      console.error('Error fetching production records:', error);
+      logger.error('Error fetching production records:', error);
       return [];
     }
 
@@ -1192,7 +1194,7 @@ export const getProductionRecords = async (apiaryId?: string) => {
       .in('hive_id', hiveIds);
     
     if (hiveError) {
-      console.error('Error fetching hive names:', hiveError);
+      logger.error('Error fetching hive names:', hiveError);
     }
 
     // Fetch apiary names
@@ -1202,7 +1204,7 @@ export const getProductionRecords = async (apiaryId?: string) => {
       .in('id', apiaryIds);
     
     if (apiaryError) {
-      console.error('Error fetching apiary names:', apiaryError);
+      logger.error('Error fetching apiary names:', apiaryError);
     }
     
     // Create maps for quick lookup
@@ -1227,7 +1229,7 @@ export const getProductionRecords = async (apiaryId?: string) => {
       apiaryName: apiaryNameMap[record.apiary_id] || 'Unknown Apiary'
     }));
   } catch (error) {
-    console.error('Error in getProductionRecords:', error);
+    logger.error('Error in getProductionRecords:', error);
     return [];
   }
 }; 

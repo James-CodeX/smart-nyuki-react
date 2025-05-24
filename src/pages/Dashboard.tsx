@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, subDays } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -50,10 +50,12 @@ import WeatherWidget from '@/components/dashboard/WeatherWidget';
 import ScheduleInspectionModal from '@/components/dashboard/ScheduleInspectionModal';
 
 // Services and Context
-import { addHive, getAllHives, HiveWithDetails } from '@/services/hiveService';
-import { addApiary, getAllApiaries } from '@/services/apiaryService';
+import { getDashboardHives, addHive, getAllHives, HiveWithDetails } from '@/services/hiveService';
+import { getDashboardApiaries, addApiary, getAllApiaries } from '@/services/apiaryService';
 import { useAuth } from '@/context/AuthContext';
 import { getUserProfile } from '@/services/settingsService';
+import logger from '@/utils/logger';
+
 
 // For now, use simple mock data for inspections since we don't have a real service yet
 interface Inspection {
@@ -160,7 +162,7 @@ const Dashboard = () => {
             setUserFirstName(userProfile.first_name || '');
           }
         } catch (error) {
-          console.error('Error loading user profile:', error);
+          logger.error('Error loading user profile:', error);
         }
       }
     };
@@ -168,53 +170,29 @@ const Dashboard = () => {
     loadUserProfile();
   }, [user]);
   
-  // Stats
-  const apiaryCount = apiaries.length || 0;
-  const hiveCount = hives.length || 0;
-  const hivesWithAlerts = Array.isArray(hives) 
-    ? hives.filter(hive => hive.alerts && hive.alerts.length > 0)
-    : [];
-  const alertCount = hivesWithAlerts.length;
-  
-  // Calculate total weight from all hives
-  const totalWeight = Array.isArray(hives) 
-    ? hives.reduce((sum, hive) => {
-        if (hive.metrics && hive.metrics.weight && hive.metrics.weight.length > 0) {
-          const latestWeight = hive.metrics.weight[hive.metrics.weight.length - 1].value;
-          return sum + (latestWeight || 0);
-        }
-        return sum;
-      }, 0)
-    : 0;
-  
-  // Sample production data
-  const productionData = generateProductionData();
-  
-  // Calculate averages for all metrics
-  const avgTemperature = apiaryCount > 0 ? apiaries.reduce((sum, a) => sum + a.avgTemperature, 0) / apiaryCount : 0;
-  const avgHumidity = apiaryCount > 0 ? apiaries.reduce((sum, a) => sum + a.avgHumidity, 0) / apiaryCount : 0;
-  const avgSound = apiaryCount > 0 ? apiaries.reduce((sum, a) => sum + a.avgSound, 0) / apiaryCount : 0;
-  const avgWeight = apiaryCount > 0 ? apiaries.reduce((sum, a) => sum + a.avgWeight, 0) / apiaryCount : 0;
-
   // Load hives and apiaries when component mounts
   useEffect(() => {
-    console.log('[DEBUG] Dashboard mounted at:', new Date().toISOString());
+    logger.log('[DEBUG] Dashboard mounted at:', new Date().toISOString());
     const loadData = async () => {
       try {
+        setLoading(true);
         setIsLoadingHives(true);
         setIsLoadingApiaries(true);
         
-        const apiariesResponse = await getAllApiaries();
-        setApiaries(Array.isArray(apiariesResponse.data) ? apiariesResponse.data : []);
+        // Load data in parallel for better performance
+        const [apiariesData, hivesData] = await Promise.all([
+          getDashboardApiaries(),
+          getDashboardHives()
+        ]);
+        
+        setApiaries(apiariesData);
+        setHives(hivesData);
+        
         setIsLoadingApiaries(false);
-        
-        const hivesResponse = await getAllHives();
-        setHives(Array.isArray(hivesResponse.data) ? hivesResponse.data : []);
         setIsLoadingHives(false);
-        
         setLoading(false);
       } catch (error) {
-        console.error('Error loading dashboard data:', error);
+        logger.error('Error loading dashboard data:', error);
         setLoading(false);
         setIsLoadingHives(false);
         setIsLoadingApiaries(false);
@@ -228,6 +206,65 @@ const Dashboard = () => {
     
     loadData();
   }, [toast]);
+
+  // Use memoization for derived data to avoid recalculations
+  const apiaryCount = useMemo(() => apiaries.length || 0, [apiaries]);
+  const hiveCount = useMemo(() => hives.length || 0, [hives]);
+  const hivesWithAlerts = useMemo(() => 
+    Array.isArray(hives) 
+      ? hives.filter(hive => hive.alerts && hive.alerts.length > 0)
+      : [], 
+    [hives]
+  );
+  const alertCount = useMemo(() => hivesWithAlerts.length, [hivesWithAlerts]);
+  
+  // Calculate total weight from all hives - memoized
+  const totalWeight = useMemo(() => 
+    Array.isArray(hives) 
+      ? hives.reduce((sum, hive) => {
+          if (hive.metrics && hive.metrics.weight && hive.metrics.weight.length > 0) {
+            const latestWeight = hive.metrics.weight[hive.metrics.weight.length - 1].value;
+            return sum + (latestWeight || 0);
+          }
+          return sum;
+        }, 0)
+      : 0,
+    [hives]
+  );
+  
+  // Calculate averages for all metrics - memoized
+  const averageMetrics = useMemo(() => {
+    if (apiaryCount === 0) {
+      return {
+        avgTemperature: 0,
+        avgHumidity: 0,
+        avgSound: 0,
+        avgWeight: 0
+      };
+    }
+    
+    const totals = apiaries.reduce(
+      (sum, a) => ({
+        avgTemperature: sum.avgTemperature + a.avgTemperature,
+        avgHumidity: sum.avgHumidity + a.avgHumidity,
+        avgSound: sum.avgSound + a.avgSound,
+        avgWeight: sum.avgWeight + a.avgWeight
+      }),
+      { avgTemperature: 0, avgHumidity: 0, avgSound: 0, avgWeight: 0 }
+    );
+    
+    return {
+      avgTemperature: totals.avgTemperature / apiaryCount,
+      avgHumidity: totals.avgHumidity / apiaryCount,
+      avgSound: totals.avgSound / apiaryCount,
+      avgWeight: totals.avgWeight / apiaryCount
+    };
+  }, [apiaries, apiaryCount]);
+  
+  const { avgTemperature, avgHumidity, avgSound, avgWeight } = averageMetrics;
+  
+  // Sample production data - memoized to prevent regeneration on each render
+  const productionData = useMemo(() => generateProductionData(), []);
 
   // Event handlers
   const handleAddHive = async (data: { 
@@ -260,7 +297,7 @@ const Dashboard = () => {
       
       setIsAddHiveModalOpen(false);
     } catch (error) {
-      console.error('Error adding hive:', error);
+      logger.error('Error adding hive:', error);
       // Get the error message if it exists
       const errorMessage = error instanceof Error ? error.message : "There was a problem creating the hive. Please try again.";
       
@@ -293,7 +330,7 @@ const Dashboard = () => {
       
       setIsAddApiaryModalOpen(false);
     } catch (error) {
-      console.error('Error adding apiary:', error);
+      logger.error('Error adding apiary:', error);
       toast({
         variant: "destructive",
         title: "Error adding apiary",
@@ -316,7 +353,7 @@ const Dashboard = () => {
       
       setIsAddInspectionModalOpen(false);
     } catch (error) {
-      console.error('Error scheduling inspection:', error);
+      logger.error('Error scheduling inspection:', error);
       toast({
         variant: "destructive",
         title: "Error scheduling inspection",
@@ -483,7 +520,7 @@ const Dashboard = () => {
             <UpcomingInspections
               inspections={[...upcomingInspections, ...overdueInspections, ...completedInspections].slice(0, 5)}
               onViewAll={() => navigate('/inspections')}
-              onViewInspection={(inspection) => console.log('View inspection', inspection)}
+              onViewInspection={(inspection) => logger.log('View inspection', inspection)}
             />
             <HiveStatusOverview 
               hives={isLoadingHives ? [] : hives.map(hive => ({
@@ -590,7 +627,7 @@ const Dashboard = () => {
                       const hivesData = await getAllHives();
                       setHives(Array.isArray(hivesData.data) ? hivesData.data : []);
                     } catch (error) {
-                      console.error('Error refreshing hives data:', error);
+                      logger.error('Error refreshing hives data:', error);
                     }
                   };
                   loadData();
@@ -616,7 +653,7 @@ const Dashboard = () => {
               <UpcomingInspections
                 inspections={[...upcomingInspections, ...overdueInspections, ...completedInspections].slice(0, 5)}
                 onViewAll={() => navigate('/inspections')}
-                onViewInspection={(inspection) => console.log('View inspection', inspection)}
+                onViewInspection={(inspection) => logger.log('View inspection', inspection)}
               />
               <HiveStatusOverview 
                 hives={isLoadingHives ? [] : hives.map(hive => ({

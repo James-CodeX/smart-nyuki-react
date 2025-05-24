@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
@@ -165,7 +167,7 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ className }) => {
           setLoading(false);
         }
       } catch (error) {
-        console.error('Error loading apiaries:', error);
+        logger.error('Error loading apiaries:', error);
         setError('Failed to load apiaries. Please try again later.');
         toast({
           variant: "destructive",
@@ -192,19 +194,19 @@ const WeatherWidget: React.FC<WeatherWidgetProps> = ({ className }) => {
       // Check if we received an API error response
       if (weather.condition === 'API Error') {
         setUsingMockData(true);
-        console.warn('Using mock weather data - API error occurred');
+        logger.warn('Using mock weather data - API error occurred');
         setError('API error occurred. Check your API key or network connection.');
       } 
       // Check if we're using mock data
       else if (typeof weather.icon === 'string' && ['clear', 'clouds', 'rain', 'snow', 'mist'].includes(weather.icon.toLowerCase())) {
         setUsingMockData(true);
-        console.warn('Using mock weather data - check your API key and connectivity');
+        logger.warn('Using mock weather data - check your API key and connectivity');
       }
       
       setWeatherData(weather);
       setForecast(forecastData);
     } catch (error) {
-      console.error('Error loading weather data:', error);
+      logger.error('Error loading weather data:', error);
       setError('Failed to fetch weather data. Please check your API key or network connection.');
       toast({
         variant: "destructive",

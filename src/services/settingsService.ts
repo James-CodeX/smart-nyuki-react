@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 
@@ -83,13 +85,13 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       .single();
 
     if (error) {
-      console.error('Error fetching user profile:', error);
+      logger.error('Error fetching user profile:', error);
       return null;
     }
 
     return data as UserProfile;
   } catch (error) {
-    console.error('Error in getUserProfile:', error);
+    logger.error('Error in getUserProfile:', error);
     return null;
   }
 };
@@ -113,13 +115,13 @@ export const updateUserProfile = async (profileData: Partial<Omit<UserProfile, '
       .single();
 
     if (error) {
-      console.error('Error updating user profile:', error);
+      logger.error('Error updating user profile:', error);
       return null;
     }
 
     return data as UserProfile;
   } catch (error) {
-    console.error('Error in updateUserProfile:', error);
+    logger.error('Error in updateUserProfile:', error);
     return null;
   }
 };
@@ -140,7 +142,7 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
       .upload(filePath, file);
 
     if (error) {
-      console.error('Error uploading profile image:', error);
+      logger.error('Error uploading profile image:', error);
       return null;
     }
 
@@ -153,7 +155,7 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
 
     return data.publicUrl;
   } catch (error) {
-    console.error('Error in uploadProfileImage:', error);
+    logger.error('Error in uploadProfileImage:', error);
     return null;
   }
 };
@@ -182,7 +184,7 @@ export const removeProfileImage = async (): Promise<boolean> => {
       .remove([filePath]);
 
     if (storageError) {
-      console.error('Error removing profile image from storage:', storageError);
+      logger.error('Error removing profile image from storage:', storageError);
     }
 
     // Update the profile to remove the image URL
@@ -190,7 +192,7 @@ export const removeProfileImage = async (): Promise<boolean> => {
 
     return true;
   } catch (error) {
-    console.error('Error in removeProfileImage:', error);
+    logger.error('Error in removeProfileImage:', error);
     return false;
   }
 };
@@ -214,13 +216,13 @@ export const getUserPreferences = async (): Promise<UserPreferences | null> => {
         // Create default preferences if none exist
         return createDefaultUserPreferences(userData.user);
       }
-      console.error('Error fetching user preferences:', error);
+      logger.error('Error fetching user preferences:', error);
       return null;
     }
 
     return data as UserPreferences;
   } catch (error) {
-    console.error('Error in getUserPreferences:', error);
+    logger.error('Error in getUserPreferences:', error);
     return null;
   }
 };
@@ -248,13 +250,13 @@ const createDefaultUserPreferences = async (user: User): Promise<UserPreferences
       .single();
 
     if (error) {
-      console.error('Error creating default user preferences:', error);
+      logger.error('Error creating default user preferences:', error);
       return null;
     }
 
     return data as UserPreferences;
   } catch (error) {
-    console.error('Error in createDefaultUserPreferences:', error);
+    logger.error('Error in createDefaultUserPreferences:', error);
     return null;
   }
 };
@@ -282,13 +284,13 @@ export const updateUserPreferences = async (preferencesData: Partial<Omit<UserPr
       .single();
 
     if (error) {
-      console.error('Error updating user preferences:', error);
+      logger.error('Error updating user preferences:', error);
       return null;
     }
 
     return data as UserPreferences;
   } catch (error) {
-    console.error('Error in updateUserPreferences:', error);
+    logger.error('Error in updateUserPreferences:', error);
     return null;
   }
 };
@@ -312,13 +314,13 @@ export const getNotificationPreferences = async (): Promise<NotificationPreferen
         // Create default notification preferences
         return createDefaultNotificationPreferences(userData.user);
       }
-      console.error('Error fetching notification preferences:', error);
+      logger.error('Error fetching notification preferences:', error);
       return null;
     }
 
     return data as NotificationPreferences;
   } catch (error) {
-    console.error('Error in getNotificationPreferences:', error);
+    logger.error('Error in getNotificationPreferences:', error);
     return null;
   }
 };
@@ -344,13 +346,13 @@ const createDefaultNotificationPreferences = async (user: User): Promise<Notific
       .single();
 
     if (error) {
-      console.error('Error creating default notification preferences:', error);
+      logger.error('Error creating default notification preferences:', error);
       return null;
     }
 
     return data as NotificationPreferences;
   } catch (error) {
-    console.error('Error in createDefaultNotificationPreferences:', error);
+    logger.error('Error in createDefaultNotificationPreferences:', error);
     return null;
   }
 };
@@ -378,13 +380,13 @@ export const updateNotificationPreferences = async (preferencesData: Partial<Omi
       .single();
 
     if (error) {
-      console.error('Error updating notification preferences:', error);
+      logger.error('Error updating notification preferences:', error);
       return null;
     }
 
     return data as NotificationPreferences;
   } catch (error) {
-    console.error('Error in updateNotificationPreferences:', error);
+    logger.error('Error in updateNotificationPreferences:', error);
     return null;
   }
 };
@@ -408,13 +410,13 @@ export const getAlertThresholds = async (): Promise<AlertThresholds | null> => {
         // Create default alert thresholds
         return createDefaultAlertThresholds(userData.user);
       }
-      console.error('Error fetching alert thresholds:', error);
+      logger.error('Error fetching alert thresholds:', error);
       return null;
     }
 
     return data as AlertThresholds;
   } catch (error) {
-    console.error('Error in getAlertThresholds:', error);
+    logger.error('Error in getAlertThresholds:', error);
     return null;
   }
 };
@@ -443,13 +445,13 @@ const createDefaultAlertThresholds = async (user: User): Promise<AlertThresholds
       .single();
 
     if (error) {
-      console.error('Error creating default alert thresholds:', error);
+      logger.error('Error creating default alert thresholds:', error);
       return null;
     }
 
     return data as AlertThresholds;
   } catch (error) {
-    console.error('Error in createDefaultAlertThresholds:', error);
+    logger.error('Error in createDefaultAlertThresholds:', error);
     return null;
   }
 };
@@ -477,13 +479,13 @@ export const updateAlertThresholds = async (thresholdsData: Partial<Omit<AlertTh
       .single();
 
     if (error) {
-      console.error('Error updating alert thresholds:', error);
+      logger.error('Error updating alert thresholds:', error);
       return null;
     }
 
     return data as AlertThresholds;
   } catch (error) {
-    console.error('Error in updateAlertThresholds:', error);
+    logger.error('Error in updateAlertThresholds:', error);
     return null;
   }
 };
@@ -507,13 +509,13 @@ export const getSharingPreferences = async (): Promise<SharingPreferences | null
         // Create default sharing preferences
         return createDefaultSharingPreferences(userData.user);
       }
-      console.error('Error fetching sharing preferences:', error);
+      logger.error('Error fetching sharing preferences:', error);
       return null;
     }
 
     return data as SharingPreferences;
   } catch (error) {
-    console.error('Error in getSharingPreferences:', error);
+    logger.error('Error in getSharingPreferences:', error);
     return null;
   }
 };
@@ -540,13 +542,13 @@ const createDefaultSharingPreferences = async (user: User): Promise<SharingPrefe
       .single();
 
     if (error) {
-      console.error('Error creating default sharing preferences:', error);
+      logger.error('Error creating default sharing preferences:', error);
       return null;
     }
 
     return data as SharingPreferences;
   } catch (error) {
-    console.error('Error in createDefaultSharingPreferences:', error);
+    logger.error('Error in createDefaultSharingPreferences:', error);
     return null;
   }
 };
@@ -574,13 +576,13 @@ export const updateSharingPreferences = async (preferencesData: Partial<Omit<Sha
       .single();
 
     if (error) {
-      console.error('Error updating sharing preferences:', error);
+      logger.error('Error updating sharing preferences:', error);
       return null;
     }
 
     return data as SharingPreferences;
   } catch (error) {
-    console.error('Error in updateSharingPreferences:', error);
+    logger.error('Error in updateSharingPreferences:', error);
     return null;
   }
 };
@@ -605,7 +607,7 @@ export const getSharedApiaries = async (): Promise<any[]> => {
       .eq('user_id', userData.user.id);
 
     if (error) {
-      console.error('Error fetching shared apiaries:', error);
+      logger.error('Error fetching shared apiaries:', error);
       return [];
     }
 
@@ -628,7 +630,7 @@ export const getSharedApiaries = async (): Promise<any[]> => {
       };
     });
   } catch (error) {
-    console.error('Error in getSharedApiaries:', error);
+    logger.error('Error in getSharedApiaries:', error);
     return [];
   }
 };
@@ -644,13 +646,13 @@ export const updateSharingPermission = async (sharingId: string, permission: 'vi
       .eq('id', sharingId);
 
     if (error) {
-      console.error('Error updating sharing permission:', error);
+      logger.error('Error updating sharing permission:', error);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error('Error in updateSharingPermission:', error);
+    logger.error('Error in updateSharingPermission:', error);
     return false;
   }
 };
@@ -666,13 +668,13 @@ export const removeSharing = async (sharingId: string): Promise<boolean> => {
       .eq('id', sharingId);
 
     if (error) {
-      console.error('Error removing sharing:', error);
+      logger.error('Error removing sharing:', error);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error('Error in removeSharing:', error);
+    logger.error('Error in removeSharing:', error);
     return false;
   }
 };
@@ -699,7 +701,7 @@ export const createBackupRecord = async (): Promise<{ id: string; created_at: st
       .single();
 
     if (error) {
-      console.error('Error creating backup record:', error);
+      logger.error('Error creating backup record:', error);
       return null;
     }
 
@@ -709,7 +711,7 @@ export const createBackupRecord = async (): Promise<{ id: string; created_at: st
       backup_type: data.backup_type
     };
   } catch (error) {
-    console.error('Error in createBackupRecord:', error);
+    logger.error('Error in createBackupRecord:', error);
     return null;
   }
 };
@@ -731,13 +733,13 @@ export const getBackupHistory = async (): Promise<{ id: string; created_at: stri
       .limit(10);
 
     if (error) {
-      console.error('Error fetching backup history:', error);
+      logger.error('Error fetching backup history:', error);
       return [];
     }
 
     return data || [];
   } catch (error) {
-    console.error('Error in getBackupHistory:', error);
+    logger.error('Error in getBackupHistory:', error);
     return [];
   }
 };
@@ -824,7 +826,7 @@ export const exportUserData = async (): Promise<Blob | null> => {
     
     return blob;
   } catch (error) {
-    console.error('Error in exportUserData:', error);
+    logger.error('Error in exportUserData:', error);
     return null;
   }
 };
@@ -909,7 +911,7 @@ export const importUserData = async (file: File): Promise<boolean> => {
 
     return true;
   } catch (error) {
-    console.error('Error in importUserData:', error);
+    logger.error('Error in importUserData:', error);
     return false;
   }
 };
@@ -973,7 +975,7 @@ export const getDatabaseStats = async (): Promise<{
       storageUsed
     };
   } catch (error) {
-    console.error('Error in getDatabaseStats:', error);
+    logger.error('Error in getDatabaseStats:', error);
     return null;
   }
 };
@@ -986,7 +988,7 @@ async function getApiariesForUser(userId: string): Promise<any[]> {
     .eq('user_id', userId);
   
   if (error) {
-    console.error('Error fetching apiaries:', error);
+    logger.error('Error fetching apiaries:', error);
     return [];
   }
   
@@ -1000,7 +1002,7 @@ async function getHivesForUser(userId: string): Promise<any[]> {
     .eq('user_id', userId);
   
   if (error) {
-    console.error('Error fetching hives:', error);
+    logger.error('Error fetching hives:', error);
     return [];
   }
   
@@ -1014,7 +1016,7 @@ async function getInspectionsForUser(userId: string): Promise<any[]> {
     .eq('user_id', userId);
   
   if (error) {
-    console.error('Error fetching inspections:', error);
+    logger.error('Error fetching inspections:', error);
     return [];
   }
   
@@ -1028,7 +1030,7 @@ async function getHarvestsForUser(userId: string): Promise<any[]> {
     .eq('user_id', userId);
   
   if (error) {
-    console.error('Error fetching harvests:', error);
+    logger.error('Error fetching harvests:', error);
     return [];
   }
   

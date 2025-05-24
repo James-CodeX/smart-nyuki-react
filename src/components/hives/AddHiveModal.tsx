@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -102,7 +104,7 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
       // No longer checking if hive exists in metrics_time_series_data
       return { valid: true };
     } catch (error) {
-      console.error("Error validating hive ID:", error);
+      logger.error("Error validating hive ID:", error);
       // If the error is a "not found" error from supabase, it means the hive ID is not registered
       if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'PGRST116') {
         return { valid: true };
@@ -138,7 +140,7 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
       setOpen(false);
       if (onHiveAdded) onHiveAdded();
     } catch (error) {
-      console.error("Error adding hive:", error);
+      logger.error("Error adding hive:", error);
       toast.error('Failed to add hive. Please try again.');
     } finally {
       setIsSubmitting(false);

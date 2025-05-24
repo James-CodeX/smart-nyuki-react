@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -36,7 +38,7 @@ const getPersistedSession = (): { user: User | null, session: Session | null } =
       }
     }
   } catch (error) {
-    console.error('Error loading persisted session:', error);
+    logger.error('Error loading persisted session:', error);
   }
   return { user: null, session: null };
 };

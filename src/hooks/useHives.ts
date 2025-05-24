@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -45,16 +47,16 @@ export const useHives = () => {
         .order('name');
 
       if (error) {
-        console.error("Error fetching hives:", error);
+        logger.error("Error fetching hives:", error);
         throw new Error(`Failed to fetch hives: ${error.message}`);
       }
 
       if (!hives || hives.length === 0) {
-        console.log("No hives found");
+        logger.log("No hives found");
         return [];
       }
 
-      console.log("Hives fetched successfully:", hives.length);
+      logger.log("Hives fetched successfully:", hives.length);
 
       // For each hive, fetch its detailed metrics
       const hivesWithDetails = await Promise.all(
@@ -110,7 +112,7 @@ export const useHives = () => {
               alerts: convertedAlerts
             } as unknown as HiveWithFullDetails;
           } catch (err) {
-            console.error(`Error fetching details for hive ${hive.hive_id}:`, err);
+            logger.error(`Error fetching details for hive ${hive.hive_id}:`, err);
             
             // Get name from apiaries object
             const apiaryData = hive.apiaries as unknown as ApiaryWithName;
@@ -141,7 +143,7 @@ export const useHives = () => {
 
       return hivesWithDetails;
     } catch (err) {
-      console.error("Error in fetchHives:", err);
+      logger.error("Error in fetchHives:", err);
       throw err;
     }
   };
@@ -176,7 +178,7 @@ export const useHives = () => {
       .single();
 
     if (apiaryError) {
-      console.error("Error fetching apiary name:", apiaryError);
+      logger.error("Error fetching apiary name:", apiaryError);
     }
 
     return {
@@ -217,7 +219,7 @@ export const useHives = () => {
       .single();
 
     if (apiaryError) {
-      console.error("Error fetching apiary name:", apiaryError);
+      logger.error("Error fetching apiary name:", apiaryError);
     }
 
     // Fetch the detailed metrics
@@ -262,7 +264,7 @@ export const useHives = () => {
         alerts: convertedAlerts
       } as unknown as HiveWithFullDetails;
     } catch (error) {
-      console.error('Error fetching hive details:', error);
+      logger.error('Error fetching hive details:', error);
       
       return {
         ...data,

@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
@@ -130,7 +132,7 @@ const Alerts = () => {
       // After fetching new alerts, we need to re-apply any active filters
       applyFilters(alertsData);
     } catch (error) {
-      console.error('Error loading alerts:', error);
+      logger.error('Error loading alerts:', error);
       if (showLoading) { // Only show error toast for manual refreshes or initial load
         toast({
           variant: 'destructive',
@@ -158,7 +160,7 @@ const Alerts = () => {
         description: "The alert has been marked as resolved.",
       });
     } catch (error) {
-      console.error('Error resolving alert:', error);
+      logger.error('Error resolving alert:', error);
       toast({
         variant: "destructive",
         title: "Error resolving alert",
@@ -189,7 +191,7 @@ const Alerts = () => {
         description: `${filteredAlerts.length} alerts have been marked as resolved.`,
       });
     } catch (error) {
-      console.error('Error resolving alerts:', error);
+      logger.error('Error resolving alerts:', error);
       toast({
         variant: "destructive",
         title: "Error resolving alerts",

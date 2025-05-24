@@ -48,6 +48,8 @@ import * as z from 'zod';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import logger from '@/utils/logger';
+
 
 interface ScheduleInspectionModalProps {
   isOpen: boolean;
@@ -105,7 +107,7 @@ const ScheduleInspectionModal: React.FC<ScheduleInspectionModalProps> = ({
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) {
-        console.error('Error getting user:', userError);
+        logger.error('Error getting user:', userError);
         throw new Error('Failed to authenticate user');
       }
       if (!user) {
@@ -125,7 +127,7 @@ const ScheduleInspectionModal: React.FC<ScheduleInspectionModalProps> = ({
         inspectionData.notes = `Type: ${data.type}${inspectionData.notes ? '\n\n' + inspectionData.notes : ''}`;
       }
       
-      console.log('Creating inspection with data:', inspectionData);
+      logger.log('Creating inspection with data:', inspectionData);
       
       // Create the inspection
       await createInspection(inspectionData);
@@ -139,7 +141,7 @@ const ScheduleInspectionModal: React.FC<ScheduleInspectionModalProps> = ({
       onClose();
       form.reset();
     } catch (error) {
-      console.error('Error scheduling inspection:', error);
+      logger.error('Error scheduling inspection:', error);
       toast({
         variant: "destructive",
         title: "Error",

@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import logger from '@/utils/logger';
 
 interface ErrorOptions {
   showToast?: boolean;
@@ -44,7 +45,7 @@ export const handleError = (
 
   // Log to console if enabled
   if (logToConsole) {
-    console.error("Error caught by handleError:", error);
+    logger.error("Error caught by handleError:", error);
   }
 
   // Show toast notification if enabled

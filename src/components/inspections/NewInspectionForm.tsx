@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { CalendarIcon, Plus, Loader2, ClipboardList } from 'lucide-react';
@@ -76,7 +78,7 @@ const NewInspectionForm: React.FC<NewInspectionFormProps> = ({
   preselectedApiaryId
 }) => {
   // Debug logs for props
-  console.log("NewInspectionForm props:", { 
+  logger.log("NewInspectionForm props:", { 
     apiaries, 
     hives, 
     preselectedHiveId, 
@@ -129,7 +131,7 @@ const NewInspectionForm: React.FC<NewInspectionFormProps> = ({
             setFilteredHives(Array.isArray(hiveData.data) ? hiveData.data : []);
           }
         } catch (error) {
-          console.error('Error fetching data:', error);
+          logger.error('Error fetching data:', error);
           toast({
             title: "Error",
             description: "Failed to load apiaries and hives.",
@@ -146,21 +148,21 @@ const NewInspectionForm: React.FC<NewInspectionFormProps> = ({
   
   // Filter hives when apiary selection changes
   useEffect(() => {
-    console.log("Apiary selected:", apiaryId);
+    logger.log("Apiary selected:", apiaryId);
     const hivesToFilter = loadedHives.length > 0 ? loadedHives : hives;
-    console.log("Available hives to filter:", hivesToFilter);
+    logger.log("Available hives to filter:", hivesToFilter);
     
     if (apiaryId && hivesToFilter.length > 0) {
       // Debug each hive to see what's there
       hivesToFilter.forEach(hive => {
-        console.log("Checking hive:", hive, "apiary_id:", hive.apiary_id, "against selected:", apiaryId);
+        logger.log("Checking hive:", hive, "apiary_id:", hive.apiary_id, "against selected:", apiaryId);
       });
       
       const filtered = hivesToFilter.filter(hive => hive.apiary_id === apiaryId);
-      console.log("Filtered hives for apiary:", filtered);
+      logger.log("Filtered hives for apiary:", filtered);
       setFilteredHives(filtered);
     } else {
-      console.log("No apiary selected or no hives, showing all hives");
+      logger.log("No apiary selected or no hives, showing all hives");
       setFilteredHives(hivesToFilter);
     }
   }, [apiaryId, hives, loadedHives]);
@@ -172,7 +174,7 @@ const NewInspectionForm: React.FC<NewInspectionFormProps> = ({
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) {
-        console.error('Error getting user:', userError);
+        logger.error('Error getting user:', userError);
         throw new Error('Failed to authenticate user');
       }
       if (!user) {
@@ -216,7 +218,7 @@ const NewInspectionForm: React.FC<NewInspectionFormProps> = ({
         onInspectionAdded();
       }
     } catch (error) {
-      console.error('Error scheduling inspection:', error);
+      logger.error('Error scheduling inspection:', error);
       toast({
         title: "Error",
         description: "Failed to schedule inspection. Please try again.",
@@ -238,9 +240,9 @@ const NewInspectionForm: React.FC<NewInspectionFormProps> = ({
   
   // Ensure filteredHives is always an array
   const hivesToDisplay = Array.isArray(filteredHives) ? filteredHives : [];
-  console.log("HivesToDisplay when rendering:", hivesToDisplay);
+  logger.log("HivesToDisplay when rendering:", hivesToDisplay);
   const displayApiaries = loadedApiaries.length > 0 ? loadedApiaries : apiaries;
-  console.log("DisplayApiaries when rendering:", displayApiaries);
+  logger.log("DisplayApiaries when rendering:", displayApiaries);
 
   return (
     <Form {...form}>

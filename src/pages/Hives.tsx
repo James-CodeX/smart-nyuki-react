@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -74,7 +76,7 @@ const Hives = () => {
         const response = await getAllApiaries();
         setApiaries(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
-        console.error('Error loading apiaries:', error);
+        logger.error('Error loading apiaries:', error);
         toast({
           variant: "destructive",
           title: "Error loading apiaries",
@@ -96,7 +98,7 @@ const Hives = () => {
         title: "Error loading hives",
         description: "There was a problem loading your hives. Please refresh the page or try again later.",
       });
-      console.error("Error loading hives:", isError);
+      logger.error("Error loading hives:", isError);
     }
   }, [isError, toast]);
   

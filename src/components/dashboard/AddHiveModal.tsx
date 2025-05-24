@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -139,7 +141,7 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
       clearErrors('hive_id');
       setHiveIdStatus('valid');
     } catch (error) {
-      console.error('Error checking hive ID:', error);
+      logger.error('Error checking hive ID:', error);
       setHiveIdError('Error checking hive ID');
       setHiveIdStatus('invalid');
       setError('hive_id', { message: 'Error checking hive ID' });
@@ -173,7 +175,7 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
             name: apiary.name
           })));
         } catch (error) {
-          console.error('Error loading apiaries:', error);
+          logger.error('Error loading apiaries:', error);
           toast({
             variant: "destructive",
             title: "Error loading apiaries",

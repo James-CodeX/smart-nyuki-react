@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -73,7 +75,7 @@ const ProfileSection = () => {
           });
         }
       } catch (error) {
-        console.error('Error loading profile:', error);
+        logger.error('Error loading profile:', error);
         toast({
           variant: "destructive",
           title: "Error loading profile",
@@ -116,7 +118,7 @@ const ProfileSection = () => {
         throw new Error('Failed to update profile');
       }
     } catch (error) {
-      console.error('Error updating profile:', error);
+      logger.error('Error updating profile:', error);
       toast({
         variant: "destructive",
         title: "Error updating profile",
@@ -146,7 +148,7 @@ const ProfileSection = () => {
         throw new Error('Failed to upload image');
       }
     } catch (error) {
-      console.error('Error uploading image:', error);
+      logger.error('Error uploading image:', error);
       toast({
         variant: "destructive",
         title: "Error uploading image",
@@ -173,7 +175,7 @@ const ProfileSection = () => {
         throw new Error('Failed to remove image');
       }
     } catch (error) {
-      console.error('Error removing image:', error);
+      logger.error('Error removing image:', error);
       toast({
         variant: "destructive",
         title: "Error removing image",
@@ -415,7 +417,7 @@ const NotificationsSection = () => {
           });
         }
       } catch (error) {
-        console.error('Error loading notification settings:', error);
+        logger.error('Error loading notification settings:', error);
         toast({
           variant: "destructive",
           title: "Error",
@@ -478,7 +480,7 @@ const NotificationsSection = () => {
         description: "Notification settings updated"
       });
     } catch (error) {
-      console.error('Error saving notification settings:', error);
+      logger.error('Error saving notification settings:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -503,7 +505,7 @@ const NotificationsSection = () => {
         description: "Alert thresholds updated"
       });
     } catch (error) {
-      console.error('Error saving alert thresholds:', error);
+      logger.error('Error saving alert thresholds:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -812,7 +814,7 @@ const AppearanceSection = () => {
           });
         }
       } catch (error) {
-        console.error('Error loading preferences:', error);
+        logger.error('Error loading preferences:', error);
         toast({
           variant: "destructive",
           title: "Error",
@@ -891,7 +893,7 @@ const AppearanceSection = () => {
         throw new Error('Failed to update preferences');
       }
     } catch (error) {
-      console.error('Error saving preferences:', error);
+      logger.error('Error saving preferences:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -1143,7 +1145,7 @@ const SecuritySection = () => {
         description: "Password updated successfully"
       });
     } catch (error) {
-      console.error('Error updating password:', error);
+      logger.error('Error updating password:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -1319,7 +1321,7 @@ const DataManagementSection = () => {
         const history = await getBackupHistory();
         setBackupHistory(history);
       } catch (error) {
-        console.error('Error loading data management info:', error);
+        logger.error('Error loading data management info:', error);
         toast({
           variant: "destructive",
           title: "Error",
@@ -1377,7 +1379,7 @@ const DataManagementSection = () => {
         description: "Data exported successfully"
       });
     } catch (error) {
-      console.error('Error exporting data:', error);
+      logger.error('Error exporting data:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -1408,7 +1410,7 @@ const DataManagementSection = () => {
       // Reload page to show updated data
       window.location.reload();
     } catch (error) {
-      console.error('Error importing data:', error);
+      logger.error('Error importing data:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -1447,7 +1449,7 @@ const DataManagementSection = () => {
         description: "Backup created successfully"
       });
     } catch (error) {
-      console.error('Error creating backup:', error);
+      logger.error('Error creating backup:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -1715,7 +1717,7 @@ const LogoutSection = () => {
       await signOut();
       navigate('/auth');
     } catch (error) {
-      console.error('Error logging out:', error);
+      logger.error('Error logging out:', error);
       toast({
         variant: "destructive",
         title: "Error",

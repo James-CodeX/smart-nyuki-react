@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
@@ -75,7 +77,7 @@ const HiveCard: React.FC<HiveCardProps> = ({ hive, onClick }) => {
         const date = new Date(timeString);
         formattedTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       } catch (err) {
-        console.error('Error formatting time:', err);
+        logger.error('Error formatting time:', err);
         formattedTime = timeString; // Fallback to original string if parsing fails
       }
       

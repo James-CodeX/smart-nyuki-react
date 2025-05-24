@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -91,7 +93,7 @@ const AlertsManagement: React.FC<AlertsManagementProps> = ({ className, onResolv
       const response = await getAllAlerts();
       setAlerts(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error('Error fetching alerts:', error);
+      logger.error('Error fetching alerts:', error);
       if (showLoading) { // Only show error toast for manual refreshes or initial load
         toast({
           variant: 'destructive',
@@ -124,7 +126,7 @@ const AlertsManagement: React.FC<AlertsManagementProps> = ({ className, onResolv
         onResolve();
       }
     } catch (error) {
-      console.error('Error resolving alert:', error);
+      logger.error('Error resolving alert:', error);
       toast({
         variant: 'destructive',
         title: 'Error resolving alert',

@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { format, subMonths, subDays, startOfMonth, endOfMonth, subYears, isAfter, isBefore } from 'date-fns';
@@ -208,7 +210,7 @@ const AddProductionRecordDialog = ({ open, setOpen, apiaries, hives, onAddSucces
       // Notify parent component to refresh data
       if (onAddSuccess) onAddSuccess();
     } catch (error) {
-      console.error('Error adding production record:', error);
+      logger.error('Error adding production record:', error);
       toast({
         title: 'Error',
         description: 'Failed to add production record. Please try again.',
@@ -457,7 +459,7 @@ const ProductionRecordsTable = ({ selectedApiaryId, onDeleteSuccess }) => {
       );
       setRecords(data);
     } catch (error) {
-      console.error('Error loading production records:', error);
+      logger.error('Error loading production records:', error);
       toast({
         title: 'Error',
         description: 'Failed to load production records',
@@ -491,7 +493,7 @@ const ProductionRecordsTable = ({ selectedApiaryId, onDeleteSuccess }) => {
       // Notify parent component to refresh data
       if (onDeleteSuccess) onDeleteSuccess();
     } catch (error) {
-      console.error('Error deleting production record:', error);
+      logger.error('Error deleting production record:', error);
       toast({
         title: 'Error',
         description: 'Failed to delete production record',
@@ -765,7 +767,7 @@ const Production = () => {
         
         setProductionStats(stats);
       } catch (error) {
-        console.error('Error fetching analytics data:', error);
+        logger.error('Error fetching analytics data:', error);
       } finally {
         setStatsLoading(false);
       }
@@ -791,7 +793,7 @@ const Production = () => {
         const productionData = await getAllProductionData();
         setProductionData(productionData || []);
       } catch (error) {
-        console.error('Error loading data:', error);
+        logger.error('Error loading data:', error);
       } finally {
         setIsLoading(false);
       }
@@ -809,7 +811,7 @@ const Production = () => {
         );
         setProductionRecords(records || []);
       } catch (error) {
-        console.error('Error fetching production records:', error);
+        logger.error('Error fetching production records:', error);
       }
     };
     
@@ -1014,7 +1016,7 @@ const Production = () => {
                             );
                             setProductionRecords(records || []);
                           } catch (error) {
-                            console.error('Error fetching production records:', error);
+                            logger.error('Error fetching production records:', error);
                           }
                         };
                         
@@ -1109,7 +1111,7 @@ const Production = () => {
                 const apiaryData = await getAllApiaries();
                 setApiaries(Array.isArray(apiaryData.data) ? apiaryData.data : []);
               } catch (error) {
-                console.error('Error fetching analytics data:', error);
+                logger.error('Error fetching analytics data:', error);
               } finally {
                 setStatsLoading(false);
               }
@@ -1124,7 +1126,7 @@ const Production = () => {
                 );
                 setProductionRecords(records || []);
               } catch (error) {
-                console.error('Error fetching production records:', error);
+                logger.error('Error fetching production records:', error);
               }
             };
             fetchProductionRecords();

@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase';
+import logger from '@/utils/logger';
+
 
 export interface Hive {
   name: string;
@@ -159,7 +161,7 @@ export const getAllHives = async (
       .order('timestamp', { ascending: false });
 
     if (metricsError) {
-      console.error('Error fetching metrics data:', metricsError);
+      logger.error('Error fetching metrics data:', metricsError);
     }
 
     // Group metrics by hive_id for faster access
@@ -180,7 +182,7 @@ export const getAllHives = async (
       .order('created_at', { ascending: false });
 
     if (alertsError) {
-      console.error('Error fetching alerts:', alertsError);
+      logger.error('Error fetching alerts:', alertsError);
     }
 
     // Group alerts by hive ID for faster access
@@ -252,7 +254,7 @@ export const getAllHives = async (
       totalPages: Math.ceil((count || 0) / validPageSize)
     };
   } catch (error) {
-    console.error('Error in getAllHives:', error);
+    logger.error('Error in getAllHives:', error);
     throw error;
   }
 };
@@ -293,7 +295,7 @@ export const getHivesByApiary = async (apiaryId: string): Promise<HiveWithFullDe
       .order('timestamp', { ascending: false });
 
     if (metricsError) {
-      console.error('Error fetching metrics data:', metricsError);
+      logger.error('Error fetching metrics data:', metricsError);
     }
 
     // Group metrics by hive_id for faster access
@@ -314,7 +316,7 @@ export const getHivesByApiary = async (apiaryId: string): Promise<HiveWithFullDe
       .order('created_at', { ascending: false });
 
     if (alertsError) {
-      console.error('Error fetching alerts:', alertsError);
+      logger.error('Error fetching alerts:', alertsError);
     }
 
     // Group alerts by hive ID for faster access
@@ -379,7 +381,7 @@ export const getHivesByApiary = async (apiaryId: string): Promise<HiveWithFullDe
 
     return enrichedHives;
   } catch (error) {
-    console.error('Error in getHivesByApiary:', error);
+    logger.error('Error in getHivesByApiary:', error);
     throw error;
   }
 };
@@ -402,12 +404,12 @@ export const getHiveById = async (hiveId: string): Promise<HiveWithFullDetails |
       .maybeSingle();
 
     if (hiveQuery.error) {
-      console.error('Error fetching hive:', hiveQuery.error);
+      logger.error('Error fetching hive:', hiveQuery.error);
       throw hiveQuery.error;
     }
 
     if (!hiveQuery.data) {
-      console.log(`No hive found with hive_id=${hiveId}`);
+      logger.log(`No hive found with hive_id=${hiveId}`);
       return null;
     }
 
@@ -422,7 +424,7 @@ export const getHiveById = async (hiveId: string): Promise<HiveWithFullDetails |
       .limit(24);
 
     if (metricsError) {
-      console.error('Error fetching metrics for hive:', hiveId, metricsError);
+      logger.error('Error fetching metrics for hive:', hiveId, metricsError);
     }
 
     // Get active alerts
@@ -434,7 +436,7 @@ export const getHiveById = async (hiveId: string): Promise<HiveWithFullDetails |
       .order('created_at', { ascending: false });
 
     if (alertsError) {
-      console.error('Error fetching alerts for hive:', hiveId, alertsError);
+      logger.error('Error fetching alerts for hive:', hiveId, alertsError);
     }
 
     // Format metrics
@@ -481,7 +483,7 @@ export const getHiveById = async (hiveId: string): Promise<HiveWithFullDetails |
       alerts: alerts || []
     };
   } catch (error) {
-    console.error('Error in getHiveById:', error);
+    logger.error('Error in getHiveById:', error);
     throw error;
   }
 };
@@ -503,7 +505,7 @@ export const addHive = async (hiveData: {
   notes?: string;
 }): Promise<any> => {
   try {
-    console.log('Adding hive with ID:', hiveData.hive_id);
+    logger.log('Adding hive with ID:', hiveData.hive_id);
     
     // Clean the hive ID
     const cleanHiveId = hiveData.hive_id.trim();
@@ -515,7 +517,7 @@ export const addHive = async (hiveData: {
       .eq('hive_id', cleanHiveId)
       .limit(1);
     
-    console.log('Existing hive query result:', existingHive, 'Error:', existingHiveError);
+    logger.log('Existing hive query result:', existingHive, 'Error:', existingHiveError);
     
     if (existingHiveError) throw existingHiveError;
     
@@ -558,7 +560,7 @@ export const addHive = async (hiveData: {
 
     return data;
   } catch (error) {
-    console.error('Error adding hive:', error);
+    logger.error('Error adding hive:', error);
     throw error;
   }
 };
@@ -598,7 +600,7 @@ export const updateHive = async (
       .single();
     
     if (apiaryError) {
-      console.error('Error fetching apiary name:', apiaryError);
+      logger.error('Error fetching apiary name:', apiaryError);
     }
     
     // Get latest metrics
@@ -610,7 +612,7 @@ export const updateHive = async (
       .limit(24);
     
     if (metricsError) {
-      console.error('Error fetching metrics:', metricsError);
+      logger.error('Error fetching metrics:', metricsError);
     }
     
     // Get active alerts
@@ -622,7 +624,7 @@ export const updateHive = async (
       .order('created_at', { ascending: false });
     
     if (alertsError) {
-      console.error('Error fetching alerts:', alertsError);
+      logger.error('Error fetching alerts:', alertsError);
     }
     
     // Format metrics
@@ -669,7 +671,7 @@ export const updateHive = async (
       alerts: alertsData || []
     };
   } catch (error) {
-    console.error('Error updating hive:', error);
+    logger.error('Error updating hive:', error);
     throw error;
   }
 };
@@ -688,7 +690,7 @@ export const deleteHive = async (hiveId: string): Promise<void> => {
       throw error;
     }
   } catch (error) {
-    console.error('Error deleting hive:', error);
+    logger.error('Error deleting hive:', error);
     throw error;
   }
 };
@@ -698,7 +700,7 @@ export const deleteHive = async (hiveId: string): Promise<void> => {
  */
 export const checkHiveAvailability = async (hiveId: string): Promise<{ exists: boolean; available: boolean; error?: string }> => {
   try {
-    console.log('Checking availability for hive ID:', hiveId);
+    logger.log('Checking availability for hive ID:', hiveId);
     
     // Now we just check if the hive is already registered in the hives table
     const { data: existingHive, error: hiveError } = await supabase
@@ -707,7 +709,7 @@ export const checkHiveAvailability = async (hiveId: string): Promise<{ exists: b
       .eq('hive_id', hiveId.trim())
       .maybeSingle();
     
-    console.log('Existing hive query result:', existingHive, 'Error:', hiveError);
+    logger.log('Existing hive query result:', existingHive, 'Error:', hiveError);
     
     if (hiveError) throw hiveError;
     
@@ -732,10 +734,10 @@ export const checkHiveAvailability = async (hiveId: string): Promise<{ exists: b
     }
     
     // The hive is available to register (either doesn't exist or isn't registered)
-    console.log('Hive is available for registration');
+    logger.log('Hive is available for registration');
     return { exists: true, available: true };
   } catch (error) {
-    console.error('Error checking hive availability:', error);
+    logger.error('Error checking hive availability:', error);
     return { exists: false, available: false, error: 'Error checking hive ID' };
   }
 };
@@ -829,7 +831,7 @@ export const fetchHiveDetails = async (hiveId: string): Promise<HiveDetails> => 
 
     return { metrics, alerts };
   } catch (error) {
-    console.error(`Error fetching hive details for hive ${hiveId}:`, error);
+    logger.error(`Error fetching hive details for hive ${hiveId}:`, error);
     // Return empty data structure in case of error
     return {
       metrics: {
@@ -863,7 +865,119 @@ export const toggleHiveAlerts = async (hiveId: string, enabled: boolean): Promis
       throw error;
     }
   } catch (error) {
-    console.error('Error toggling hive alerts:', error);
+    logger.error('Error toggling hive alerts:', error);
+    throw error;
+  }
+};
+
+/**
+ * Optimized function to fetch hives with basic metrics for dashboard
+ * This function reduces database calls by using efficient queries and limiting data
+ */
+export const getDashboardHives = async (): Promise<HiveWithFullDetails[]> => {
+  try {
+    // Get all hives with apiary names in a single query
+    const { data: hives, error } = await supabase
+      .from('hives')
+      .select(`
+        *,
+        apiaries (
+          name
+        )
+      `)
+      .order('name', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    if (!hives?.length) {
+      return [];
+    }
+
+    // Extract all hive_ids for batch queries
+    const hiveIds = hives.map(hive => hive.hive_id);
+
+    // Get the latest metrics for all hives in a single query
+    // Using a SQL function that returns only the latest metrics per hive
+    const { data: latestMetrics, error: metricsError } = await supabase
+      .rpc('get_latest_metrics_for_dashboard');
+
+    // Group metrics by hive_id
+    const metricsByHiveId = latestMetrics?.reduce((acc, metric) => {
+      if (!acc[metric.hive_id]) {
+        acc[metric.hive_id] = metric;
+      }
+      return acc;
+    }, {} as Record<string, any>) || {};
+
+    // Get active alerts for all hives in a single query
+    const { data: activeAlerts, error: alertsError } = await supabase
+      .from('alerts')
+      .select('*')
+      .in('hive_id', hiveIds)
+      .is('resolved_at', null)
+      .order('created_at', { ascending: false });
+
+    if (alertsError) {
+      logger.error('Error fetching alerts:', alertsError);
+    }
+
+    // Group alerts by hive ID
+    const alertsByHiveId = activeAlerts?.reduce((acc, alert) => {
+      if (!acc[alert.hive_id]) {
+        acc[alert.hive_id] = [];
+      }
+      acc[alert.hive_id].push(alert);
+      return acc;
+    }, {} as Record<string, any[]>) || {};
+
+    // Process all hives with their associated metrics and alerts
+    const enrichedHives = hives.map((hive) => {
+      const apiaryName = hive.apiaries?.name || 'Unknown Apiary';
+      const latestMetric = metricsByHiveId[hive.hive_id] || {};
+      const hiveAlerts = alertsByHiveId[hive.hive_id] || [];
+      
+      // Create metrics structure with just the latest value
+      const metrics = {
+        temperature: latestMetric.temp_value !== undefined ? [{ 
+          time: latestMetric.timestamp, 
+          value: latestMetric.temp_value 
+        }] : [],
+        humidity: latestMetric.hum_value !== undefined ? [{ 
+          time: latestMetric.timestamp, 
+          value: latestMetric.hum_value 
+        }] : [],
+        sound: latestMetric.sound_value !== undefined ? [{ 
+          time: latestMetric.timestamp, 
+          value: latestMetric.sound_value 
+        }] : [],
+        weight: latestMetric.weight_value !== undefined ? [{ 
+          time: latestMetric.timestamp, 
+          value: latestMetric.weight_value 
+        }] : []
+      };
+
+      // Format alerts
+      const formattedAlerts = hiveAlerts.map(alert => ({
+        id: alert.id,
+        type: alert.type,
+        message: alert.message,
+        severity: alert.severity,
+        created_at: alert.created_at
+      }));
+
+      return {
+        ...hive,
+        apiaryName,
+        metrics,
+        alerts: formattedAlerts
+      };
+    });
+
+    return enrichedHives;
+  } catch (error) {
+    logger.error('Error in getDashboardHives:', error);
     throw error;
   }
 };

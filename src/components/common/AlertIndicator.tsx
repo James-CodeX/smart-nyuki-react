@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { useState, useEffect } from 'react';
 import { getActiveAlertCount } from '@/services/alertService';
 
@@ -26,7 +28,7 @@ const AlertIndicator: React.FC<AlertIndicatorProps> = ({ className }) => {
       const count = await getActiveAlertCount();
       setAlertCount(count);
     } catch (error) {
-      console.error('Error fetching alert count:', error);
+      logger.error('Error fetching alert count:', error);
     } finally {
       setLoading(false);
     }

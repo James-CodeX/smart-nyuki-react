@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -54,7 +56,7 @@ const ApiaryDetails = () => {
           }
         }
       } catch (error) {
-        console.error('Error loading apiary details:', error);
+        logger.error('Error loading apiary details:', error);
         toast({
           variant: "destructive",
           title: "Error loading data",
@@ -128,7 +130,7 @@ const ApiaryDetails = () => {
       
       setAddHiveModalOpen(false);
     } catch (error) {
-      console.error('Error adding hive:', error);
+      logger.error('Error adding hive:', error);
       // Get the error message if it exists
       const errorMessage = error instanceof Error ? error.message : 'Failed to add hive';
       
@@ -164,7 +166,7 @@ const ApiaryDetails = () => {
       
       setEditApiaryModalOpen(false);
     } catch (error) {
-      console.error('Error updating apiary:', error);
+      logger.error('Error updating apiary:', error);
       toast({
         title: 'Error',
         description: 'Failed to update apiary',
@@ -191,7 +193,7 @@ const ApiaryDetails = () => {
       // Navigate back to apiaries list
       navigate('/apiaries');
     } catch (error) {
-      console.error('Error deleting apiary:', error);
+      logger.error('Error deleting apiary:', error);
       toast({
         title: 'Error',
         description: 'Failed to delete apiary',

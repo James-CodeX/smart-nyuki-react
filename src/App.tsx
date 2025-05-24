@@ -15,6 +15,7 @@ import { SidebarProvider, useSidebar } from "./context/SidebarContext";
 import { cn } from "@/lib/utils";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import LoadingState from "./components/common/LoadingState";
+import logger from '@/utils/logger';
 
 // Use React.lazy for code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -249,13 +250,13 @@ const App = () => {
 
   // Start metrics checker when app mounts
   useEffect(() => {
-    console.log('[DEBUG] App mounted - Starting metrics checker ONCE at:', new Date().toISOString());
+    logger.log('[DEBUG] App mounted - Starting metrics checker ONCE at:', new Date().toISOString());
     // Start checking metrics every 30 minutes (default)
     const stopChecker = startMetricsChecker();
     
     // Clean up when component unmounts
     return () => {
-      console.log('[DEBUG] App unmounting - Stopping metrics checker at:', new Date().toISOString());
+      logger.log('[DEBUG] App unmounting - Stopping metrics checker at:', new Date().toISOString());
       stopChecker();
     };
   }, []);

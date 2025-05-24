@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import logger from '@/utils/logger';
 
 export interface WeatherData {
   condition: string;
@@ -42,14 +43,14 @@ export const fetchWeatherData = async (latitude: number, longitude: number): Pro
   try {
     // Use mock data for development until API key is set up
     if (!API_KEY || API_KEY === 'YOUR_WORLDWEATHERONLINE_API_KEY') {
-      console.log('Using mock weather data - no API key provided');
+      logger.log('Using mock weather data - no API key provided');
       return mockWeatherData(latitude, longitude);
     }
 
-    console.log(`Fetching weather data for coordinates: ${latitude},${longitude}`);
+    logger.log(`Fetching weather data for coordinates: ${latitude},${longitude}`);
     
     const apiUrl = `https://api.worldweatheronline.com/premium/v1/weather.ashx?key=${API_KEY}&q=${latitude},${longitude}&format=json&num_of_days=1&fx=yes&cc=yes&mca=no&includelocation=yes&tp=1`;
-    console.log('API URL:', apiUrl);
+    logger.log('API URL:', apiUrl);
     
     const response = await fetch(apiUrl);
 
@@ -58,7 +59,7 @@ export const fetchWeatherData = async (latitude: number, longitude: number): Pro
     }
 
     const data = await response.json();
-    console.log('WorldWeatherOnline API response:', data);
+    logger.log('WorldWeatherOnline API response:', data);
     
     // Check if the response contains the expected data
     if (!data.data || data.data.error) {
@@ -90,9 +91,9 @@ export const fetchWeatherData = async (latitude: number, longitude: number): Pro
 
     return weatherData;
   } catch (error) {
-    console.error('Error fetching weather data:', error);
+    logger.error('Error fetching weather data:', error);
     if (error instanceof Error) {
-      console.error('Error message:', error.message);
+      logger.error('Error message:', error.message);
     }
     // Fall back to mock data if the API fails, but indicate it's due to an API error
     return mockWeatherData(latitude, longitude, true);
@@ -106,14 +107,14 @@ export const fetchForecast = async (latitude: number, longitude: number): Promis
   try {
     // Use mock data for development until API key is set up
     if (!API_KEY || API_KEY === 'YOUR_WORLDWEATHERONLINE_API_KEY') {
-      console.log('Using mock forecast data - no API key provided');
+      logger.log('Using mock forecast data - no API key provided');
       return mockForecast(latitude, longitude);
     }
 
-    console.log(`Fetching forecast data for coordinates: ${latitude},${longitude}`);
+    logger.log(`Fetching forecast data for coordinates: ${latitude},${longitude}`);
     
     const apiUrl = `https://api.worldweatheronline.com/premium/v1/weather.ashx?key=${API_KEY}&q=${latitude},${longitude}&format=json&num_of_days=5&tp=24&fx=yes&cc=yes`;
-    console.log('API URL:', apiUrl);
+    logger.log('API URL:', apiUrl);
     
     const response = await fetch(apiUrl);
 
@@ -122,7 +123,7 @@ export const fetchForecast = async (latitude: number, longitude: number): Promis
     }
 
     const data = await response.json();
-    console.log('WorldWeatherOnline forecast API response:', data);
+    logger.log('WorldWeatherOnline forecast API response:', data);
     
     // Check if the response contains the expected data
     if (!data.data || !data.data.weather) {
@@ -148,18 +149,18 @@ export const fetchForecast = async (latitude: number, longitude: number): Promis
             icon: day.hourly[0].weatherCode
           });
         } else {
-          console.warn(`Missing data for forecast day: ${day.date}`);
+          logger.warn(`Missing data for forecast day: ${day.date}`);
         }
       } catch (err) {
-        console.error(`Error processing forecast for a day:`, err);
+        logger.error(`Error processing forecast for a day:`, err);
       }
     });
     
     return forecasts;
   } catch (error) {
-    console.error('Error fetching forecast data:', error);
+    logger.error('Error fetching forecast data:', error);
     if (error instanceof Error) {
-      console.error('Error message:', error.message);
+      logger.error('Error message:', error.message);
     }
     // Fall back to mock data if the API fails, but indicate it's due to an API error
     return mockForecast(latitude, longitude, true);

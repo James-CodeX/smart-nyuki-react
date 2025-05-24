@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -125,7 +127,7 @@ const ProductionAnalytics: React.FC<ProductionAnalyticsProps> = ({ className }) 
         setSummaryData(summaryResult);
         
       } catch (error) {
-        console.error('Error loading production data:', error);
+        logger.error('Error loading production data:', error);
       } finally {
         setLoading(false);
       }

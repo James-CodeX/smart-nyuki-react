@@ -1,3 +1,5 @@
+import logger from '@/utils/logger';
+
 import { supabase } from '@/lib/supabase';
 
 export interface Alert {
@@ -133,7 +135,7 @@ export const getAllAlerts = async (
       totalPages: Math.ceil((count || 0) / validPageSize)
     };
   } catch (error) {
-    console.error('Error fetching alerts:', error);
+    logger.error('Error fetching alerts:', error);
     throw error;
   }
 };
@@ -198,7 +200,7 @@ export const getAlertsByHive = async (hiveId: string): Promise<Alert[]> => {
 
     return transformedAlerts;
   } catch (error) {
-    console.error('Error fetching hive alerts:', error);
+    logger.error('Error fetching hive alerts:', error);
     throw error;
   }
 };
@@ -277,7 +279,7 @@ export const getAlertsByApiary = async (apiaryId: string): Promise<Alert[]> => {
 
     return transformedAlerts;
   } catch (error) {
-    console.error('Error fetching apiary alerts:', error);
+    logger.error('Error fetching apiary alerts:', error);
     throw error;
   }
 };
@@ -287,7 +289,7 @@ export const getAlertsByApiary = async (apiaryId: string): Promise<Alert[]> => {
  */
 export const resolveAlert = async (alertId: string): Promise<void> => {
   try {
-    console.log(`[DEBUG] Resolving alert with ID: ${alertId}`);
+    logger.log(`[DEBUG] Resolving alert with ID: ${alertId}`);
     
     // Get the alert to be resolved
     const { data: alert, error: getError } = await supabase
@@ -297,13 +299,13 @@ export const resolveAlert = async (alertId: string): Promise<void> => {
       .single();
       
     if (getError) {
-      console.error('[DEBUG] Error getting alert for resolution:', getError);
+      logger.error('[DEBUG] Error getting alert for resolution:', getError);
       throw getError;
     }
     
     const resolved_at = new Date().toISOString();
-    console.log(`[DEBUG] Alert being resolved:`, alert);
-    console.log(`[DEBUG] Resolution timestamp: ${resolved_at}`);
+    logger.log(`[DEBUG] Alert being resolved:`, alert);
+    logger.log(`[DEBUG] Resolution timestamp: ${resolved_at}`);
     
     const { error } = await supabase
       .from('alerts')
@@ -314,13 +316,13 @@ export const resolveAlert = async (alertId: string): Promise<void> => {
       .eq('id', alertId);
 
     if (error) {
-      console.error('[DEBUG] Error resolving alert:', error);
+      logger.error('[DEBUG] Error resolving alert:', error);
       throw error;
     }
     
-    console.log(`[DEBUG] Alert ${alertId} successfully resolved`);
+    logger.log(`[DEBUG] Alert ${alertId} successfully resolved`);
   } catch (error) {
-    console.error('Error resolving alert:', error);
+    logger.error('Error resolving alert:', error);
     throw error;
   }
 };
@@ -339,7 +341,7 @@ export const markAlertAsRead = async (alertId: string): Promise<void> => {
       throw error;
     }
   } catch (error) {
-    console.error('Error marking alert as read:', error);
+    logger.error('Error marking alert as read:', error);
     throw error;
   }
 };
@@ -403,7 +405,7 @@ export const createAlert = async (alertData: {
       apiary_name: apiary.name,
     };
   } catch (error) {
-    console.error('Error creating alert:', error);
+    logger.error('Error creating alert:', error);
     throw error;
   }
 };
@@ -430,7 +432,7 @@ export const getActiveAlertCount = async (): Promise<number> => {
 
     return count || 0;
   } catch (error) {
-    console.error('Error getting alert count:', error);
+    logger.error('Error getting alert count:', error);
     return 0;
   }
 };
@@ -441,13 +443,13 @@ export const getActiveAlertCount = async (): Promise<number> => {
  */
 export const checkMetricsAndCreateAlerts = async (): Promise<number> => {
   try {
-    console.log('Starting alert check process...');
+    logger.log('Starting alert check process...');
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
-      console.error('No authenticated user found');
+      logger.error('No authenticated user found');
       throw new Error('User not authenticated');
     }
-    console.log(`Checking metrics for user: ${userData.user.id}`);
+    logger.log(`Checking metrics for user: ${userData.user.id}`);
 
     // Get the user's alert thresholds
     const { data: thresholds, error: thresholdsError } = await supabase
@@ -458,7 +460,7 @@ export const checkMetricsAndCreateAlerts = async (): Promise<number> => {
 
     if (thresholdsError) {
       if (thresholdsError.code === 'PGRST116') { // No rows returned
-        console.log('No alert thresholds found, using defaults');
+        logger.log('No alert thresholds found, using defaults');
         // Use default values if no thresholds are set
         const defaultThresholds = {
           temperature_min: 32,
@@ -470,17 +472,17 @@ export const checkMetricsAndCreateAlerts = async (): Promise<number> => {
           weight_min: 10,
           weight_max: 25,
         };
-        console.log('Using default thresholds:', defaultThresholds);
+        logger.log('Using default thresholds:', defaultThresholds);
         return checkWithThresholds(userData.user.id, defaultThresholds);
       }
-      console.error('Error fetching thresholds:', thresholdsError);
+      logger.error('Error fetching thresholds:', thresholdsError);
       throw thresholdsError;
     }
 
-    console.log('Found user thresholds:', thresholds);
+    logger.log('Found user thresholds:', thresholds);
     return checkWithThresholds(userData.user.id, thresholds);
   } catch (error) {
-    console.error('Error checking metrics and creating alerts:', error);
+    logger.error('Error checking metrics and creating alerts:', error);
     return 0;
   }
 };
@@ -491,7 +493,7 @@ export const checkMetricsAndCreateAlerts = async (): Promise<number> => {
 const checkWithThresholds = async (userId: string, thresholds: any): Promise<number> => {
   try {
     // Get all active hives for this user
-    console.log(`Fetching hives with alerts enabled for user ${userId}`);
+    logger.log(`Fetching hives with alerts enabled for user ${userId}`);
     const { data: hives, error: hivesError } = await supabase
       .from('hives')
       .select('*')
@@ -499,22 +501,22 @@ const checkWithThresholds = async (userId: string, thresholds: any): Promise<num
       .eq('alerts_enabled', true);
 
     if (hivesError) {
-      console.error('Error fetching hives:', hivesError);
+      logger.error('Error fetching hives:', hivesError);
       throw hivesError;
     }
     
     if (!hives?.length) {
-      console.log('No hives found with alerts enabled');
+      logger.log('No hives found with alerts enabled');
       return 0;
     }
     
-    console.log(`Found ${hives.length} hives with alerts enabled`);
+    logger.log(`Found ${hives.length} hives with alerts enabled`);
 
     // Get the latest metrics for each hive
     let alertsCreated = 0;
     
     for (const hive of hives) {
-      console.log(`Checking metrics for hive: ${hive.hive_id} (${hive.name})`);
+      logger.log(`Checking metrics for hive: ${hive.hive_id} (${hive.name})`);
       // Get ONLY the most recent metrics data point for this hive
       // This is important: we only check the very latest reading, not all data from the last interval
       const { data: metrics, error: metricsError } = await supabase
@@ -525,17 +527,17 @@ const checkWithThresholds = async (userId: string, thresholds: any): Promise<num
         .limit(1); // Ensures we only get the single most recent data point
 
       if (metricsError) {
-        console.error(`Error fetching metrics for hive ${hive.hive_id}:`, metricsError);
+        logger.error(`Error fetching metrics for hive ${hive.hive_id}:`, metricsError);
         continue;
       }
 
       if (!metrics?.length) {
-        console.log(`No metrics found for hive ${hive.hive_id}`);
+        logger.log(`No metrics found for hive ${hive.hive_id}`);
         continue;
       }
       
       const latestMetric = metrics[0];
-      console.log(`Latest metric for hive ${hive.hive_id}:`, {
+      logger.log(`Latest metric for hive ${hive.hive_id}:`, {
         temp: latestMetric.temp_value,
         humidity: latestMetric.hum_value, 
         sound: latestMetric.sound_value,
@@ -545,96 +547,96 @@ const checkWithThresholds = async (userId: string, thresholds: any): Promise<num
       // Check temperature
       if (latestMetric.temp_value !== null) {
         const temp = parseFloat(latestMetric.temp_value);
-        console.log(`Temperature value: ${temp}, thresholds: min=${thresholds.temperature_min}, max=${thresholds.temperature_max}`);
+        logger.log(`Temperature value: ${temp}, thresholds: min=${thresholds.temperature_min}, max=${thresholds.temperature_max}`);
         
         if (temp > thresholds.temperature_max) {
-          console.log(`Temperature above max threshold: ${temp} > ${thresholds.temperature_max}`);
+          logger.log(`Temperature above max threshold: ${temp} > ${thresholds.temperature_max}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'temperature', 
             `Temperature is too high (${temp.toFixed(1)}°C)`, 'high');
           alertsCreated++;
         } 
         else if (temp < thresholds.temperature_min) {
-          console.log(`Temperature below min threshold: ${temp} < ${thresholds.temperature_min}`);
+          logger.log(`Temperature below min threshold: ${temp} < ${thresholds.temperature_min}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'temperature', 
             `Temperature is too low (${temp.toFixed(1)}°C)`, 'medium');
           alertsCreated++;
         }
         else {
-          console.log(`Temperature within normal range: ${thresholds.temperature_min} <= ${temp} <= ${thresholds.temperature_max}`);
+          logger.log(`Temperature within normal range: ${thresholds.temperature_min} <= ${temp} <= ${thresholds.temperature_max}`);
         }
       }
       
       // Check humidity
       if (latestMetric.hum_value !== null) {
         const humidity = parseFloat(latestMetric.hum_value);
-        console.log(`Humidity value: ${humidity}, thresholds: min=${thresholds.humidity_min}, max=${thresholds.humidity_max}`);
+        logger.log(`Humidity value: ${humidity}, thresholds: min=${thresholds.humidity_min}, max=${thresholds.humidity_max}`);
         
         if (humidity > thresholds.humidity_max) {
-          console.log(`Humidity above max threshold: ${humidity} > ${thresholds.humidity_max}`);
+          logger.log(`Humidity above max threshold: ${humidity} > ${thresholds.humidity_max}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'humidity', 
             `Humidity is too high (${humidity.toFixed(1)}%)`, 'medium');
           alertsCreated++;
         } 
         else if (humidity < thresholds.humidity_min) {
-          console.log(`Humidity below min threshold: ${humidity} < ${thresholds.humidity_min}`);
+          logger.log(`Humidity below min threshold: ${humidity} < ${thresholds.humidity_min}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'humidity', 
             `Humidity is too low (${humidity.toFixed(1)}%)`, 'medium');
           alertsCreated++;
         }
         else {
-          console.log(`Humidity within normal range: ${thresholds.humidity_min} <= ${humidity} <= ${thresholds.humidity_max}`);
+          logger.log(`Humidity within normal range: ${thresholds.humidity_min} <= ${humidity} <= ${thresholds.humidity_max}`);
         }
       }
       
       // Check sound
       if (latestMetric.sound_value !== null) {
         const sound = parseFloat(latestMetric.sound_value);
-        console.log(`Sound value: ${sound}, thresholds: min=${thresholds.sound_min}, max=${thresholds.sound_max}`);
+        logger.log(`Sound value: ${sound}, thresholds: min=${thresholds.sound_min}, max=${thresholds.sound_max}`);
         
         if (sound > thresholds.sound_max) {
-          console.log(`Sound above max threshold: ${sound} > ${thresholds.sound_max}`);
+          logger.log(`Sound above max threshold: ${sound} > ${thresholds.sound_max}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'sound', 
             `Sound level is too high (${sound.toFixed(1)} dB)`, 'medium');
           alertsCreated++;
         } 
         else if (sound < thresholds.sound_min) {
-          console.log(`Sound below min threshold: ${sound} < ${thresholds.sound_min}`);
+          logger.log(`Sound below min threshold: ${sound} < ${thresholds.sound_min}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'sound', 
             `Sound level is too low (${sound.toFixed(1)} dB)`, 'low');
           alertsCreated++;
         }
         else {
-          console.log(`Sound within normal range: ${thresholds.sound_min} <= ${sound} <= ${thresholds.sound_max}`);
+          logger.log(`Sound within normal range: ${thresholds.sound_min} <= ${sound} <= ${thresholds.sound_max}`);
         }
       }
       
       // Check weight
       if (latestMetric.weight_value !== null) {
         const weight = parseFloat(latestMetric.weight_value);
-        console.log(`Weight value: ${weight}, thresholds: min=${thresholds.weight_min}, max=${thresholds.weight_max}`);
+        logger.log(`Weight value: ${weight}, thresholds: min=${thresholds.weight_min}, max=${thresholds.weight_max}`);
         
         if (weight > thresholds.weight_max) {
-          console.log(`Weight above max threshold: ${weight} > ${thresholds.weight_max}`);
+          logger.log(`Weight above max threshold: ${weight} > ${thresholds.weight_max}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'weight', 
             `Weight is too high (${weight.toFixed(1)} kg)`, 'medium');
           alertsCreated++;
         } 
         else if (weight < thresholds.weight_min) {
-          console.log(`Weight below min threshold: ${weight} < ${thresholds.weight_min}`);
+          logger.log(`Weight below min threshold: ${weight} < ${thresholds.weight_min}`);
           await createAlertIfNotExists(userId, hive.hive_id, 'weight', 
             `Weight is too low (${weight.toFixed(1)} kg)`, 'high');
           alertsCreated++;
         }
         else {
-          console.log(`Weight within normal range: ${thresholds.weight_min} <= ${weight} <= ${thresholds.weight_max}`);
+          logger.log(`Weight within normal range: ${thresholds.weight_min} <= ${weight} <= ${thresholds.weight_max}`);
         }
       }
     }
     
-    console.log(`Alert check complete, ${alertsCreated} alerts created`);
+    logger.log(`Alert check complete, ${alertsCreated} alerts created`);
     return alertsCreated;
   } catch (error) {
-    console.error('Error in checkWithThresholds:', error);
+    logger.error('Error in checkWithThresholds:', error);
     return 0;
   }
 };
@@ -650,7 +652,7 @@ const createAlertIfNotExists = async (
   severity: string
 ): Promise<void> => {
   try {
-    console.log(`[DEBUG] Checking for existing/recent ${type} alerts for hive ${hiveId}`);
+    logger.log(`[DEBUG] Checking for existing/recent ${type} alerts for hive ${hiveId}`);
     
     // Check if a similar unresolved alert already exists
     const { data: activeAlerts, error: activeError } = await supabase
@@ -663,7 +665,7 @@ const createAlertIfNotExists = async (
       .order('created_at', { ascending: false });
       
     if (activeError) {
-      console.error('[DEBUG] Error checking for existing alerts:', activeError);
+      logger.error('[DEBUG] Error checking for existing alerts:', activeError);
       throw activeError;
     }
     
@@ -673,7 +675,7 @@ const createAlertIfNotExists = async (
     oneHourAgo.setHours(oneHourAgo.getHours() - 1);
     const oneHourAgoStr = oneHourAgo.toISOString();
     
-    console.log(`[DEBUG] Checking for alerts resolved after: ${oneHourAgoStr}`);
+    logger.log(`[DEBUG] Checking for alerts resolved after: ${oneHourAgoStr}`);
     
     const { data: recentlyResolvedAlerts, error: resolvedError } = await supabase
       .from('alerts')
@@ -686,12 +688,12 @@ const createAlertIfNotExists = async (
       .order('resolved_at', { ascending: false });
     
     if (resolvedError) {
-      console.error('[DEBUG] Error checking for recently resolved alerts:', resolvedError);
+      logger.error('[DEBUG] Error checking for recently resolved alerts:', resolvedError);
       throw resolvedError;
     }
     
     // Log results of both queries
-    console.log(`[DEBUG] Found ${activeAlerts?.length || 0} active alerts and ${recentlyResolvedAlerts?.length || 0} recently resolved alerts`);
+    logger.log(`[DEBUG] Found ${activeAlerts?.length || 0} active alerts and ${recentlyResolvedAlerts?.length || 0} recently resolved alerts`);
     
     // Function to check message similarity
     const isMessageSimilar = (existingMessage: string) => {
@@ -700,7 +702,7 @@ const createAlertIfNotExists = async (
       // Check if at least 70% of words are the same (simple similarity check)
       const commonWords = messageWords.filter(word => existingMessageWords.includes(word));
       const similarity = commonWords.length / Math.min(messageWords.length, existingMessageWords.length);
-      console.log(`[DEBUG] Message similarity: ${similarity.toFixed(2)} comparing "${message}" with "${existingMessage}"`);
+      logger.log(`[DEBUG] Message similarity: ${similarity.toFixed(2)} comparing "${message}" with "${existingMessage}"`);
       return similarity >= 0.7;
     };
     
@@ -709,7 +711,7 @@ const createAlertIfNotExists = async (
       const similarAlertExists = activeAlerts.some(alert => isMessageSimilar(alert.message));
       
       if (similarAlertExists) {
-        console.log(`[DEBUG] Similar ACTIVE alert already exists for ${type} on hive ${hiveId}, skipping creation`);
+        logger.log(`[DEBUG] Similar ACTIVE alert already exists for ${type} on hive ${hiveId}, skipping creation`);
         return;
       }
     }
@@ -719,13 +721,13 @@ const createAlertIfNotExists = async (
       const similarResolvedAlert = recentlyResolvedAlerts.some(alert => isMessageSimilar(alert.message));
       
       if (similarResolvedAlert) {
-        console.log(`[DEBUG] Similar alert was RECENTLY RESOLVED for ${type} on hive ${hiveId}, skipping creation`);
+        logger.log(`[DEBUG] Similar alert was RECENTLY RESOLVED for ${type} on hive ${hiveId}, skipping creation`);
         return;
       }
     }
     
     // Create a new alert
-    console.log(`[DEBUG] Creating new alert: ${type} (${severity}) - ${message}`);
+    logger.log(`[DEBUG] Creating new alert: ${type} (${severity}) - ${message}`);
     const { data, error } = await supabase
       .from('alerts')
       .insert({
@@ -739,12 +741,12 @@ const createAlertIfNotExists = async (
       });
       
     if (error) {
-      console.error('[DEBUG] Error creating alert:', error);
+      logger.error('[DEBUG] Error creating alert:', error);
       throw error;
     }
     
-    console.log(`[DEBUG] Alert created successfully for hive ${hiveId}: ${type} - ${message}`);
+    logger.log(`[DEBUG] Alert created successfully for hive ${hiveId}: ${type} - ${message}`);
   } catch (error) {
-    console.error('[DEBUG] Error in createAlertIfNotExists:', error);
+    logger.error('[DEBUG] Error in createAlertIfNotExists:', error);
   }
 }; 
