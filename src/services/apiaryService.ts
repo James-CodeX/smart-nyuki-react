@@ -409,10 +409,28 @@ export const getDashboardApiaries = async (): Promise<ApiaryWithStats[]> => {
       return acc;
     }, {} as Record<string, string[]>) || {};
 
-    // Get the latest metrics for all hives in a single query
-    // Using a SQL query with DISTINCT ON to get only the latest record per hive
+    // Get the latest metrics for all hives - using a direct query instead of RPC
+    // We'll get the latest record for each hive
+    const hiveIds = hives?.map(hive => hive.hive_id) || [];
+    
+    // If no hives, return early
+    if (hiveIds.length === 0) {
+      return apiaries.map(apiary => ({
+        ...apiary,
+        hiveCount: 0,
+        avgTemperature: 0,
+        avgHumidity: 0,
+        avgSound: 0,
+        avgWeight: 0
+      }));
+    }
+    
+    // Get latest metrics for each hive
     const { data: latestMetrics, error: metricsError } = await supabase
-      .rpc('get_latest_metrics_for_dashboard');
+      .from('metrics_time_series_data')
+      .select('*')
+      .in('hive_id', hiveIds)
+      .order('timestamp', { ascending: false });
 
     if (metricsError) {
       logger.error('Error fetching metrics:', metricsError);
@@ -426,11 +444,14 @@ export const getDashboardApiaries = async (): Promise<ApiaryWithStats[]> => {
       }));
     }
 
-    // Group metrics by hive_id
-    const metricsByHive = latestMetrics?.reduce((acc, metric) => {
-      acc[metric.hive_id] = metric;
-      return acc;
-    }, {} as Record<string, any>) || {};
+    // Find the latest metric for each hive
+    const latestMetricsByHive: Record<string, any> = {};
+    latestMetrics?.forEach(metric => {
+      if (!latestMetricsByHive[metric.hive_id] || 
+          new Date(metric.timestamp) > new Date(latestMetricsByHive[metric.hive_id].timestamp)) {
+        latestMetricsByHive[metric.hive_id] = metric;
+      }
+    });
 
     // Calculate stats for each apiary
     const enrichedApiaries = apiaries.map(apiary => {
@@ -442,7 +463,7 @@ export const getDashboardApiaries = async (): Promise<ApiaryWithStats[]> => {
       let tempCount = 0, humCount = 0, soundCount = 0, weightCount = 0;
       
       apiaryHives.forEach(hiveId => {
-        const metric = metricsByHive[hiveId];
+        const metric = latestMetricsByHive[hiveId];
         if (metric) {
           if (metric.temp_value !== null) {
             tempSum += metric.temp_value;

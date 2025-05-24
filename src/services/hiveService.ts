@@ -898,18 +898,25 @@ export const getDashboardHives = async (): Promise<HiveWithFullDetails[]> => {
     // Extract all hive_ids for batch queries
     const hiveIds = hives.map(hive => hive.hive_id);
 
-    // Get the latest metrics for all hives in a single query
-    // Using a SQL function that returns only the latest metrics per hive
-    const { data: latestMetrics, error: metricsError } = await supabase
-      .rpc('get_latest_metrics_for_dashboard');
+    // Get the latest metrics for all hives using a direct query instead of RPC
+    const { data: timeSeriesData, error: metricsError } = await supabase
+      .from('metrics_time_series_data')
+      .select('*')
+      .in('hive_id', hiveIds)
+      .order('timestamp', { ascending: false });
 
-    // Group metrics by hive_id
-    const metricsByHiveId = latestMetrics?.reduce((acc, metric) => {
-      if (!acc[metric.hive_id]) {
-        acc[metric.hive_id] = metric;
+    if (metricsError) {
+      logger.error('Error fetching metrics data:', metricsError);
+    }
+
+    // Find the latest metric for each hive
+    const latestMetricsByHiveId: Record<string, any> = {};
+    timeSeriesData?.forEach(metric => {
+      if (!latestMetricsByHiveId[metric.hive_id] || 
+          new Date(metric.timestamp) > new Date(latestMetricsByHiveId[metric.hive_id].timestamp)) {
+        latestMetricsByHiveId[metric.hive_id] = metric;
       }
-      return acc;
-    }, {} as Record<string, any>) || {};
+    });
 
     // Get active alerts for all hives in a single query
     const { data: activeAlerts, error: alertsError } = await supabase
@@ -935,7 +942,7 @@ export const getDashboardHives = async (): Promise<HiveWithFullDetails[]> => {
     // Process all hives with their associated metrics and alerts
     const enrichedHives = hives.map((hive) => {
       const apiaryName = hive.apiaries?.name || 'Unknown Apiary';
-      const latestMetric = metricsByHiveId[hive.hive_id] || {};
+      const latestMetric = latestMetricsByHiveId[hive.hive_id] || {};
       const hiveAlerts = alertsByHiveId[hive.hive_id] || [];
       
       // Create metrics structure with just the latest value

@@ -5,7 +5,7 @@
 CREATE OR REPLACE FUNCTION get_latest_metrics_for_dashboard()
 RETURNS TABLE (
   hive_id TEXT,
-  timestamp TIMESTAMPTZ,
+  metric_timestamp TIMESTAMPTZ,
   temp_value NUMERIC,
   hum_value NUMERIC,
   sound_value NUMERIC,
