@@ -22,7 +22,6 @@ import {
   Trash2,
   AlertCircle,
 } from 'lucide-react';
-import PageTransition from '@/components/layout/PageTransition';
 import {
   Card,
   CardContent,
@@ -851,33 +850,20 @@ const Production = () => {
   ];
 
   return (
-    <PageTransition>
-      <div className="container mx-auto py-6 px-4 sm:px-6 max-w-7xl space-y-6">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Honey Production</h1>
-            <p className="text-muted-foreground">
-              Track and analyze your honey production across all apiaries.
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={() => setAddDialogOpen(true)}
-              className="h-9 gap-1"
-            >
-              <PlusCircle className="h-4 w-4" />
-              <span>Add Record</span>
-            </Button>
-          </div>
-        </div>
-        
-        {/* Filters and Tabs */}
+    <div className="container mx-auto py-6 px-4 sm:px-6 max-w-7xl space-y-6">
+      {/* Page Header */}
+      <header className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight">Production</h1>
+        <p className="text-muted-foreground mt-1">
+          Track and analyze honey production across all your hives
+        </p>
+      </header>
+      
+      <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab}>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
-              <TabsList>
+              <TabsList>                
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="records">Records</TabsTrigger>
               </TabsList>
@@ -885,27 +871,27 @@ const Production = () => {
               <div className="flex flex-wrap items-center gap-2">
                 {activeTab === 'overview' && (
                   <>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">                      
                       <Select 
                         value={selectedPeriod} 
                         onValueChange={(value) => setSelectedPeriod(value as 'week' | 'month' | 'year')}
                       >
-                        <SelectTrigger className="h-9 w-auto min-w-[120px]">
+                        <SelectTrigger className="h-9 w-[130px]">
                           <SelectValue placeholder="Select period" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="week">Last 7 days</SelectItem>
+                          <SelectItem value="week">This week</SelectItem>
                           <SelectItem value="month">This month</SelectItem>
                           <SelectItem value="year">This year</SelectItem>
                         </SelectContent>
                       </Select>
-                      
+                                            
                       <Select 
                         value={forecastTimeframe} 
                         onValueChange={(value) => setForecastTimeframe(value as 'month' | 'quarter' | 'year')}
                       >
-                        <SelectTrigger className="h-9 w-auto min-w-[150px]">
-                          <SelectValue placeholder="Forecast timeframe" />
+                        <SelectTrigger className="h-9 w-[160px]">
+                          <SelectValue placeholder="Forecast period" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="month">1 Month Forecast</SelectItem>
@@ -913,7 +899,7 @@ const Production = () => {
                           <SelectItem value="year">12 Month Forecast</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
+                    </div>                    
                   </>
                 )}
                 
@@ -921,8 +907,8 @@ const Production = () => {
                   value={selectedApiaryId} 
                   onValueChange={setSelectedApiaryId}
                 >
-                  <SelectTrigger className="h-9 w-auto min-w-[130px]">
-                    <SelectValue placeholder="All apiaries" />
+                  <SelectTrigger className="h-9 w-[200px]">
+                    <SelectValue placeholder="Select apiary" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All apiaries</SelectItem>
@@ -933,15 +919,14 @@ const Production = () => {
                     ))}
                   </SelectContent>
                 </Select>
-                
+                                
                 {activeTab === 'overview' && (
                   <Select 
                     value={selectedHiveId} 
                     onValueChange={setSelectedHiveId}
-                    disabled={selectedApiaryId === 'all'}
                   >
-                    <SelectTrigger className="h-9 w-auto min-w-[120px]">
-                      <SelectValue placeholder="All hives" />
+                    <SelectTrigger className="h-9 w-[180px]">
+                      <SelectValue placeholder="Select hive" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All hives</SelectItem>
@@ -955,7 +940,7 @@ const Production = () => {
                     </SelectContent>
                   </Select>
                 )}
-              </div>
+              </div>              
             </div>
             
             <TabsContent value="overview" className="m-0">
@@ -972,7 +957,7 @@ const Production = () => {
                   loading={statsLoading}
                 />
               )}
-            </TabsContent>
+            </TabsContent>            
             
             <TabsContent value="records" className="w-full">
               <div className="space-y-6">
@@ -1026,7 +1011,7 @@ const Production = () => {
                   </div>
                 </div>
               </div>
-            </TabsContent>
+            </TabsContent>            
           </Tabs>
         </div>
         
@@ -1044,7 +1029,7 @@ const Production = () => {
               {/* ... */}
             </CardContent>
           </Card>
-        )}
+        )}        
       </div>
       
       {/* Add Production Record Dialog */}
@@ -1133,13 +1118,13 @@ const Production = () => {
           }
         }}
       />
-      
+            
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
         {/* Alert Dialog content - keeping existing implementation */}
         {/* ... */}
-      </AlertDialog>
-    </PageTransition>
+      </AlertDialog>      
+    </div>
   );
 };
 

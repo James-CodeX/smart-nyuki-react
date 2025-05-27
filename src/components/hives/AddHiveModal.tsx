@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 
 import {
@@ -36,6 +35,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useApiaries } from '@/hooks/useApiaries';
 import { useHives } from '@/hooks/useHives';
+import { useToast } from '@/components/ui/use-toast';
 
 // Define form schema with Zod
 const hiveFormSchema = z.object({
@@ -73,6 +73,7 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: apiaries = [] } = useApiaries();
   const { addHive } = useHives();
+  const { toast } = useToast();
 
   const form = useForm<HiveFormValues>({
     resolver: zodResolver(hiveFormSchema),
@@ -120,7 +121,10 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
       const validationResult = await validateHiveId(values.hiveId);
       
       if (!validationResult.valid) {
-        toast.error(validationResult.message);
+        toast({
+          title: "Error",
+          description: validationResult.message,
+          variant: "destructive"});
         setIsSubmitting(false);
         return;
       }
@@ -135,13 +139,19 @@ const AddHiveModal: React.FC<AddHiveModalProps> = ({
         status: 'Active',
       });
       
-      toast.success('Hive added successfully!');
+      toast({
+        title: "Success",
+        description: "Hive added successfully!"
+      });
       form.reset();
       setOpen(false);
       if (onHiveAdded) onHiveAdded();
     } catch (error) {
       logger.error("Error adding hive:", error);
-      toast.error('Failed to add hive. Please try again.');
+      toast({
+        title: "Error",
+        description: "Failed to add hive. Please try again.",
+        variant: "destructive"});
     } finally {
       setIsSubmitting(false);
     }
