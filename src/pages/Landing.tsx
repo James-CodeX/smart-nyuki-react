@@ -189,7 +189,7 @@ export default function Landing() {
             whileTap={{ scale: 0.95 }}
           >
             <Logo />
-            <span className={`font-bold ${theme === 'dark' ? 'text-amber-400' : 'text-amber-700'} text-xl`}>Smart Nyuki</span>
+            
           </motion.div>
           <div className="hidden md:flex items-center gap-8">
             <div className={`flex gap-8 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-700'} font-semibold text-base`}>
