@@ -29,7 +29,7 @@ const Inspections = lazy(() => import("./pages/Inspections"));
 const InspectionDetail = lazy(() => import("./pages/InspectionDetail"));
 const Alerts = lazy(() => import("./pages/Alerts"));
 const Auth = lazy(() => import("./pages/Auth"));
-const Landing = lazy(() => import("./pages/Landing"));
+
 
 import BottomNavigation from "./components/mobile/BottomNavigation";
 import Sidebar from "./components/layout/Sidebar";
@@ -110,16 +110,7 @@ const AppRoutes = () => {
             </ErrorBoundary>
           </Suspense>
         } />
-        <Route
-          path="/"
-          element={
-            <Suspense fallback={<PageLoader />}>
-              <ErrorBoundary>
-                <Landing />
-              </ErrorBoundary>
-            </Suspense>
-          }
-        />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route
           path="/dashboard"
           element={
